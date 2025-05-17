@@ -9,7 +9,35 @@
     "identity"
   ],
   "homepage": "https://github.com/cloud-copilot/iam-lens#readme",
-    "devDependencies": {
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "types": "dist/cjs/index.d.ts",
+  "prettier": "@cloud-copilot/prettier-config",
+  "bugs": {
+    "url": "https://github.com/cloud-copilot/iam-lens/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cloud-copilot/iam-lens.git"
+  },
+  "license": "AGPL-3.0-or-later",
+  "author": "David Kerber <dave@cloudcopilot.io>",
+  "scripts": {
+    "build": "npx tsc -p tsconfig.cjs.json && npx tsc -p tsconfig.esm.json && ./postbuild.sh",
+    "clean": "rm -rf dist",
+    "test": "npx vitest --run --coverage",
+    "release": "npm install && npm run clean && npm run build && npm test && npm run format-check && npm publish",
+    "format": "npx prettier --write src/",
+    "format-check": "npx prettier --check src/"
+  },
+  "devDependencies": {
     "@cloud-copilot/prettier-config": "^0.1.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
@@ -23,24 +51,59 @@
     "typescript": "^5.7.2",
     "vitest": "^3.0.7"
   },
-  "prettier": "@cloud-copilot/prettier-config",
-  "bugs": {
-    "url": "https://github.com/cloud-copilot/iam-lens/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/cloud-copilot/iam-lens.git"
-  },
-  "license": "AGPL-3.0-or-later",
-  "author": "Cloud Copilot",
-  "type": "commonjs",
-  "main": "dist/esm/index.js",
-  "scripts": {
-    "build": "npx tsc -p tsconfig.cjs.json && npx tsc -p tsconfig.esm.json && ./postbuild.sh",
-    "clean": "rm -rf dist",
-    "test": "npx vitest --run --coverage",
-    "release": "npm install && npm run clean && npm run build && npm test && npm run format-check && npm publish",
-    "format": "npx prettier --write src/",
-    "format-check": "npx prettier --check src/"
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      [
+        "@semantic-release/commit-analyzer",
+        {
+          "releaseRules": [
+            {
+              "type": "feat",
+              "release": "patch"
+            },
+            {
+              "type": "fix",
+              "release": "patch"
+            },
+            {
+              "breaking": true,
+              "release": "patch"
+            },
+            {
+              "type": "*",
+              "release": "patch"
+            }
+          ]
+        }
+      ],
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/changelog",
+      [
+        "@semantic-release/npm",
+        {
+          "npmPublish": true
+        }
+      ],
+      [
+        "@semantic-release/git",
+        {
+          "assets": [
+            "package.json",
+            "package-lock.json",
+            "CHANGELOG.md"
+          ],
+          "message": "chore(release): ${nextRelease.version} [skip ci]"
+        }
+      ],
+      [
+        "@semantic-release/github",
+        {
+          "assets": []
+        }
+      ]
+    ]
   }
 }
