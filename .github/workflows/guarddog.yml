@@ -1,0 +1,31 @@
+name: GuardDog
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guarddog:
+    permissions:
+      contents: read
+    name: Scan Dependencies and Source Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install GuardDog
+        run: pip install guarddog
+
+      - run: guarddog npm scan src/ --exit-non-zero-on-finding
+      # - run: guarddog npm verify package.json --exclude-rules empty_information --exit-non-zero-on-finding

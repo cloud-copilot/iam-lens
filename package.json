@@ -1,0 +1,46 @@
+{
+  "name": "@cloud-copilot/iam-lens",
+  "version": "0.1.0",
+  "description": "Visibility in IAM in and across AWS accounts",
+  "keywords": [
+    "aws",
+    "iam",
+    "security",
+    "identity"
+  ],
+  "homepage": "https://github.com/cloud-copilot/iam-lens#readme",
+    "devDependencies": {
+    "@cloud-copilot/prettier-config": "^0.1.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.1",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.3",
+    "@types/node": "^22.5.0",
+    "@vitest/coverage-v8": "^3.0.7",
+    "semantic-release": "^24.2.1",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.7"
+  },
+  "prettier": "@cloud-copilot/prettier-config",
+  "bugs": {
+    "url": "https://github.com/cloud-copilot/iam-lens/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cloud-copilot/iam-lens.git"
+  },
+  "license": "AGPL-3.0-or-later",
+  "author": "Cloud Copilot",
+  "type": "commonjs",
+  "main": "dist/esm/index.js",
+  "scripts": {
+    "build": "npx tsc -p tsconfig.cjs.json && npx tsc -p tsconfig.esm.json && ./postbuild.sh",
+    "clean": "rm -rf dist",
+    "test": "npx vitest --run --coverage",
+    "release": "npm install && npm run clean && npm run build && npm test && npm run format-check && npm publish",
+    "format": "npx prettier --write src/",
+    "format-check": "npx prettier --check src/"
+  }
+}
