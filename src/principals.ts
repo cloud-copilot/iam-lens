@@ -29,7 +29,7 @@ interface SimulationIdentityPolicy {
 export async function getAllPoliciesForUser(collectClient: IamCollectClient, principalArn: string) {
   const accountId = splitArnParts(principalArn).accountId!
 
-  const managedPolices = await collectClient.getManagedPoliciesForUser(principalArn)
+  const managedPolicies = await collectClient.getManagedPoliciesForUser(principalArn)
   const inlinePolicies = await collectClient.getInlinePoliciesForUser(principalArn)
   const permissionBoundary = await collectClient.getPermissionsBoundaryForUser(principalArn)
   const groups = await collectClient.getGroupsForUser(principalArn)
