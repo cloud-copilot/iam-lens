@@ -48,7 +48,7 @@ export async function getAllPoliciesForUser(collectClient: IamCollectClient, pri
   return {
     scps,
     rcps,
-    managedPolices,
+    managedPolicies,
     inlinePolicies,
     permissionBoundary,
     groupPolicies

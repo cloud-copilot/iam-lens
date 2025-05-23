@@ -20,7 +20,6 @@ export async function getAccountIdForResource(
   }
   if (arnParts.service === 's3' && arnParts.resourceType === '') {
     const bucketName = arnParts.resourcePath!
-    console.log(`S3 bucket name: ${bucketName}`)
     return collectClient.getAccountIdForBucket(bucketName)
   } else if (arnParts.service === 'apigateway' && arnParts.resourceType === 'restapis') {
     const apiId = arnParts.resourcePath!
