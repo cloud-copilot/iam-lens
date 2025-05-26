@@ -1,6 +1,6 @@
 import { Simulation } from '@cloud-copilot/iam-simulate'
+import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient } from './collect/client.js'
-import { splitArnParts } from './util/arn.js'
 
 /**
  * Get the account ID for a given resource ARN. Lookup index if necessary to find the account ID.
@@ -44,4 +44,27 @@ export async function getRcpsForResource(
     throw new Error(`Unable to determine account ID for resource ARN: ${resourceArn}`)
   }
   return collectClient.getRcpHierarchyForAccount(accountId)
+}
+
+export async function getResourcePolicyForResource(
+  collectClient: IamCollectClient,
+  resourceArn: string
+): Promise<any | undefined> {
+  //TODO: Should this return a policy object?
+  const accountId = await getAccountIdForResource(collectClient, resourceArn)
+  if (!accountId) {
+    throw new Error(`Unable to determine account ID for resource ARN: ${resourceArn}`)
+  }
+  const resourcePolicy = await collectClient.getResourcePolicyForArn(resourceArn, accountId)
+  if (resourcePolicy) {
+    return resourcePolicy
+  }
+
+  const ramPolicy = await collectClient.getRamSharePolicyForArn(resourceArn, accountId)
+  if (ramPolicy) {
+    return ramPolicy
+  }
+
+  //TODO: there should be more here for things like glue resources
+  return undefined
 }

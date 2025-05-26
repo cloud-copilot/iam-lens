@@ -9,6 +9,9 @@
     "identity"
   ],
   "homepage": "https://github.com/cloud-copilot/iam-lens#readme",
+  "bin": {
+    "iam-lens": "dist/esm/cli.js"
+  },
   "exports": {
     ".": {
       "import": "./dist/esm/index.js",
@@ -107,8 +110,11 @@
     ]
   },
   "dependencies": {
+    "@cloud-copilot/cli": "^0.1.28",
     "@cloud-copilot/iam-collect": "^0.1.63",
+    "@cloud-copilot/iam-data": "^0.9.202505241",
     "@cloud-copilot/iam-policy": "^0.1.24",
-    "@cloud-copilot/iam-simulate": "^0.1.35"
+    "@cloud-copilot/iam-simulate": "^0.1.35",
+    "@cloud-copilot/iam-utils": "^0.1.4"
   }
 }
