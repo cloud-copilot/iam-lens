@@ -114,7 +114,7 @@
     "@cloud-copilot/iam-collect": "^0.1.63",
     "@cloud-copilot/iam-data": "^0.9.202505241",
     "@cloud-copilot/iam-policy": "^0.1.24",
-    "@cloud-copilot/iam-simulate": "^0.1.35",
-    "@cloud-copilot/iam-utils": "^0.1.4"
+    "@cloud-copilot/iam-simulate": "^0.1.42",
+    "@cloud-copilot/iam-utils": "^0.1.7"
   }
 }
