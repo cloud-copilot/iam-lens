@@ -1,12 +1,5 @@
-import { createInMemoryStorageClient } from '@cloud-copilot/iam-collect'
 import { describe, expect, it } from 'vitest'
-import { IamCollectClient } from './client.js'
-
-const newStore = () => {
-  const store = createInMemoryStorageClient()
-  const client = new IamCollectClient(store)
-  return { store, client }
-}
+import { testStore } from './inMemoryClient.js'
 
 const fullAccessPolicy = {
   Version: '2012-10-17',
@@ -44,7 +37,7 @@ describe('IamCollectClient', () => {
   describe('accountExists', () => {
     it('should return true if account exists', async () => {
       // Given an account that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       await store.saveAccountMetadata(accountId, 'metadata', {
         accountId
@@ -58,7 +51,7 @@ describe('IamCollectClient', () => {
     })
     it('should return false if the account does not exist', async () => {
       // Given an account that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
 
       // When checking if the account exists
@@ -72,7 +65,7 @@ describe('IamCollectClient', () => {
   describe('principalExists', () => {
     it('should return true if principal exists', async () => {
       // Given a principal that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const principalArn = `arn:aws:iam::${accountId}:user/test-user`
       await store.saveResourceMetadata(accountId, principalArn, 'metadata', {
@@ -89,7 +82,7 @@ describe('IamCollectClient', () => {
 
     it('should return false if the principal does not exist', async () => {
       // Given a principal that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const principalArn = `arn:aws:iam::${accountId}:user/test-user`
 
@@ -104,7 +97,7 @@ describe('IamCollectClient', () => {
   describe('getScpHierarchyForAccount', () => {
     it('should return an empty array for a standalone account', async () => {
       // Given an account that doesn't exist in an org
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       await store.saveAccountMetadata(accountId, 'metadata', {
         accountId
@@ -119,7 +112,7 @@ describe('IamCollectClient', () => {
 
     it('should return an empty array for the root account in an org', async () => {
       // Given an account that is the root account of an org
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const orgId = 'o-12345678'
       await store.saveOrganizationMetadata(orgId, 'metadata', {
@@ -148,7 +141,7 @@ describe('IamCollectClient', () => {
 
     it('should return the SCP hierarchy for an account', async () => {
       // Given an account that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const orgId = 'o-12345678'
       const rootOu = 'r-4fkd'
@@ -305,7 +298,7 @@ describe('IamCollectClient', () => {
   describe('getOrgUnitHierarchyForAccount', () => {
     it('should return an empty array for a standalone account', async () => {
       // Given an account that doesn't exist in an org
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
 
       await store.saveAccountMetadata(accountId, 'metadata', {
@@ -321,7 +314,7 @@ describe('IamCollectClient', () => {
 
     it('should return the OU hierarchy for an account', async () => {
       // Given an account that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const orgId = 'o-12345678'
       const rootOu = 'r-4fkd'
@@ -370,7 +363,7 @@ describe('IamCollectClient', () => {
   describe('getOrgUnitIdForAccount', () => {
     it('should return undefined for a standalone account', async () => {
       // Given an account that doesn't exist in an org
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
 
       await store.saveAccountMetadata(accountId, 'metadata', {
@@ -388,7 +381,7 @@ describe('IamCollectClient', () => {
   describe('getScpsForAccount', () => {
     it('should return an empty array for a standalone account', async () => {
       // Given an account that doesn't exist in an org
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
 
       await store.saveAccountMetadata(accountId, 'metadata', {
@@ -404,7 +397,7 @@ describe('IamCollectClient', () => {
 
     it('should return the SCPs for an account', async () => {
       // Given an account that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const orgId = 'o-12345678'
       const rootOu = 'r-4fkd'
@@ -477,7 +470,7 @@ describe('IamCollectClient', () => {
   describe('getRcpsForAccount', () => {
     it('should return an empty array for a standalone account', async () => {
       // Given an account that doesn't exist in an org
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
 
       await store.saveAccountMetadata(accountId, 'metadata', {
@@ -493,7 +486,7 @@ describe('IamCollectClient', () => {
 
     it('should return the RCPs for an account', async () => {
       // Given an account that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const orgId = 'o-12345678'
       const rootOu = 'r-4fkd'
@@ -570,7 +563,7 @@ describe('IamCollectClient', () => {
   describe('getRcpHierarchyForAccount', () => {
     it('should return an empty array for a standalone account', async () => {
       // Given an account that doesn't exist in an org
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
 
       await store.saveAccountMetadata(accountId, 'metadata', {
@@ -586,7 +579,7 @@ describe('IamCollectClient', () => {
 
     it('should return the RCP hierarchy for an account', async () => {
       // Given an account that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const orgId = 'o-12345678'
       const rootOu = 'r-4fkd'
@@ -739,7 +732,7 @@ describe('IamCollectClient', () => {
   describe('getScpsForOrgUnit', () => {
     it('should return the SCPs for an OrgUnit', async () => {
       //Given an OU that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const orgId = 'o-12345678'
       const rootOu = 'r-4fkd'
       const orgUnit1Id = 'ou-4fkd-12345678'
@@ -801,7 +794,7 @@ describe('IamCollectClient', () => {
   describe('getRcpsForOrgUnit', () => {
     it('should return the RCPs for an OrgUnit', async () => {
       //Given an OU that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const orgId = 'o-12345678'
       const rootOu = 'r-4fkd'
       const orgUnit1Id = 'ou-4fkd-12345678'
@@ -863,7 +856,7 @@ describe('IamCollectClient', () => {
   describe('getAccountIdForBucket', () => {
     it('should return the account ID for a bucket ARN', async () => {
       // Given a bucket ARN
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const bucketName = 'my-bucket'
       const accountId = '123456789012'
       // And the bucket exists in the account
@@ -884,7 +877,7 @@ describe('IamCollectClient', () => {
 
     it('should return undefined if the bucket name does not exist', async () => {
       // Given a bucket name that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const bucketName = 'non-existent-bucket'
       // When getting the account ID for the bucket
       const result = await client.getAccountIdForBucket(bucketName)
@@ -896,7 +889,7 @@ describe('IamCollectClient', () => {
   describe('getAccountIdForRestApi', () => {
     it('should return the account ID for a RestApi ARN', async () => {
       // Given a RestApi ARN
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const restApiId = 'arn:aws:apigateway:us-east-1::/restapis/rkyvy56npi'
 
       const accountId = '123456789012'
@@ -919,7 +912,7 @@ describe('IamCollectClient', () => {
 
     it('should return undefined if the RestApi ID does not exist', async () => {
       // Given a RestApi ID that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const restApiId = 'arn:aws:apigateway:us-east-1::/restapis/non-existent-restapi'
 
       // When getting the account ID for the RestApi
@@ -933,7 +926,7 @@ describe('IamCollectClient', () => {
   describe('getManagedPoliciesForUser', () => {
     it('should return an empty array if the user does not exist', async () => {
       // Given a user that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
 
@@ -945,7 +938,7 @@ describe('IamCollectClient', () => {
     })
     it('should return the manged policies for the user', async () => {
       // Given a user with managed policies
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
       const managedPolicyArn1 = `arn:aws:iam::${accountId}:policy/Policy1`
@@ -1012,7 +1005,7 @@ describe('IamCollectClient', () => {
   describe('getManagedPolicy', () => {
     it('should return the managed policy ', async () => {
       // Given a managed policy stored in the account
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const managedPolicyArn = `arn:aws:iam::${accountId}:policy/Policy1`
       const managedPolicy = {
@@ -1039,7 +1032,7 @@ describe('IamCollectClient', () => {
   describe('getInlinePoliciesForUser', () => {
     it('should return an empty array if the user does not exist', async () => {
       // Given a user that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
 
@@ -1051,7 +1044,7 @@ describe('IamCollectClient', () => {
     })
     it('should return the inline policies for the user', async () => {
       // Given a user with inline policies
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
       const inlinePolicies = [
@@ -1088,7 +1081,7 @@ describe('IamCollectClient', () => {
   describe('getIamUserMetadata', () => {
     it('should return undefined if the user does not exist', async () => {
       // Given a user that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
 
@@ -1100,7 +1093,7 @@ describe('IamCollectClient', () => {
     })
     it('should return the IAM user metadata', async () => {
       // Given a user that exists
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
       const userMetadata = {
@@ -1126,7 +1119,7 @@ describe('IamCollectClient', () => {
   describe('getGroupsForUser', () => {
     it('should return an empty array if the user does not exist', async () => {
       // Given a user that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
 
@@ -1139,7 +1132,7 @@ describe('IamCollectClient', () => {
 
     it('should return the groups for the user', async () => {
       // Given a user that exists and is a member of groups
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
       const groupArns = [
@@ -1161,7 +1154,7 @@ describe('IamCollectClient', () => {
   describe('getManagedPoliciesForGroup', () => {
     it('should return an empty array if the group does not exist', async () => {
       // Given a group that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const groupArn = `arn:aws:iam::${accountId}:group/test-group`
 
@@ -1173,7 +1166,7 @@ describe('IamCollectClient', () => {
     })
     it('should return the managed policies for the group', async () => {
       // Given a group with managed policies
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const groupArn = `arn:aws:iam::${accountId}:group/test-group`
       const managedPolicyArn1 = `arn:aws:iam::${accountId}:policy/GroupPolicy1`
@@ -1240,7 +1233,7 @@ describe('IamCollectClient', () => {
   describe('getInlinePoliciesForGroup', () => {
     it('should return an empty array if the group does not exist', async () => {
       // Given a group that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const groupArn = `arn:aws:iam::${accountId}:group/test-group`
 
@@ -1253,7 +1246,7 @@ describe('IamCollectClient', () => {
 
     it('should return the inline policies for the group', async () => {
       // Given a group with inline policies
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const groupArn = `arn:aws:iam::${accountId}:group/test-group`
       const inlinePolicies = [
@@ -1294,7 +1287,7 @@ describe('IamCollectClient', () => {
   describe('getPermissionsBoundaryForUser', () => {
     it('should return undefined if no permissions boundary is set', async () => {
       // Given a user that does not have a permissions boundary
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
 
@@ -1311,7 +1304,7 @@ describe('IamCollectClient', () => {
 
     it('should return undefined if the user does not exist', async () => {
       // Given a user that does not have a permissions boundary
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
 
@@ -1323,7 +1316,7 @@ describe('IamCollectClient', () => {
     })
     it('should return the permission boundary if set', async () => {
       // Given a user with a permissions boundary set
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const userArn = `arn:aws:iam::${accountId}:user/test-user`
       const permissionsBoundaryArn = `arn:aws:iam::${accountId}:policy/BoundaryPolicy`
@@ -1362,7 +1355,7 @@ describe('IamCollectClient', () => {
   describe('getManagedPoliciesForRole', () => {
     it('should return an empty array if the role does not exist', async () => {
       // Given a role that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const roleArn = `arn:aws:iam::${accountId}:role/test-role`
 
@@ -1374,7 +1367,7 @@ describe('IamCollectClient', () => {
     })
     it('should return the managed policies for the role', async () => {
       // Given a role with managed policies
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const roleArn = `arn:aws:iam::${accountId}:role/test-role`
       const managedPolicyArn1 = `arn:aws:iam::${accountId}:policy/RolePolicy1`
@@ -1441,7 +1434,7 @@ describe('IamCollectClient', () => {
   describe('getInlinePoliciesForRole', () => {
     it('should return an empty array if the role does not exist', async () => {
       // Given a role that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const roleArn = `arn:aws:iam::${accountId}:role/test-role`
 
@@ -1453,7 +1446,7 @@ describe('IamCollectClient', () => {
     })
     it('should return the inline policies for the role', async () => {
       // Given a role with inline policies
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const roleArn = `arn:aws:iam::${accountId}:role/test-role`
       const inlinePolicies = [
@@ -1494,7 +1487,7 @@ describe('IamCollectClient', () => {
   describe('getPermissionsBoundaryForRole', () => {
     it('should return undefined if the role does not exist', async () => {
       // Given a role that does not exist
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const roleArn = `arn:aws:iam::${accountId}:role/test-role`
 
@@ -1507,7 +1500,7 @@ describe('IamCollectClient', () => {
 
     it('should return undefined if the role does not have a permissions boundary', async () => {
       // Given a role that does not have a permissions boundary
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const roleArn = `arn:aws:iam::${accountId}:role/test-role`
 
@@ -1523,7 +1516,7 @@ describe('IamCollectClient', () => {
     })
     it('should return the permissions boundary if set', async () => {
       // Given a role with a permissions boundary set
-      const { store, client } = newStore()
+      const { store, client } = testStore()
       const accountId = '123456789012'
       const roleArn = `arn:aws:iam::${accountId}:role/test-role`
       const permissionsBoundaryArn = `arn:aws:iam::${accountId}:policy/BoundaryPolicy`
@@ -1556,6 +1549,137 @@ describe('IamCollectClient', () => {
 
       // Then it should return the permissions boundary policy
       expect(permissionsBoundary).toEqual(boundaryPolicy)
+    })
+  })
+
+  describe('getResourcePolicyForArn', () => {
+    it('should return the resource policy for a given ARN', async () => {
+      // Given a resource with a policy
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const resourceArn = `arn:aws:s3:::my-bucket`
+      const policy = { Statement: [{ Effect: 'Allow', Action: 's3:GetObject', Resource: '*' }] }
+
+      await store.saveResourceMetadata(accountId, resourceArn, 'policy', policy)
+
+      // When getting the resource policy for the ARN
+      const result = await client.getResourcePolicyForArn(resourceArn, accountId)
+
+      // Then it should return the policy
+      expect(result).toEqual(policy)
+    })
+    it('should return undefined if no policy exists for the ARN', async () => {
+      // Given a resource with no policy
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const resourceArn = `arn:aws:s3:::my-bucket`
+
+      // When getting the resource policy for the ARN
+      const result = await client.getResourcePolicyForArn(resourceArn, accountId)
+
+      // Then it should return undefined
+      expect(result).toBeUndefined()
+    })
+  })
+
+  describe('getRamSharePolicyForArn', () => {
+    it('should return the RAM share policy for a given ARN', async () => {
+      // Given a resource with a RAM share policy
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const resourceArn = `arn:aws:ram::${accountId}:resource-share/my-share`
+      const ramSharePolicy = {
+        Statement: [{ Effect: 'Allow', Action: 'ram:ShareResource', Resource: '*' }]
+      }
+
+      await store.saveRamResource(accountId, resourceArn, {
+        arn: resourceArn,
+        shares: ['share1', 'share2'],
+        policy: ramSharePolicy
+      })
+
+      // When getting the RAM share policy for the ARN
+      const result = await client.getRamSharePolicyForArn(resourceArn, accountId)
+
+      // Then it should return the RAM share policy
+      expect(result).toEqual(ramSharePolicy)
+    })
+    it('should return undefined if no RAM share policy exists for the ARN', async () => {
+      // Given a resource with no RAM share policy
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const resourceArn = `arn:aws:ram::${accountId}:resource-share/my-share`
+
+      // When getting the RAM share policy for the ARN
+      const result = await client.getRamSharePolicyForArn(resourceArn, accountId)
+
+      // Then it should return undefined
+      expect(result).toBeUndefined()
+    })
+  })
+
+  describe('getTagsForResource', () => {
+    it('should return the tags for a given resource ARN', async () => {
+      // Given a resource with tags
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const resourceArn = `arn:aws:s3:::my-bucket`
+      const tags = { Environment: 'prod', Owner: 'alice' }
+
+      await store.saveResourceMetadata(accountId, resourceArn, 'tags', tags)
+
+      // When getting the tags for the resource ARN
+      const result = await client.getTagsForResource(resourceArn, accountId)
+
+      // Then it should return the tags
+      expect(result).toEqual(tags)
+    })
+    it('should return an empty object if no tags exist for the resource ARN', async () => {
+      // Given a resource with no tags
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const resourceArn = `arn:aws:s3:::my-bucket`
+
+      // When getting the tags for the resource ARN
+      const result = await client.getTagsForResource(resourceArn, accountId)
+
+      // Then it should return undefined
+      expect(result).toEqual({})
+    })
+  })
+
+  describe('getUniqueIdForIamResource', () => {
+    it('should return the unique ID for an IAM resource', async () => {
+      // Given an IAM user with a unique ID
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const userArn = `arn:aws:iam::${accountId}:user/test-user`
+      await store.saveResourceMetadata(accountId, userArn, 'metadata', {
+        arn: userArn,
+        id: 'AIDAEXAMPLE',
+        name: 'test-user',
+        path: '/',
+        created: '2024-01-01T00:00:00Z'
+      })
+
+      // When getting the unique ID for the IAM resource
+      // Assume the client has a method getUniqueIdForIamResource
+      const uniqueId = await client.getUniqueIdForIamResource(userArn)
+
+      // Then it should return the unique ID
+      expect(uniqueId).toBe('AIDAEXAMPLE')
+    })
+    it('should return undefined if the IAM resource does not exist', async () => {
+      // Given a non-existent IAM user
+      const { client } = testStore()
+      const accountId = '123456789012'
+      const userArn = `arn:aws:iam::${accountId}:user/test-user`
+
+      // When getting the unique ID for the IAM resource
+      const uniqueId = await client.getUniqueIdForIamResource(userArn)
+
+      // Then it should return undefined
+      expect(uniqueId).toBeUndefined()
     })
   })
 })

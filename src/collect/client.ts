@@ -1,5 +1,5 @@
 import { AwsIamStore } from '@cloud-copilot/iam-collect'
-import { splitArnParts } from '../util/arn.js'
+import { splitArnParts } from '@cloud-copilot/iam-utils'
 
 //TODO: Import this from iam-simulate
 export interface SimulationOrgPolicies {
@@ -88,76 +88,11 @@ interface OrganizationMetadata {
   }
 }
 
-// export interface IamCollectClient {
-//   /**
-//    * Does an account exist in the store?
-//    *
-//    * @param accountId the id of the account to check
-//    * @returns true if the account exists, false otherwise
-//    */
-//   accountExists: (accountId: string) => Promise<boolean>
-
-//   /**
-//    * Does a principal exist in the store?
-//    *
-//    * @param principalArn the arn of the principal to check
-//    * @returns true if the principal exists, false otherwise
-//    */
-//   principalExists: (principalArn: string) => Promise<boolean>
-
-//   /**
-//    * Get the org id for an account
-//    */
-//   getOrgIdForAccount: (accountId: string) => Promise<string | undefined>
-
-//   /**
-//    * Get the SCPs for an account and only the account
-//    *
-//    * @param accountId the id of the account to get the policies for
-//    * @returns the policies for the account
-//    */
-//   getScpsForAccount: (accountId: string) => Promise<OrgPolicy[]>
-
-//   /**
-//    * Get the SCP Hierarchy for an account. The first element is the root, the last element is the account itself.
-//    *
-//    * @param accountId the id of the account to get the policies for
-//    * @returns the policies for the account
-//    */
-//   getScpHierarchyForAccount(accountId: string): Promise<SimulationOrgPolicies[]>
-
-//   /**
-//    * Get the RCPs for an account
-//    *
-//    * @param accountId the account id to get the policies for
-//    * @returns the policies for the account
-//    */
-//   getRcpsForAccount: (accountId: string) => Promise<OrgPolicy[]>
-
-//   getRcpHierarchyForAccount(accountId: string): Promise<SimulationOrgPolicies[]>
-
-//   /**
-//    * Get the SCPs for an org unit
-//    *
-//    * @param orgUnitId the id of the org unit to get the policies for
-//    * @returns the policies for the org unit
-//    */
-//   getScpsForOrgUnit: (orgId: string, orgUnitId: string) => Promise<OrgPolicy[]>
-
-//   /**
-//    * Get the RCPs for an org unit
-//    *
-//    * @param orgUnitId
-//    * @returns
-//    */
-//   getRcpsForOrgUnit: (orgId: string, orgUnitId: string) => Promise<OrgPolicy[]>
-
-//   getAccountIdForBucket: (bucketName: string) => Promise<string | undefined>
-
-//   getAccountIdForRestApi: (apiArn: string) => Promise<string | undefined>
-
-//   getManagedPoliciesForUser(userArn: string): Promise<ManagedPolicy[]>
-// }
+interface RAMShare {
+  arn: string
+  shares: string[]
+  policy: any
+}
 
 export class IamCollectClient {
   constructor(private storageClient: AwsIamStore) {}
@@ -682,5 +617,72 @@ export class IamCollectClient {
       organizationId,
       'metadata'
     )
+  }
+
+  /**
+   * Gets the resource policy for a given resource ARN and account.
+   *
+   * @param resourceArn The ARN of the resource.
+   * @param accountId The ID of the account.
+   * @returns The resource policy, or undefined if not found.
+   */
+  async getResourcePolicyForArn(resourceArn: string, accountId: string): Promise<any | undefined> {
+    const resourcePolicy = await this.storageClient.getResourceMetadata<string, string>(
+      accountId,
+      resourceArn,
+      'policy'
+    )
+    return resourcePolicy
+  }
+
+  /**
+   * Gets the RAM share policy for a given resource ARN and account.
+   *
+   * @param resourceArn The ARN of the resource.
+   * @param accountId The ID of the account.
+   * @returns The RAM share policy, or undefined if not found.
+   */
+  async getRamSharePolicyForArn(resourceArn: string, accountId: string): Promise<any | undefined> {
+    const armSharePolicy = await this.storageClient.getRamResource<RAMShare, RAMShare>(
+      accountId,
+      resourceArn
+    )
+    return armSharePolicy?.policy
+  }
+
+  /**
+   * Gets the tags for a given resource ARN and account.
+   *
+   * @param resourceArn The ARN of the resource.
+   * @param accountId The ID of the account.
+   * @returns The tags as a record, or undefined if not found.
+   */
+  async getTagsForResource(
+    resourceArn: string,
+    accountId: string
+  ): Promise<Record<string, string>> {
+    const tags = await this.storageClient.getResourceMetadata<
+      Record<string, string>,
+      Record<string, string>
+    >(accountId, resourceArn, 'tags')
+    return tags || {}
+  }
+
+  /**
+   * Gets a unique ID for an IAM resource based on its ARN and account ID.
+   * Used specifically for IAM Users and Roles
+   *
+   * @param resourceArn the ARN of the IAM resource
+   * @param accountId the ID of the account the resource belongs to
+   * @returns a unique ID for the resource, or undefined if not found
+   */
+  async getUniqueIdForIamResource(resourceArn: string): Promise<string | undefined> {
+    const accountId = splitArnParts(resourceArn).accountId!
+    const resourceMetadata = await this.storageClient.getResourceMetadata<
+      IamUserMetadata,
+      IamUserMetadata
+    >(accountId, resourceArn, 'metadata')
+
+    return resourceMetadata?.id
   }
 }
