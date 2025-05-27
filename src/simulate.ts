@@ -19,6 +19,12 @@ export interface SimulationRequest {
   customContextKeys: ContextKeys
 }
 
+const assumeRoleActions = new Set([
+  'sts:assumerole',
+  'sts:assumerolewithwebidentity',
+  'sts:assumerolewithsaml'
+])
+
 export async function simulateRequest(
   simulationRequest: SimulationRequest,
   collectClient: IamCollectClient
@@ -54,7 +60,7 @@ export async function simulateRequest(
     simulationRequest.resourceArn
   )
 
-  if (simulationRequest.action.toLowerCase() === 'sts:assumerole' && !resourcePolicy) {
+  if (assumeRoleActions.has(simulationRequest.action.toLowerCase()) && !resourcePolicy) {
     throw new Error(
       `Trust policy not found for resource ${simulationRequest.resourceArn}. sts:AssumeRole requires a trust policy.`
     )
