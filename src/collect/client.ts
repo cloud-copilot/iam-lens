@@ -627,10 +627,17 @@ export class IamCollectClient {
    * @returns The resource policy, or undefined if not found.
    */
   async getResourcePolicyForArn(resourceArn: string, accountId: string): Promise<any | undefined> {
+    const arnParts = splitArnParts(resourceArn)
+    let metadataKey = 'policy'
+
+    if (arnParts.service === 'iam' && arnParts.resourceType === 'role') {
+      metadataKey = 'trust-policy'
+    }
+
     const resourcePolicy = await this.storageClient.getResourceMetadata<string, string>(
       accountId,
       resourceArn,
-      'policy'
+      metadataKey
     )
     return resourcePolicy
   }

@@ -54,6 +54,12 @@ export async function simulateRequest(
     simulationRequest.resourceArn
   )
 
+  if (simulationRequest.action.toLowerCase() === 'sts:assumerole' && !resourcePolicy) {
+    throw new Error(
+      `Trust policy not found for resource ${simulationRequest.resourceArn}. sts:AssumeRole requires a trust policy.`
+    )
+  }
+
   const resourceRcps = await getRcpsForResource(collectClient, simulationRequest.resourceArn)
 
   const context = await createContextKeys(
