@@ -1,6 +1,6 @@
-import { iamActionDetails } from '@cloud-copilot/iam-data'
+import { iamActionDetails, iamActionExists, iamServiceExists } from '@cloud-copilot/iam-data'
 import { runSimulation, Simulation } from '@cloud-copilot/iam-simulate'
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import { isIamRoleArn, splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient, SimulationOrgPolicies } from './collect/client.js'
 import { ContextKeys, createContextKeys } from './contextKeys.js'
 import { getAllPoliciesForPrincipal, isServiceLinkedRole, PrincipalPolicies } from './principals.js'
@@ -40,10 +40,12 @@ export async function simulateRequest(
   const actionParts = simulationRequest.action.split(':')
   const service = actionParts[0]
   const serviceAction = actionParts[1]
-  const actionDetails = await iamActionDetails(service, serviceAction)
-  if (!actionDetails) {
+  const serviceExists = await iamServiceExists(service)
+  const actionExists = serviceExists && (await iamActionExists(service, serviceAction))
+  if (!serviceExists || !actionExists) {
     throw new Error(`Unable to find action details for ${simulationRequest.action}`)
   }
+  const actionDetails = await iamActionDetails(service, serviceAction)
 
   if (actionDetails.isWildcardOnly) {
     simulationRequest.resourceAccount = splitArnParts(simulationRequest.principal).accountId!
@@ -58,6 +60,10 @@ export async function simulateRequest(
   const resourcePolicy = await getResourcePolicyForResource(
     collectClient,
     simulationRequest.resourceArn
+  )
+
+  const useResourcePolicy = !(
+    isIamRoleArn(simulationRequest.resourceArn) && service.toLowerCase() === 'iam'
   )
 
   if (assumeRoleActions.has(simulationRequest.action.toLowerCase()) && !resourcePolicy) {
@@ -96,7 +102,7 @@ export async function simulateRequest(
       resourceRcps,
       principalPolicies.scps
     ),
-    resourcePolicy: resourcePolicy,
+    resourcePolicy: useResourcePolicy ? resourcePolicy : undefined,
     permissionBoundaryPolicies: preparePermissionBoundary(principalPolicies)
   }
 
