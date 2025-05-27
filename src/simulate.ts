@@ -1,6 +1,6 @@
 import { iamActionDetails } from '@cloud-copilot/iam-data'
 import { runSimulation, Simulation } from '@cloud-copilot/iam-simulate'
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import { isIamRoleArn, splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient, SimulationOrgPolicies } from './collect/client.js'
 import { ContextKeys, createContextKeys } from './contextKeys.js'
 import { getAllPoliciesForPrincipal, isServiceLinkedRole, PrincipalPolicies } from './principals.js'
@@ -60,6 +60,10 @@ export async function simulateRequest(
     simulationRequest.resourceArn
   )
 
+  const useResourcePolicy = !(
+    isIamRoleArn(simulationRequest.resourceArn) && service.toLowerCase() === 'iam'
+  )
+
   if (assumeRoleActions.has(simulationRequest.action.toLowerCase()) && !resourcePolicy) {
     throw new Error(
       `Trust policy not found for resource ${simulationRequest.resourceArn}. sts:AssumeRole requires a trust policy.`
@@ -96,7 +100,7 @@ export async function simulateRequest(
       resourceRcps,
       principalPolicies.scps
     ),
-    resourcePolicy: resourcePolicy,
+    resourcePolicy: useResourcePolicy ? resourcePolicy : undefined,
     permissionBoundaryPolicies: preparePermissionBoundary(principalPolicies)
   }
 
