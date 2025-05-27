@@ -1,14 +1,18 @@
 import { iamActionDetails, iamActionExists, iamServiceExists } from '@cloud-copilot/iam-data'
 import { runSimulation, Simulation } from '@cloud-copilot/iam-simulate'
 import { isIamRoleArn, splitArnParts } from '@cloud-copilot/iam-utils'
-import { IamCollectClient, SimulationOrgPolicies } from './collect/client.js'
-import { ContextKeys, createContextKeys } from './contextKeys.js'
-import { getAllPoliciesForPrincipal, isServiceLinkedRole, PrincipalPolicies } from './principals.js'
+import { IamCollectClient, SimulationOrgPolicies } from '../collect/client.js'
+import {
+  getAllPoliciesForPrincipal,
+  isServiceLinkedRole,
+  PrincipalPolicies
+} from '../principals.js'
 import {
   getAccountIdForResource,
   getRcpsForResource,
   getResourcePolicyForResource
-} from './resources.js'
+} from '../resources.js'
+import { ContextKeys, createContextKeys } from './contextKeys.js'
 
 export interface SimulationRequest {
   resourceArn: string

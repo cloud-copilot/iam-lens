@@ -2,8 +2,8 @@
 
 import { parseCliArguments } from '@cloud-copilot/cli'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
-import { ContextKeys } from './contextKeys.js'
-import { simulateRequest } from './simulate.js'
+import { ContextKeys } from './simulate/contextKeys.js'
+import { simulateRequest } from './simulate/simulate.js'
 import { iamLensVersion } from './utils/packageVersion.js'
 
 const main = async () => {

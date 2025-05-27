@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { testStore } from './collect/inMemoryClient.js'
+import { testStore } from '../collect/inMemoryClient.js'
 import { simulateRequest } from './simulate.js'
 
 describe('simulateRequest', () => {

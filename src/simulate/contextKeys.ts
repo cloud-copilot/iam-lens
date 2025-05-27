@@ -1,6 +1,6 @@
 import { convertAssumedRoleArnToRoleArn, splitArnParts } from '@cloud-copilot/iam-utils'
-import { IamCollectClient } from './collect/client.js'
-import { isArnPrincipal, isServicePrincipal } from './principals.js'
+import { IamCollectClient } from '../collect/client.js'
+import { isArnPrincipal, isServicePrincipal } from '../principals.js'
 import { SimulationRequest } from './simulate.js'
 
 export type ContextKeys = Record<string, string | string[]>

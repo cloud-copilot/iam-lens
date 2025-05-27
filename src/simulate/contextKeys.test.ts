@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { testStore } from './collect/inMemoryClient.js'
+import { testStore } from '../collect/inMemoryClient.js'
 import { createContextKeys } from './contextKeys.js'
 import { SimulationRequest } from './simulate.js'
 
