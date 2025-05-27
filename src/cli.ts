@@ -4,9 +4,10 @@ import { parseCliArguments } from '@cloud-copilot/cli'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
 import { ContextKeys } from './contextKeys.js'
 import { simulateRequest } from './simulate.js'
+import { iamLensVersion } from './utils/packageVersion.js'
 
 const main = async () => {
-  // const version = await iamLensVersion()
+  const version = await iamLensVersion()
   const cli = parseCliArguments(
     'iam-lens',
     {
@@ -65,8 +66,8 @@ const main = async () => {
     {
       envPrefix: 'IAM_LENS',
       showHelpIfNoArgs: true,
-      requireSubcommand: true
-      // version: version
+      requireSubcommand: true,
+      version
     }
   )
 
