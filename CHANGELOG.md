@@ -1,3 +1,15 @@
+## [0.1.6](https://github.com/cloud-copilot/iam-lens/compare/v0.1.5...v0.1.6) (2025-05-27)
+
+
+### Bug Fixes
+
+* Fix path for importing role trust policies. ([92c58cb](https://github.com/cloud-copilot/iam-lens/commit/92c58cbc8fe9c6a645eefbcd279bce8d50c78d9e))
+
+
+### Features
+
+* Add check for trust policy for all STS assume role actions. ([f9cfe32](https://github.com/cloud-copilot/iam-lens/commit/f9cfe321d86acdebb103fd1853b074ce63024ca6))
+
 ## [0.1.5](https://github.com/cloud-copilot/iam-lens/compare/v0.1.4...v0.1.5) (2025-05-26)
 
 ## [0.1.4](https://github.com/cloud-copilot/iam-lens/compare/v0.1.3...v0.1.4) (2025-05-26)
