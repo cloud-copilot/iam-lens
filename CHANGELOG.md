@@ -1,3 +1,11 @@
+## [0.1.7](https://github.com/cloud-copilot/iam-lens/compare/v0.1.6...v0.1.7) (2025-05-27)
+
+
+### Features
+
+* Add version as a cli option ([e67e410](https://github.com/cloud-copilot/iam-lens/commit/e67e41009ad556e2a0c4bcd2a2392644ca2f02d8))
+* Don't use role trust policies for iam actions. ([a0d663e](https://github.com/cloud-copilot/iam-lens/commit/a0d663ed27c12d3dc964ab9b22e3611da1c35e0f))
+
 ## [0.1.6](https://github.com/cloud-copilot/iam-lens/compare/v0.1.5...v0.1.6) (2025-05-27)
 
 
