@@ -1580,6 +1580,25 @@ describe('IamCollectClient', () => {
       // Then it should return undefined
       expect(result).toBeUndefined()
     })
+
+    it('should get the trust-policy for a role ARN', async () => {
+      // Given a role with a trust policy
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const roleArn = `arn:aws:iam::${accountId}:role/test-role`
+      const trustPolicy = {
+        Statement: [
+          { Effect: 'Allow', Principal: { Service: 'ec2.amazonaws.com' }, Action: 'sts:AssumeRole' }
+        ]
+      }
+      await store.saveResourceMetadata(accountId, roleArn, 'trust-policy', trustPolicy)
+
+      // When getting the trust policy for the role ARN
+      const result = await client.getResourcePolicyForArn(roleArn, accountId)
+
+      // Then it should return the trust policy
+      expect(result).toEqual(trustPolicy)
+    })
   })
 
   describe('getRamSharePolicyForArn', () => {
