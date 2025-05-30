@@ -101,8 +101,32 @@ interface OrgStructure {
   [key: string]: OrgStructureNode
 }
 
+export interface IamCollectClientOptions {
+  enableCaching?: boolean
+}
+
 export class IamCollectClient {
-  constructor(private storageClient: AwsIamStore) {}
+  private _cache: Record<string, any> = {}
+  private _enableCaching: boolean
+
+  constructor(
+    private storageClient: AwsIamStore,
+    clientOptions?: IamCollectClientOptions
+  ) {
+    this._enableCaching = clientOptions?.enableCaching !== false
+  }
+
+  // Generic cache helper
+  private async withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {
+    if (this._enableCaching && cacheKey in this._cache) {
+      return this._cache[cacheKey]
+    }
+    const value = await fetcher()
+    if (this._enableCaching) {
+      this._cache[cacheKey] = value
+    }
+    return value
+  }
 
   /**
    * Checks if an account exists in the store.
@@ -157,42 +181,45 @@ export class IamCollectClient {
     accountId: string,
     policyType: OrgPolicyType
   ): Promise<SimulationOrgPolicies[]> {
-    const orgId = await this.getOrgIdForAccount(accountId)
-    if (!orgId) {
-      return []
-    }
+    const cacheKey = `orgPolicyHierarchy:${accountId}:${policyType}`
+    return this.withCache(cacheKey, async () => {
+      const orgId = await this.getOrgIdForAccount(accountId)
+      if (!orgId) {
+        return []
+      }
 
-    // SCPs and RCPs do not apply to the root account
-    const orgMetadata = await this.getOrganizationMetadata(orgId)
-    if (orgMetadata.rootAccountId === accountId) {
-      return []
-    }
+      // SCPs and RCPs do not apply to the root account
+      const orgMetadata = await this.getOrganizationMetadata(orgId)
+      if (orgMetadata.rootAccountId === accountId) {
+        return []
+      }
 
-    const policyHierarchy: SimulationOrgPolicies[] = []
-    const orgHierarchy = await this.getOrgUnitHierarchyForAccount(accountId)
+      const policyHierarchy: SimulationOrgPolicies[] = []
+      const orgHierarchy = await this.getOrgUnitHierarchyForAccount(accountId)
 
-    for (const ouId of orgHierarchy) {
-      const policies = await this.getOrgPoliciesForOrgUnit(orgId, ouId, policyType)
+      for (const ouId of orgHierarchy) {
+        const policies = await this.getOrgPoliciesForOrgUnit(orgId, ouId, policyType)
 
+        policyHierarchy.push({
+          orgIdentifier: ouId,
+          policies: policies.map((p) => ({
+            name: p.arn,
+            policy: p.policy
+          }))
+        })
+      }
+
+      const accountPolicies = await this.getOrgPoliciesForAccount(accountId, policyType)
       policyHierarchy.push({
-        orgIdentifier: ouId,
-        policies: policies.map((p) => ({
+        orgIdentifier: accountId,
+        policies: accountPolicies.map((p) => ({
           name: p.arn,
           policy: p.policy
         }))
       })
-    }
 
-    const accountPolicies = await this.getOrgPoliciesForAccount(accountId, policyType)
-    policyHierarchy.push({
-      orgIdentifier: accountId,
-      policies: accountPolicies.map((p) => ({
-        name: p.arn,
-        policy: p.policy
-      }))
+      return policyHierarchy
     })
-
-    return policyHierarchy
   }
 
   /**
