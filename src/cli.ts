@@ -5,6 +5,7 @@ import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
 import { ContextKeys } from './simulate/contextKeys.js'
 import { simulateRequest } from './simulate/simulate.js'
 import { iamLensVersion } from './utils/packageVersion.js'
+import { whoCan } from './whoCan/whoCan.js'
 
 const main = async () => {
   const version = await iamLensVersion()
@@ -49,6 +50,29 @@ const main = async () => {
             character: 'v'
           }
         }
+      },
+      'who-can': {
+        description: 'Find who can perform an action on a resource',
+        options: {
+          resource: {
+            type: 'string',
+            values: 'single',
+            description:
+              'The ARN of the resource to check permissions for. Ignore for wildcard actions'
+          },
+          resourceAccount: {
+            type: 'string',
+            values: 'single',
+            description:
+              'The account ID of the resource, only required if it cannot be determined from the resource ARN. Required for wildcard actions'
+          },
+          actions: {
+            type: 'string',
+            values: 'multiple',
+            description:
+              'The action to check permissions for; must be a valid IAM service and action such as `s3:GetObject`'
+          }
+        }
       }
     },
     {
@@ -75,11 +99,10 @@ const main = async () => {
     cli.args.collectConfigs.push('./iam-collect.jsonc')
   }
   const thePartition = cli.args.partition || 'aws'
+  const collectConfigs = await loadCollectConfigs(cli.args.collectConfigs)
+  const collectClient = getCollectClient(collectConfigs, thePartition)
 
   if (cli.subcommand === 'simulate') {
-    const collectConfigs = await loadCollectConfigs(cli.args.collectConfigs)
-    const collectClient = getCollectClient(collectConfigs, thePartition)
-
     const { principal, resource, resourceAccountId, action, context } = cli.args
     const contextKeys = convertContextKeysToMap(context)
 
@@ -98,6 +121,22 @@ const main = async () => {
     if (cli.args.verbose) {
       console.log(JSON.stringify(result, null, 2))
     }
+  } else if (cli.subcommand === 'who-can') {
+    const { resource, resourceAccount, actions } = cli.args
+    if (!resourceAccount && !resource && actions.length === 0) {
+      console.error(
+        'Error: At least 1) resource or 2) resource-account and actions must be provided for who-can command'
+      )
+      process.exit(1)
+    }
+
+    const results = await whoCan(collectClient, {
+      resource: cli.args.resource!,
+      actions: cli.args.actions!,
+      resourceAccount: cli.args.resourceAccount
+    })
+
+    console.log(JSON.stringify(results, null, 2))
   }
 }
 

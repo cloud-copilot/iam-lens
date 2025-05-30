@@ -12,6 +12,7 @@ import {
   getRcpsForResource,
   getResourcePolicyForResource
 } from '../resources.js'
+import { AssumeRoleActions } from '../utils/sts.js'
 import { ContextKeys, createContextKeys } from './contextKeys.js'
 
 export interface SimulationRequest {
@@ -22,12 +23,6 @@ export interface SimulationRequest {
   // anonymous?: boolean
   customContextKeys: ContextKeys
 }
-
-const assumeRoleActions = new Set([
-  'sts:assumerole',
-  'sts:assumerolewithwebidentity',
-  'sts:assumerolewithsaml'
-])
 
 export async function simulateRequest(
   simulationRequest: SimulationRequest,
@@ -70,7 +65,7 @@ export async function simulateRequest(
     isIamRoleArn(simulationRequest.resourceArn) && service.toLowerCase() === 'iam'
   )
 
-  if (assumeRoleActions.has(simulationRequest.action.toLowerCase()) && !resourcePolicy) {
+  if (AssumeRoleActions.has(simulationRequest.action.toLowerCase()) && !resourcePolicy) {
     throw new Error(
       `Trust policy not found for resource ${simulationRequest.resourceArn}. sts:AssumeRole requires a trust policy.`
     )
