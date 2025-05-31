@@ -1,0 +1,38 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OrgAccess",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:DeleteObject", "s3:PutObject"],
+      "Resource": ["arn:aws:s3:::iam-data-482734/iam-data/*", "arn:aws:s3:::iam-data-482734"],
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalOrgId": "o-11111111"
+        }
+      }
+    },
+    {
+      "Sid": "OtherOrgAccess",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:DeleteObject", "s3:PutObject"],
+      "Resource": ["arn:aws:s3:::iam-data-482734/iam-data/*", "arn:aws:s3:::iam-data-482734"],
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalOrgId": "o-99999999"
+        }
+      }
+    },
+    {
+      "Sid": "OtherAccountAccess",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "123456789012"
+      },
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:DeleteObject", "s3:PutObject"],
+      "Resource": ["arn:aws:s3:::iam-data-482734/iam-data/*", "arn:aws:s3:::iam-data-482734"]
+    }
+  ]
+}

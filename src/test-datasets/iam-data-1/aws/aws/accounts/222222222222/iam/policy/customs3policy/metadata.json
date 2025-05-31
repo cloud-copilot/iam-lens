@@ -1,0 +1,11 @@
+{
+  "arn": "arn:aws:iam::222222222222:policy/CustomS3Policy",
+  "name": "CustomS3Policy",
+  "id": "ANPASZ4TF4CCK72DJE3JV",
+  "defaultVersionId": "v1",
+  "path": "/",
+  "permissionsBoundaryUsageCount": 0,
+  "isAttachable": true,
+  "createDate": "2025-04-18T03:34:47.000Z",
+  "updateDate": "2025-04-18T03:34:47.000Z"
+}

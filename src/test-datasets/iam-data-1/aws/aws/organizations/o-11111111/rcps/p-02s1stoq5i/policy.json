@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Statement1",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "sts:AssumeRole",
+      "NotResource": "arn:aws:iam::222222222222:role/TestCrossAccount",
+      "Condition": {
+        "Null": {
+          "sts:ExternalId": "true"
+        },
+        "StringNotEquals": {
+          "aws:PrincipalOrgId": "o-11111111"
+        },
+        "BoolIfExists": {
+          "aws:PrincipalIsAWSService": "false"
+        }
+      }
+    },
+    {
+      "Sid": "S3BucketAccess",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": ["s3:*"],
+      "Resource": ["arn:aws:s3:::restricted-bucket", "arn:aws:s3:::restricted-bucket/*"]
+    }
+  ]
+}

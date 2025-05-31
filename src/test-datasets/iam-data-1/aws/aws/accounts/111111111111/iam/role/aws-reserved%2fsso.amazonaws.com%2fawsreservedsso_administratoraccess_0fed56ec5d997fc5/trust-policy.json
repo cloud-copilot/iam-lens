@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::111111111111:saml-provider/AWSSSO_eaa8c24d827e9175_DO_NOT_DELETE"
+      },
+      "Action": ["sts:AssumeRoleWithSAML", "sts:TagSession"],
+      "Condition": {
+        "StringEquals": {
+          "SAML:aud": "https://signin.aws.amazon.com/saml"
+        }
+      }
+    }
+  ]
+}

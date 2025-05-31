@@ -187,7 +187,6 @@ export class IamCollectClient {
       if (!orgId) {
         return []
       }
-
       // SCPs and RCPs do not apply to the root account
       const orgMetadata = await this.getOrganizationMetadata(orgId)
       if (orgMetadata.rootAccountId === accountId) {
@@ -350,6 +349,9 @@ export class IamCollectClient {
       policyId,
       'policy'
     )
+    if (!policyDocument) {
+      console.error(`Policy document not found for ${policyArn} in org ${orgId}`)
+    }
 
     return {
       arn: policyData.arn,

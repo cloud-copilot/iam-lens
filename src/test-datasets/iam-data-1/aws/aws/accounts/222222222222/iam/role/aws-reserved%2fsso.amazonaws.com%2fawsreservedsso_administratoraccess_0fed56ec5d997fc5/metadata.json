@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::222222222222:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5",
+  "name": "AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5",
+  "id": "AROASZ4TF4CCDRGHX9999",
+  "path": "/aws-reserved/sso.amazonaws.com/",
+  "created": "2023-03-16T12:54:47.000Z"
+}

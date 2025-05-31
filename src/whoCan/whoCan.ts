@@ -24,7 +24,6 @@ import { AssumeRoleActions } from '../utils/sts.js'
 export interface ResourceAccessRequest {
   resource: string
   resourceAccount?: string
-
   actions: string[]
 }
 
@@ -49,8 +48,6 @@ export async function whoCan(
 ): Promise<WhoCanResponse> {
   const { resource } = request
 
-  const resourceArn = new Arn(resource)
-
   const resourceAccount =
     request.resourceAccount || (await getAccountIdForResource(collectClient, resource))
 
@@ -58,24 +55,24 @@ export async function whoCan(
     throw new Error(`Could not determine account ID for resource ${resource}`)
   }
 
-  const results: WhoCanAllowed[] = []
-
   const actions = await actionsForWhoCan(request)
-  // console.log(`Actions to check: ${actions.length}`)
-
   if (!actions || actions.length === 0) {
     throw new Error('No valid actions provided or found for the resource.')
   }
 
-  const resourcePolicy = await getResourcePolicyForResource(collectClient, resource)
-  if (
-    (resourceArn.matches({ service: 'iam', resourceType: 'role' }) ||
-      resourceArn.matches({ service: 'kms', resourceType: 'key' })) &&
-    !resourcePolicy
-  ) {
-    throw new Error(
-      `Unable to find resource policy for ${resource}. Cannot determine who can access the policy.`
-    )
+  let resourcePolicy: any = undefined
+  if (resource) {
+    resourcePolicy = await getResourcePolicyForResource(collectClient, resource)
+    const resourceArn = new Arn(resource)
+    if (
+      (resourceArn.matches({ service: 'iam', resourceType: 'role' }) ||
+        resourceArn.matches({ service: 'kms', resourceType: 'key' })) &&
+      !resourcePolicy
+    ) {
+      throw new Error(
+        `Unable to find resource policy for ${resource}. Cannot determine who can access the policy.`
+      )
+    }
   }
 
   const accountsToCheck = await accountsToCheckBasedOnResourcePolicy(
@@ -150,7 +147,6 @@ async function runPrincipalForActions(
 ): Promise<WhoCanAllowed[]> {
   const results: WhoCanAllowed[] = []
   for (const action of actions) {
-    // console.log(`Checking principal ${principal} for action ${action} on resource ${resource}`)
     const result = await simulateRequest(
       {
         principal: principal,
@@ -255,6 +251,10 @@ export async function accountsToCheckBasedOnResourcePolicy(
   if (resourceAccount) {
     accountsToCheck.specificAccounts.push(resourceAccount)
   }
+  if (!resourcePolicy) {
+    return accountsToCheck
+  }
+
   const policy = loadPolicy(resourcePolicy)
   for (const statement of policy.statements()) {
     if (statement.isAllow() && statement.isNotPrincipalStatement()) {

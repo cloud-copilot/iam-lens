@@ -3,7 +3,7 @@
 import { parseCliArguments } from '@cloud-copilot/cli'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
 import { ContextKeys } from './simulate/contextKeys.js'
-import { simulateRequest } from './simulate/simulate.js'
+import { resultMatchesExpectation, simulateRequest } from './simulate/simulate.js'
 import { iamLensVersion } from './utils/packageVersion.js'
 import { whoCan } from './whoCan/whoCan.js'
 
@@ -48,6 +48,13 @@ const main = async () => {
             type: 'boolean',
             description: 'Enable verbose output for the simulation',
             character: 'v'
+          },
+          expect: {
+            type: 'enum',
+            values: 'single',
+            validValues: ['Allowed', 'ImplicitlyDenied', 'ExplicitlyDenied', 'AnyDeny'],
+            description:
+              'The expected result of the simulation, if the result does not match the expected response a non-zero exit code will be returned'
           }
         }
       },
@@ -117,9 +124,19 @@ const main = async () => {
       collectClient
     )
 
+    if (result.errors) {
+      console.error('Simulation Errors:')
+      console.log(JSON.stringify(result.errors, null, 2))
+      process.exit(1)
+    }
+
     console.log(`Simulation Result: ${result.analysis?.result}`)
     if (cli.args.verbose) {
       console.log(JSON.stringify(result, null, 2))
+    }
+
+    if (!resultMatchesExpectation(cli.args.expect, result.analysis?.result!)) {
+      process.exit(1)
     }
   } else if (cli.subcommand === 'who-can') {
     const { resource, resourceAccount, actions } = cli.args

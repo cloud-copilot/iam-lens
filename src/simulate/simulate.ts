@@ -1,5 +1,5 @@
 import { iamActionDetails, iamActionExists, iamServiceExists } from '@cloud-copilot/iam-data'
-import { runSimulation, Simulation } from '@cloud-copilot/iam-simulate'
+import { EvaluationResult, runSimulation, Simulation } from '@cloud-copilot/iam-simulate'
 import { isIamRoleArn, splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient, SimulationOrgPolicies } from '../collect/client.js'
 import {
@@ -56,22 +56,20 @@ export async function simulateRequest(
     simulationRequest.principal
   )
 
-  const resourcePolicy = await getResourcePolicyForResource(
+  const { resourcePolicy, resourceRcps } = await getResourcePolicies(
     collectClient,
     simulationRequest.resourceArn
   )
 
-  const useResourcePolicy = !(
-    isIamRoleArn(simulationRequest.resourceArn) && service.toLowerCase() === 'iam'
-  )
+  const useResourcePolicy =
+    simulationRequest.resourceArn &&
+    !(isIamRoleArn(simulationRequest.resourceArn) && service.toLowerCase() === 'iam')
 
   if (AssumeRoleActions.has(simulationRequest.action.toLowerCase()) && !resourcePolicy) {
     throw new Error(
-      `Trust policy not found for resource ${simulationRequest.resourceArn}. sts:AssumeRole requires a trust policy.`
+      `Trust policy not found for resource ${simulationRequest.resourceArn}. sts assume role actions require a trust policy.`
     )
   }
-
-  const resourceRcps = await getRcpsForResource(collectClient, simulationRequest.resourceArn)
 
   const context = await createContextKeys(
     collectClient,
@@ -83,11 +81,14 @@ export async function simulateRequest(
     ? []
     : principalPolicies.scps
 
+  console.log(principalPolicies)
+  console.log(resourcePolicy)
+
   const simulation: Simulation = {
     request: {
       action: simulationRequest.action,
       resource: {
-        resource: simulationRequest.resourceArn,
+        resource: simulationRequest.resourceArn || '*',
         accountId: simulationRequest.resourceAccount
       },
       principal: simulationRequest.principal,
@@ -99,7 +100,7 @@ export async function simulateRequest(
       simulationRequest.principal,
       actionDetails.isWildcardOnly,
       resourceRcps,
-      principalPolicies.scps
+      principalPolicies.rcps
     ),
     resourcePolicy: useResourcePolicy ? resourcePolicy : undefined,
     permissionBoundaryPolicies: preparePermissionBoundary(principalPolicies)
@@ -108,6 +109,23 @@ export async function simulateRequest(
   const result = await runSimulation(simulation, {})
 
   return result
+}
+
+async function getResourcePolicies(
+  collectClient: IamCollectClient,
+  resourceArn: string
+): Promise<{
+  resourcePolicy: any | undefined
+  resourceRcps: SimulationOrgPolicies[]
+}> {
+  if (!resourceArn) {
+    return { resourcePolicy: undefined, resourceRcps: [] }
+  }
+
+  const resourcePolicy = await getResourcePolicyForResource(collectClient, resourceArn)
+  const resourceRcps = await getRcpsForResource(collectClient, resourceArn)
+
+  return { resourcePolicy, resourceRcps }
 }
 
 function rcpsForRequest(
@@ -195,4 +213,17 @@ function preparePermissionBoundary(
     ]
   }
   return undefined
+}
+
+export function resultMatchesExpectation(
+  expected: EvaluationResult | 'AnyDeny' | undefined,
+  result: EvaluationResult
+): boolean {
+  if (!expected) {
+    return true
+  }
+  if (expected === 'AnyDeny') {
+    return result.includes('Denied')
+  }
+  return expected === result
 }

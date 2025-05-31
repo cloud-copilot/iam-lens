@@ -1,0 +1,66 @@
+{
+  "111111111111": {
+    "ou": "r-dh2e",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
+  },
+  "222222222222": {
+    "ou": "ou-dh2e-aps19rip",
+    "scps": [
+      "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
+      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-jjlf15pg"
+    ],
+    "rcps": [
+      "arn:aws:organizations::111111111111:policy/o-11111111/resource_control_policy/p-02s1stoq5i",
+      "arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"
+    ]
+  },
+  "333333333333": {
+    "ou": "ou-dh2e-aps19rip",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"],
+    "tags": {
+      "environment": "test"
+    }
+  },
+  "444444444444": {
+    "ou": "ou-dh2e-bm9olc5a",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
+  },
+  "555555555555": {
+    "ou": "ou-dh2e-kxtfc3s3",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
+  },
+  "121212121212": {
+    "ou": "ou-dh2e-s1150ym3",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
+  },
+  "343434343434": {
+    "ou": "ou-dh2e-s1150ym3",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
+  },
+  "666666666666": {
+    "ou": "ou-dh2e-1t6b0r7y",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
+  },
+  "777777777777": {
+    "ou": "ou-dh2e-434nky50",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
+  },
+  "888888888888": {
+    "ou": "ou-dh2e-434nky50",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
+  },
+  "999999999999": {
+    "ou": "ou-dh2e-434nky50",
+    "scps": ["arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess"],
+    "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
+  }
+}

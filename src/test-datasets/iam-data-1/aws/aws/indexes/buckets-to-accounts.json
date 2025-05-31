@@ -1,0 +1,10 @@
+{
+  "iam-data-482734": {
+    "accountId": "222222222222",
+    "region": "us-west-2"
+  },
+  "restricted-bucket": {
+    "accountId": "222222222222",
+    "region": "us-west-2"
+  }
+}

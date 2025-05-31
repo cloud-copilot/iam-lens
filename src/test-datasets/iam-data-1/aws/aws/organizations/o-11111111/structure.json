@@ -1,0 +1,40 @@
+{
+  "r-dh2e": {
+    "children": {
+      "ou-dh2e-aps19rip": {
+        "accounts": [
+          "arn:aws:organizations::111111111111:account/o-11111111/222222222222",
+          "arn:aws:organizations::111111111111:account/o-11111111/333333333333"
+        ]
+      },
+      "ou-dh2e-bm9olc5a": {
+        "accounts": ["arn:aws:organizations::111111111111:account/o-11111111/444444444444"]
+      },
+      "ou-dh2e-hib9i2fv": {},
+      "ou-dh2e-kxtfc3s3": {
+        "accounts": ["arn:aws:organizations::111111111111:account/o-11111111/555555555555"]
+      },
+      "ou-dh2e-lvgwe3dc": {
+        "children": {
+          "ou-dh2e-1t6b0r7y": {
+            "accounts": ["arn:aws:organizations::111111111111:account/o-11111111/666666666666"]
+          },
+          "ou-dh2e-434nky50": {
+            "accounts": [
+              "arn:aws:organizations::111111111111:account/o-11111111/777777777777",
+              "arn:aws:organizations::111111111111:account/o-11111111/888888888888",
+              "arn:aws:organizations::111111111111:account/o-11111111/999999999999"
+            ]
+          }
+        }
+      },
+      "ou-dh2e-s1150ym3": {
+        "accounts": [
+          "arn:aws:organizations::111111111111:account/o-11111111/121212121212",
+          "arn:aws:organizations::111111111111:account/o-11111111/343434343434"
+        ]
+      }
+    },
+    "accounts": ["arn:aws:organizations::111111111111:account/o-11111111/111111111111"]
+  }
+}

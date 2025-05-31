@@ -1,0 +1,5 @@
+{
+  "arn": "arn:aws:organizations::111111111111:policy/o-11111111/resource_control_policy/p-02s1stoq5i",
+  "name": "ExternalIDs",
+  "awsManaged": false
+}
