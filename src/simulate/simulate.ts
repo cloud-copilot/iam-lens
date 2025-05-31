@@ -16,7 +16,7 @@ import { AssumeRoleActions } from '../utils/sts.js'
 import { ContextKeys, createContextKeys } from './contextKeys.js'
 
 export interface SimulationRequest {
-  resourceArn: string
+  resourceArn: string | undefined
   resourceAccount: string | undefined
   action: string
   principal: string
@@ -28,14 +28,6 @@ export async function simulateRequest(
   simulationRequest: SimulationRequest,
   collectClient: IamCollectClient
 ) {
-  simulationRequest.resourceAccount =
-    simulationRequest.resourceAccount ||
-    (await getAccountIdForResource(collectClient, simulationRequest.resourceArn))
-
-  if (!simulationRequest.resourceAccount) {
-    throw new Error(`Unable to find account ID for resource ${simulationRequest.resourceArn}`)
-  }
-
   const actionParts = simulationRequest.action.split(':')
   const service = actionParts[0]
   const serviceAction = actionParts[1]
@@ -46,8 +38,22 @@ export async function simulateRequest(
   }
   const actionDetails = await iamActionDetails(service, serviceAction)
 
+  // If it is a wildcard action, the resource account is always the principal account
   if (actionDetails.isWildcardOnly) {
     simulationRequest.resourceAccount = splitArnParts(simulationRequest.principal).accountId!
+  }
+
+  if (!simulationRequest.resourceAccount && !simulationRequest.resourceArn) {
+    throw new Error(
+      'Non wildcard actions require a resource ARN or resource account to be specified.'
+    )
+  }
+  simulationRequest.resourceAccount =
+    simulationRequest.resourceAccount ||
+    (await getAccountIdForResource(collectClient, simulationRequest.resourceArn!))
+
+  if (!simulationRequest.resourceAccount) {
+    throw new Error(`Unable to find account ID for resource ${simulationRequest.resourceArn}`)
   }
 
   //Lookup the principal policies
@@ -110,7 +116,7 @@ export async function simulateRequest(
 
 async function getResourcePolicies(
   collectClient: IamCollectClient,
-  resourceArn: string
+  resourceArn: string | undefined
 ): Promise<{
   resourcePolicy: any | undefined
   resourceRcps: SimulationOrgPolicies[]

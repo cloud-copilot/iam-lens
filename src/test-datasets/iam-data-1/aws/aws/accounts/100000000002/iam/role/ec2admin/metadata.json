@@ -1,0 +1,8 @@
+{
+  "arn": "arn:aws:iam::100000000002:role/EC2Admin",
+  "name": "EC2Viewer",
+  "id": "AROAXYZXXXXXXXXXX",
+  "path": "/",
+  "created": "2025-05-14T14:40:13.000Z",
+  "permissionBoundary": "arn:aws:iam::100000000002:policy/EC2Reader"
+}

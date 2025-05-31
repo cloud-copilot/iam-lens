@@ -1,0 +1,8 @@
+{
+  "arn": "arn:aws:iam::100000000002:user/user2",
+  "path": "/",
+  "permissionBoundary": "arn:aws:iam::aws:policy/AdministratorAccess",
+  "id": "AIDAxxxxxxxxxxxxxxxxx",
+  "name": "user1",
+  "created": "2025-04-02T21:16:11.000Z"
+}

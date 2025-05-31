@@ -5,6 +5,7 @@ import { getCollectClient } from '../collect/collect.js'
 import { simulateRequest, SimulationRequest } from './simulate.js'
 
 const simulateIntegrationTest: {
+  only?: true
   name: string
 
   data: string
@@ -51,6 +52,42 @@ const simulateIntegrationTest: {
       customContextKeys: {}
     },
     expected: 'ExplicitlyDenied'
+  },
+  {
+    name: 'Wildcard blocked by SCP',
+    data: '1',
+    request: {
+      resourceArn: undefined,
+      resourceAccount: undefined,
+      action: 's3:ListAllMyBuckets',
+      principal: 'arn:aws:iam::100000000002:user/user1',
+      customContextKeys: {}
+    },
+    expected: 'ExplicitlyDenied'
+  },
+  {
+    name: 'Wildcard blocked by RCP',
+    data: '1',
+    request: {
+      resourceArn: undefined,
+      resourceAccount: undefined,
+      action: 's3:ListAllMyBuckets',
+      principal: 'arn:aws:iam::100000000002:user/user2',
+      customContextKeys: {}
+    },
+    expected: 'ExplicitlyDenied'
+  },
+  {
+    name: 'Implict deny by Permission Boundary',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:ec2:us-east-1:100000000002:instance/i-1234567890abcdef0',
+      resourceAccount: undefined,
+      action: 'ec2:TerminateInstances',
+      principal: 'arn:aws:iam::100000000002:role/EC2Admin',
+      customContextKeys: {}
+    },
+    expected: 'ImplicitlyDenied'
   }
 ]
 

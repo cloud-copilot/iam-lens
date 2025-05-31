@@ -116,7 +116,7 @@ const main = async () => {
     const result = await simulateRequest(
       {
         principal: principal!,
-        resourceArn: resource!,
+        resourceArn: resource,
         resourceAccount: resourceAccountId,
         action: action!,
         customContextKeys: contextKeys
