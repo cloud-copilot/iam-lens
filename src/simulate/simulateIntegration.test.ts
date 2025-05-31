@@ -1,7 +1,6 @@
 import { EvaluationResult } from '@cloud-copilot/iam-simulate'
-import { join, resolve } from 'path'
 import { describe, expect, it } from 'vitest'
-import { getCollectClient } from '../collect/collect.js'
+import { getTestDatasetClient } from '../test-datasets/testClient.js'
 import { simulateRequest, SimulationRequest } from './simulate.js'
 
 const simulateIntegrationTest: {
@@ -151,18 +150,7 @@ describe('simulateIntegrationTest', () => {
 
     testFn(name, async () => {
       // Given a client
-      const collectClient = getCollectClient(
-        [
-          {
-            iamCollectVersion: '0.0.0',
-            storage: {
-              type: 'file',
-              path: resolve(join('./src', 'test-datasets', `iam-data-${test.data}`))
-            }
-          }
-        ],
-        'aws'
-      )
+      const collectClient = getTestDatasetClient(test.data)
 
       if (test.expectedError) {
         //If an error is expected
