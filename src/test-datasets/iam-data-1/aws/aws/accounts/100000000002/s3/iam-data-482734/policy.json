@@ -21,7 +21,7 @@
       "Resource": ["arn:aws:s3:::iam-data-482734/iam-data/*", "arn:aws:s3:::iam-data-482734"],
       "Condition": {
         "StringEquals": {
-          "aws:PrincipalOrgId": "o-99999999"
+          "aws:PrincipalOrgId": "o-22222222"
         }
       }
     },

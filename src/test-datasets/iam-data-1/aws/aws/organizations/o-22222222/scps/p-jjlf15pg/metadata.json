@@ -1,0 +1,6 @@
+{
+  "arn": "arn:aws:organizations::200000000001:policy/o-22222222/service_control_policy/p-jjlf15pg",
+  "name": "BlockRoot",
+  "description": "Blocks root access for member accounts",
+  "awsManaged": false
+}

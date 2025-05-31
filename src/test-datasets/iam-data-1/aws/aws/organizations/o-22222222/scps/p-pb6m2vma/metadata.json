@@ -1,0 +1,6 @@
+{
+  "arn": "arn:aws:organizations::200000000001:policy/o-22222222/service_control_policy/p-pb6m2vma",
+  "name": "BlockCopilotAcountAccess",
+  "description": "Used in emergencies to disable cross account access to the CloudCopilotReadOnly role in other accounts. ",
+  "awsManaged": false
+}

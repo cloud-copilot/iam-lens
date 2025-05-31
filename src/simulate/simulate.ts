@@ -108,7 +108,6 @@ export async function simulateRequest(
     resourcePolicy: useResourcePolicy ? resourcePolicy : undefined,
     permissionBoundaryPolicies: preparePermissionBoundary(principalPolicies)
   }
-
   const result = await runSimulation(simulation, {})
 
   return result

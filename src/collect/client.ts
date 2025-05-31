@@ -494,6 +494,9 @@ export class IamCollectClient {
       policyArn,
       'policy'
     )
+    if (!policyDocument) {
+      console.error(`Policy document not found for ${policyArn} in account ${accountId}`)
+    }
     return {
       arn: policyMetadata.arn,
       name: policyMetadata.name,

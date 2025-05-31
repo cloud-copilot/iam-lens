@@ -7,6 +7,7 @@ import { simulateRequest, SimulationRequest } from './simulate.js'
 const simulateIntegrationTest: {
   only?: true
   name: string
+  comment?: string
 
   data: string
   request: SimulationRequest
@@ -23,6 +24,19 @@ const simulateIntegrationTest: {
       action: 's3:GetBucketPolicy',
       principal:
         'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {}
+    },
+    expected: 'Allowed'
+  },
+  {
+    name: 'cross account allowed only by resource policy',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:ListBucket',
+      principal:
+        'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
       customContextKeys: {}
     },
     expected: 'Allowed'
@@ -78,7 +92,7 @@ const simulateIntegrationTest: {
     expected: 'ExplicitlyDenied'
   },
   {
-    name: 'Implict deny by Permission Boundary',
+    name: 'Implicit deny by Permission Boundary',
     data: '1',
     request: {
       resourceArn: 'arn:aws:ec2:us-east-1:100000000002:instance/i-1234567890abcdef0',
@@ -88,6 +102,45 @@ const simulateIntegrationTest: {
       customContextKeys: {}
     },
     expected: 'ImplicitlyDenied'
+  },
+  {
+    name: 'Cross org request allowed',
+    comment: "This uses a user in the root account, so SCPs don't apply",
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:ListBucket',
+      principal:
+        'arn:aws:iam::200000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {}
+    },
+    expected: 'Allowed'
+  },
+  {
+    name: 'Cross org blocked by SCP',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:ListBucket',
+      principal: 'arn:aws:iam::200000000002:user/user1',
+      customContextKeys: {}
+    },
+    expected: 'ExplicitlyDenied'
+  },
+  {
+    name: 'Cross org blocked by RCP',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734/data.txt',
+      resourceAccount: undefined,
+      action: 's3:GetObject',
+      principal:
+        'arn:aws:iam::200000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {}
+    },
+    expected: 'ExplicitlyDenied'
   }
 ]
 
@@ -126,7 +179,7 @@ describe('simulateIntegrationTest', () => {
 
         // And the result should match the expected result
         if (result.analysis?.result !== expected) {
-          console.log(JSON.stringify(result, null, 2))
+          console.log(JSON.stringify(result.analysis?.rcpAnalysis, null, 2))
         }
         expect(result.analysis?.result).toEqual(test.expected)
       }

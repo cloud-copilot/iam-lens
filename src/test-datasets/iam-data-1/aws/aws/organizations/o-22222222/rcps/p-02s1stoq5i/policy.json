@@ -6,13 +6,13 @@
       "Effect": "Deny",
       "Principal": "*",
       "Action": "sts:AssumeRole",
-      "NotResource": "arn:aws:iam::100000000002:role/TestCrossAccount",
+      "NotResource": "arn:aws:iam::200000000002:role/TestCrossAccount",
       "Condition": {
         "Null": {
           "sts:ExternalId": "true"
         },
         "StringNotEquals": {
-          "aws:PrincipalOrgId": "o-11111111"
+          "aws:PrincipalOrgId": "o-22222222"
         },
         "BoolIfExists": {
           "aws:PrincipalIsAWSService": "false"
@@ -34,19 +34,7 @@
       "Resource": ["*"],
       "Condition": {
         "StringEquals": {
-          "aws:PrincipalArn": "arn:aws:iam::100000000002:user/user2"
-        }
-      }
-    },
-    {
-      "Sid": "RestrictReadIamData",
-      "Effect": "Deny",
-      "Principal": "*",
-      "Action": ["s3:GetObject"],
-      "Resource": ["arn:aws:s3:::iam-data-482734/*"],
-      "Condition": {
-        "StringEquals": {
-          "aws:PrincipalOrgId": "o-22222222"
+          "aws:PrincipalArn": "arn:aws:iam::200000000002:user/user2"
         }
       }
     }

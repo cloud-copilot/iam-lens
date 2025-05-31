@@ -1,0 +1,25 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RestrictEC2ForRoot",
+      "Effect": "Deny",
+      "Action": [
+        "*"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Condition": {
+        "StringLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:root"
+          ]
+        },
+        "Null": {
+          "aws:AssumedRoot": "true"
+        }
+      }
+    }
+  ]
+}

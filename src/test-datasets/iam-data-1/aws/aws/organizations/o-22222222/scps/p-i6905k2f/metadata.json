@@ -1,0 +1,6 @@
+{
+  "arn": "arn:aws:organizations::200000000001:policy/o-22222222/service_control_policy/p-i6905k2f",
+  "name": "DenyLeaveOrganization",
+  "description": "Blocks accounts from leaving the organization. ",
+  "awsManaged": false
+}
