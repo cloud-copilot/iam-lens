@@ -6,7 +6,6 @@ import { simulateRequest, SimulationRequest } from './simulate.js'
 
 const simulateIntegrationTest: {
   name: string
-  only?: boolean
 
   data: string
   request: SimulationRequest
@@ -22,7 +21,7 @@ const simulateIntegrationTest: {
       resourceAccount: undefined,
       action: 's3:GetBucketPolicy',
       principal:
-        'arn:aws:iam::222222222222:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
       customContextKeys: {}
     },
     expected: 'Allowed'
@@ -35,7 +34,7 @@ const simulateIntegrationTest: {
       resourceAccount: undefined,
       action: 's3:PutBucketPolicy',
       principal:
-        'arn:aws:iam::222222222222:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
       customContextKeys: {}
     },
     expected: 'ExplicitlyDenied'
@@ -48,7 +47,7 @@ const simulateIntegrationTest: {
       resourceAccount: undefined,
       action: 's3:GetBucketPolicy',
       principal:
-        'arn:aws:iam::222222222222:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
       customContextKeys: {}
     },
     expected: 'ExplicitlyDenied'
@@ -89,6 +88,9 @@ describe('simulateIntegrationTest', () => {
         expect(result.errors).toBeUndefined()
 
         // And the result should match the expected result
+        if (result.analysis?.result !== expected) {
+          console.log(JSON.stringify(result, null, 2))
+        }
         expect(result.analysis?.result).toEqual(test.expected)
       }
     })

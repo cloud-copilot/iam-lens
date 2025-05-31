@@ -1,5 +1,5 @@
 {
-  "arn": "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-syzn4z5p",
+  "arn": "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-syzn4z5p",
   "name": "BlockBirthdayWishes",
   "description": "",
   "awsManaged": false

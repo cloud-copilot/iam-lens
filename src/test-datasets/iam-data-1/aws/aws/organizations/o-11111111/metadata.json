@@ -1,9 +1,9 @@
 {
   "id": "o-11111111",
-  "arn": "arn:aws:organizations::111111111111:organization/o-11111111",
+  "arn": "arn:aws:organizations::100000000001:organization/o-11111111",
   "rootOu": "r-dh2e",
-  "rootAccountArn": "arn:aws:organizations::111111111111:account/o-11111111/111111111111",
-  "rootAccountId": "111111111111",
+  "rootAccountArn": "arn:aws:organizations::100000000001:account/o-11111111/100000000001",
+  "rootAccountId": "100000000001",
   "features": {
     "AISERVICES_OPT_OUT_POLICY": true,
     "BACKUP_POLICY": true,

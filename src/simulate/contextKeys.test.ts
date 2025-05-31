@@ -3,10 +3,6 @@ import { testStore } from '../collect/inMemoryClient.js'
 import { createContextKeys } from './contextKeys.js'
 import { SimulationRequest } from './simulate.js'
 
-/*
-it.todo('', async () => {})
-*/
-
 const defaultSimulationRequest: SimulationRequest = {
   principal: 'arn:aws:iam::123456789012:user/test-user',
   resourceArn: 'arn:aws:s3:::test-bucket',

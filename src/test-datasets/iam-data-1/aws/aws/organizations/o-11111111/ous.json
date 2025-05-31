@@ -2,7 +2,7 @@
   "r-dh2e": {
     "scps": [
       "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
-      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-i6905k2f"
+      "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-i6905k2f"
     ],
     "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
   },
@@ -10,7 +10,7 @@
     "parent": "r-dh2e",
     "scps": [
       "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
-      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-i6905k2f"
+      "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-i6905k2f"
     ],
     "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
   },
@@ -18,7 +18,7 @@
     "parent": "r-dh2e",
     "scps": [
       "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
-      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-i6905k2f"
+      "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-i6905k2f"
     ],
     "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
   },
@@ -26,7 +26,7 @@
     "parent": "r-dh2e",
     "scps": [
       "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
-      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-i6905k2f"
+      "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-i6905k2f"
     ],
     "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
   },
@@ -34,7 +34,7 @@
     "parent": "r-dh2e",
     "scps": [
       "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
-      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-i6905k2f"
+      "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-i6905k2f"
     ],
     "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
   },
@@ -42,7 +42,7 @@
     "parent": "r-dh2e",
     "scps": [
       "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
-      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-i6905k2f"
+      "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-i6905k2f"
     ],
     "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
   },
@@ -50,7 +50,7 @@
     "parent": "r-dh2e",
     "scps": [
       "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
-      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-i6905k2f"
+      "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-i6905k2f"
     ],
     "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
   },
@@ -58,7 +58,7 @@
     "parent": "ou-dh2e-lvgwe3dc",
     "scps": [
       "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
-      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-i6905k2f"
+      "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-i6905k2f"
     ],
     "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
   },
@@ -66,7 +66,7 @@
     "parent": "ou-dh2e-lvgwe3dc",
     "scps": [
       "arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess",
-      "arn:aws:organizations::111111111111:policy/o-11111111/service_control_policy/p-i6905k2f"
+      "arn:aws:organizations::100000000001:policy/o-11111111/service_control_policy/p-i6905k2f"
     ],
     "rcps": ["arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess"]
   }

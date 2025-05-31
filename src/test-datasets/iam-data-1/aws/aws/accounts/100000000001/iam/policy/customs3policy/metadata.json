@@ -1,5 +1,5 @@
 {
-  "arn": "arn:aws:iam::222222222222:policy/CustomS3Policy",
+  "arn": "arn:aws:iam::100000000001:policy/CustomS3Policy",
   "name": "CustomS3Policy",
   "id": "ANPASZ4TF4CCK72DJE3JV",
   "defaultVersionId": "v1",

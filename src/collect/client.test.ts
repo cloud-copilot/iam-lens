@@ -1707,8 +1707,8 @@ describe('IamCollectClient', () => {
       // Given an organization with accounts
       const { store, client } = testStore()
       const orgId = 'o-12345678'
-      const accountId1 = '111111111111'
-      const accountId2 = '222222222222'
+      const accountId1 = '100000000001'
+      const accountId2 = '100000000002'
       await store.saveOrganizationMetadata(orgId, 'accounts', {
         [accountId1]: { ou: 'ou-1' },
         [accountId2]: { ou: 'ou-2' }
@@ -1760,7 +1760,7 @@ describe('IamCollectClient', () => {
       // Save some org structure
       await store.saveOrganizationMetadata(orgId, 'structure', {
         'r-root': {
-          accounts: ['arn:aws:organizations::o-12345678:account/o-12345678/111111111111']
+          accounts: ['arn:aws:organizations::o-12345678:account/o-12345678/100000000001']
         }
       })
 
@@ -1778,7 +1778,7 @@ describe('IamCollectClient', () => {
       const orgId = 'o-12345678'
       await store.saveOrganizationMetadata(orgId, 'structure', {
         'r-root': {
-          accounts: ['arn:aws:organizations::o-12345678:account/o-12345678/111111111111']
+          accounts: ['arn:aws:organizations::o-12345678:account/o-12345678/100000000001']
         }
       })
 
@@ -1802,41 +1802,41 @@ describe('IamCollectClient', () => {
           children: {
             'ou-dh2e-aps19rip': {
               accounts: [
-                'arn:aws:organizations::343434343434:account/o-uch56v3mmz/111111111111',
-                'arn:aws:organizations::343434343434:account/o-uch56v3mmz/222222222222'
+                'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000001',
+                'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000002'
               ]
             },
             'ou-dh2e-bm9olc5a': {
-              accounts: ['arn:aws:organizations::343434343434:account/o-uch56v3mmz/333333333333']
+              accounts: ['arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000003']
             },
             'ou-dh2e-hib9i2fv': {},
             'ou-dh2e-kxtfc3s3': {
-              accounts: ['arn:aws:organizations::343434343434:account/o-uch56v3mmz/444444444444']
+              accounts: ['arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000004']
             },
             'ou-dh2e-lvgwe3dc': {
               children: {
                 'ou-dh2e-1t6b0r7y': {
                   accounts: [
-                    'arn:aws:organizations::343434343434:account/o-uch56v3mmz/555555555555'
+                    'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000005'
                   ]
                 },
                 'ou-dh2e-434nky50': {
                   accounts: [
-                    'arn:aws:organizations::343434343434:account/o-uch56v3mmz/666666666666',
-                    'arn:aws:organizations::343434343434:account/o-uch56v3mmz/777777777777',
-                    'arn:aws:organizations::343434343434:account/o-uch56v3mmz/888888888888'
+                    'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000006',
+                    'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000007',
+                    'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000008'
                   ]
                 }
               }
             },
             'ou-dh2e-s1150ym3': {
               accounts: [
-                'arn:aws:organizations::343434343434:account/o-uch56v3mmz/999999999999',
-                'arn:aws:organizations::343434343434:account/o-uch56v3mmz/121212121212'
+                'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000009',
+                'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000010'
               ]
             }
           },
-          accounts: ['arn:aws:organizations::343434343434:account/o-uch56v3mmz/343434343434']
+          accounts: ['arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000011']
         }
       }
 
@@ -1850,7 +1850,7 @@ describe('IamCollectClient', () => {
 
       // Then it should return all accounts under ou-dh2e-lvgwe3dc recursively
       expect(exists).toBe(true)
-      expect(accounts).toEqual(['555555555555', '666666666666', '777777777777', '888888888888'])
+      expect(accounts).toEqual(['100000000005', '100000000006', '100000000007', '100000000008'])
     })
   })
 

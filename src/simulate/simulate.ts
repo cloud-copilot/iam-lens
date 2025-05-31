@@ -81,9 +81,6 @@ export async function simulateRequest(
     ? []
     : principalPolicies.scps
 
-  console.log(principalPolicies)
-  console.log(resourcePolicy)
-
   const simulation: Simulation = {
     request: {
       action: simulationRequest.action,

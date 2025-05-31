@@ -4,7 +4,7 @@
     {
       "Effect": "Allow",
       "Principal": {
-        "Federated": "arn:aws:iam::111111111111:saml-provider/AWSSSO_eaa8c24d827e9175_DO_NOT_DELETE"
+        "Federated": "arn:aws:iam::100000000002:saml-provider/AWSSSO_eaa8c24d827e9175_DO_NOT_DELETE"
       },
       "Action": ["sts:AssumeRoleWithSAML", "sts:TagSession"],
       "Condition": {

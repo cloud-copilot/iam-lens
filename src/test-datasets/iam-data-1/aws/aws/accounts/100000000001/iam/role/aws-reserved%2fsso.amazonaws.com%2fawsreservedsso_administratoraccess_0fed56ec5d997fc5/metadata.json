@@ -1,5 +1,5 @@
 {
-  "arn": "arn:aws:iam::111111111111:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5",
+  "arn": "arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5",
   "name": "AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5",
   "id": "AROASZ4TF4CCDRGHX9999",
   "path": "/aws-reserved/sso.amazonaws.com/",
