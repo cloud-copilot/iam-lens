@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import { IamCollectClient } from '../collect/client.js'
 import {
   AccountsToCheck,
   accountsToCheckBasedOnResourcePolicy,
   actionsForWhoCan,
   findResourceTypeForArn,
-  ResourceAccessRequest
+  ResourceAccessRequest,
+  uniqueAccountsToCheck
 } from './whoCan.js'
 
 const findResourceTypeForArnTests: {
@@ -467,4 +469,149 @@ describe('accountsToCheckBasedOnResourcePolicy', () => {
       expect(result.specificOrganizationalUnits).toEqual(expected.specificOrganizationalUnits || [])
     })
   }
+})
+
+describe('uniqueAccountsToCheck', () => {
+  it('should return all accounts when allAccounts is true', async () => {
+    // Given accountsToCheck with allAccounts set to true
+    const accountsToCheck: AccountsToCheck = {
+      allAccounts: true,
+      specificAccounts: [],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: []
+    }
+
+    // And a client that returns a list of accounts
+    const allAccounts = ['11111111111', '222222222222', '333333333333']
+    const client = {
+      allAccounts: async () => allAccounts
+      // ...other stubs
+    } as unknown as IamCollectClient
+
+    // When uniqueAccountsToCheck is called
+    const result = await uniqueAccountsToCheck(client, accountsToCheck)
+
+    // Then it should return an array with a single entry 'all'
+    expect(result.accounts).toEqual(allAccounts)
+  })
+
+  it('should return unique accounts from specificAccounts', async () => {
+    // Given accountsToCheck with specificAccounts
+    const accountsToCheck: AccountsToCheck = {
+      allAccounts: false,
+      specificAccounts: ['100000000001', '100000000002', '100000000003'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: []
+    }
+
+    // And a client that returns which accounts exist
+    const client = {
+      accountExists: async (accountId: string) => accountId !== '100000000003'
+      // ...other stubs
+    } as unknown as IamCollectClient
+
+    // When uniqueAccountsToCheck is called
+    const result = await uniqueAccountsToCheck(client, accountsToCheck)
+
+    // Then it should return the unique accounts from specificAccounts
+    expect(result.accounts).toEqual(['100000000001', '100000000002'])
+  })
+
+  it('should return accounts from an OU', async () => {
+    // Given accountsToCheck with specificOrganizationalUnits
+    const accountsToCheck: AccountsToCheck = {
+      allAccounts: false,
+      specificAccounts: [],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: ['o-aaa/r-bbb/ou-ccc']
+    }
+
+    // And a client that returns accounts for the OU path
+    const client = {
+      getAccountsForOrgPath: async (orgId: string, ouPath: string[]) => [true, ['111', '222']]
+      // ...other stubs
+    } as unknown as IamCollectClient
+
+    // When uniqueAccountsToCheck is called
+    const result = await uniqueAccountsToCheck(client, accountsToCheck)
+
+    // Then it should return the accounts from the OU
+    expect(result.accounts).toEqual(['111', '222'])
+    expect(result.organizationalUnitsNotFound).toEqual([])
+  })
+
+  it('should return OUs not found', async () => {
+    // Given accountsToCheck with specificOrganizationalUnits
+    const accountsToCheck: AccountsToCheck = {
+      allAccounts: false,
+      specificAccounts: [],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: ['o-aaa/r-bbb/ou-missing']
+    }
+
+    // And a client that returns not found for the OU path
+    const client = {
+      getAccountsForOrgPath: async (orgId: string, ouPath: string[]) => [false, []]
+      // ...other stubs
+    } as unknown as IamCollectClient
+
+    // When uniqueAccountsToCheck is called
+    const result = await uniqueAccountsToCheck(client, accountsToCheck)
+
+    // Then it should return the OU as not found
+    expect(result.accounts).toEqual([])
+    expect(result.organizationalUnitsNotFound).toEqual(['o-aaa/r-bbb/ou-missing'])
+  })
+
+  it('should return accounts from an organization', async () => {
+    // Given accountsToCheck with specificOrganizations
+    const accountsToCheck: AccountsToCheck = {
+      allAccounts: false,
+      specificAccounts: [],
+      specificPrincipals: [],
+      specificOrganizations: ['o-xyz'],
+      specificOrganizationalUnits: []
+    }
+
+    // And a client that returns accounts for the organization
+    const client = {
+      getAccountsForOrganization: async (orgId: string) => [true, ['123', '456']]
+      // ...other stubs
+    } as unknown as IamCollectClient
+
+    // When uniqueAccountsToCheck is called
+    const result = await uniqueAccountsToCheck(client, accountsToCheck)
+
+    // Then it should return the accounts from the organization
+    expect(result.accounts).toEqual(['123', '456'])
+    expect(result.organizationsNotFound).toEqual([])
+  })
+
+  it('should return organizations not found', async () => {
+    // Given accountsToCheck with specificOrganizations
+    const accountsToCheck: AccountsToCheck = {
+      allAccounts: false,
+      specificAccounts: [],
+      specificPrincipals: [],
+      specificOrganizations: ['o-missing'],
+      specificOrganizationalUnits: []
+    }
+
+    // And a client that returns not found for the organization
+    const client = {
+      getAccountsForOrganization: async (orgId: string) => [false, []]
+      // ...other stubs
+    } as unknown as IamCollectClient
+
+    // When uniqueAccountsToCheck is called
+    const result = await uniqueAccountsToCheck(client, accountsToCheck)
+
+    // Then it should return the organization as not found
+    expect(result.accounts).toEqual([])
+    expect(result.organizationsNotFound).toEqual(['o-missing'])
+  })
 })

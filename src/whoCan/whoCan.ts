@@ -22,7 +22,7 @@ import { Arn } from '../utils/arn.js'
 import { AssumeRoleActions } from '../utils/sts.js'
 
 export interface ResourceAccessRequest {
-  resource: string
+  resource?: string
   resourceAccount?: string
   actions: string[]
 }
@@ -48,8 +48,16 @@ export async function whoCan(
 ): Promise<WhoCanResponse> {
   const { resource } = request
 
+  if (!request.resourceAccount && !request.resource) {
+    throw new Error('Either resourceAccount or resource must be provided in the request.')
+  }
+
+  if (resource && !resource.startsWith('arn:')) {
+    throw new Error(`Invalid resource ARN: ${resource}. It must start with 'arn:'.`)
+  }
+
   const resourceAccount =
-    request.resourceAccount || (await getAccountIdForResource(collectClient, resource))
+    request.resourceAccount || (await getAccountIdForResource(collectClient, resource!))
 
   if (!resourceAccount) {
     throw new Error(`Could not determine account ID for resource ${resource}`)
@@ -70,7 +78,7 @@ export async function whoCan(
       !resourcePolicy
     ) {
       throw new Error(
-        `Unable to find resource policy for ${resource}. Cannot determine who can access the policy.`
+        `Unable to find resource policy for ${resource}. Cannot determine who can access the resource.`
       )
     }
   }
@@ -110,7 +118,7 @@ export async function whoCan(
       )
       whoCanResults.push(...principalResults)
     } else if (isIamUserArn(principal) || isIamRoleArn(principal) || isAssumedRoleArn(principal)) {
-      const principalExists = collectClient.principalExists(principal)
+      const principalExists = await collectClient.principalExists(principal)
       if (!principalExists) {
         principalsNotFound.push(principal)
       } else {
@@ -141,7 +149,7 @@ export async function whoCan(
 async function runPrincipalForActions(
   collectClient: IamCollectClient,
   principal: string,
-  resource: string,
+  resource: string | undefined,
   resourceAccount: string,
   actions: string[]
 ): Promise<WhoCanAllowed[]> {
@@ -170,7 +178,7 @@ async function runPrincipalForActions(
   return results
 }
 
-async function uniqueAccountsToCheck(
+export async function uniqueAccountsToCheck(
   collectClient: IamCollectClient,
   accountsToCheck: AccountsToCheck
 ): Promise<{
@@ -341,7 +349,9 @@ export async function actionsForWhoCan(request: ResourceAccessRequest): Promise<
     }
     return validActions
   }
-
+  if (!request.resource) {
+    return []
+  }
   return lookupActionsForResourceArn(request.resource)
 }
 

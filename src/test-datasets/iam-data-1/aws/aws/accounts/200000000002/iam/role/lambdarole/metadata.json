@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::200000000002:role/LambdaRole",
+  "name": "LambdaRole",
+  "id": "AROAIIIEXAMPLE",
+  "path": "/",
+  "created": "2024-07-19T21:03:16.000Z"
+}

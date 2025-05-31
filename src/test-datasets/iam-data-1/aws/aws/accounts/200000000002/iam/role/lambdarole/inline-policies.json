@@ -1,0 +1,25 @@
+[
+  {
+    "PolicyName": "NetworkInterfaces",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "CreateNics",
+          "Effect": "Allow",
+          "Action": ["ec2:CreateNetworkInterface"],
+          "Resource": [
+            "arn:aws:ec2:*:*:network-interface/*",
+            "arn:aws:ec2:us-east-1:200000000002:subnet/*"
+          ]
+        },
+        {
+          "Sid": "DenyS3",
+          "Effect": "Deny",
+          "Action": ["s3:*"],
+          "Resource": ["*"]
+        }
+      ]
+    }
+  }
+]
