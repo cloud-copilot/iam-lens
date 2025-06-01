@@ -147,7 +147,7 @@ Lists all principals in your IAM data who are allowed to perform one or more spe
 ```bash
 # Who can get this object?
 iam-lens who-can \
-  --resource arn:aws:s3:::my-bucket/secret-file.ttxt \
+  --resource arn:aws:s3:::my-bucket/secret-file.txt \
   --actions s3:GetObject
 
 # Who can list all IAM roles in any account? (wildcard action – no resource)
