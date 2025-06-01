@@ -30,13 +30,13 @@ const main = async () => {
             type: 'string',
             values: 'single',
             description:
-              'The account ID of the resource, only required if it cannot be determined from the resource ARN. Ignore for wildcard actions'
+              'The account ID of the resource, only required if it cannot be determined from the resource ARN.'
           },
           action: {
             type: 'string',
             values: 'single',
             description:
-              'The action to simulate; must be a valid IAM service and action such as `s3:GetObject`'
+              'The action to simulate; must be a valid IAM service and action such as `s3:ListBucket`'
           },
           context: {
             type: 'string',
