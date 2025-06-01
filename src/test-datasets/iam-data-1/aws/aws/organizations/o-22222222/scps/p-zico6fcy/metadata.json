@@ -1,0 +1,6 @@
+{
+  "arn": "arn:aws:organizations::200000000001:policy/o-22222222/service_control_policy/p-zico6fcy",
+  "name": "OnlySmallInstances",
+  "description": "",
+  "awsManaged": false
+}

@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Deny",
+      "Action": ["organizations:LeaveOrganization"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Deny",
+      "Action": ["s3:PutBucketPolicy"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Deny",
+      "Action": ["s3:ListAllMyBuckets"],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::200000000002:user/user1"
+        }
+      }
+    },
+    {
+      "Effect": "Deny",
+      "Action": ["s3:ListBucket"],
+      "Resource": "arn:aws:s3:::iam-data-482734"
+    }
+  ]
+}

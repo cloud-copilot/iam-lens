@@ -1701,4 +1701,177 @@ describe('IamCollectClient', () => {
       expect(uniqueId).toBeUndefined()
     })
   })
+
+  describe('getAccountsForOrganization', () => {
+    it('should return the accounts for an organization', async () => {
+      // Given an organization with accounts
+      const { store, client } = testStore()
+      const orgId = 'o-12345678'
+      const accountId1 = '100000000001'
+      const accountId2 = '100000000002'
+      await store.saveOrganizationMetadata(orgId, 'accounts', {
+        [accountId1]: { ou: 'ou-1' },
+        [accountId2]: { ou: 'ou-2' }
+      })
+
+      // When getting the accounts for the organization
+      const [exists, accounts] = await client.getAccountsForOrganization(orgId)
+
+      // Then it should return true and the account IDs
+      expect(exists).toBe(true)
+      expect(accounts).toContain(accountId1)
+      expect(accounts).toContain(accountId2)
+      expect(accounts.length).toBe(2)
+    })
+
+    it('should return false and an empty array if the organization does not exist', async () => {
+      // Given an organization that does not exist
+      const { client } = testStore()
+      const orgId = 'o-nonexistent'
+
+      // When getting the accounts for the organization
+      const [exists, accounts] = await client.getAccountsForOrganization(orgId)
+
+      // Then it should return false and an empty array
+      expect(exists).toBe(false)
+      expect(accounts).toEqual([])
+    })
+  })
+
+  describe('getAccountsForOrgPath', () => {
+    it('should return false and empty if the org does not exist', async () => {
+      // Given a non-existent org
+      const { client } = testStore()
+      const orgId = 'o-nonexistent'
+      const orgPath = ['r-root']
+
+      // When getting accounts for the org path
+      const [exists, accounts] = await client.getAccountsForOrgPath(orgId, orgPath)
+
+      // Then it should return false and empty array
+      expect(exists).toBe(false)
+      expect(accounts).toEqual([])
+    })
+
+    it('should return false and empty if the org path is empty', async () => {
+      // Given an org with an empty path
+      const { store, client } = testStore()
+      const orgId = 'o-12345678'
+      // Save some org structure
+      await store.saveOrganizationMetadata(orgId, 'structure', {
+        'r-root': {
+          accounts: ['arn:aws:organizations::o-12345678:account/o-12345678/100000000001']
+        }
+      })
+
+      // When getting accounts for the org path
+      const [exists, accounts] = await client.getAccountsForOrgPath(orgId, [])
+
+      // Then it should return false and empty array
+      expect(exists).toBe(false)
+      expect(accounts).toEqual([])
+    })
+
+    it('should return false and empty if the org path does not exist', async () => {
+      // Given an org with a structure, but the path does not exist
+      const { store, client } = testStore()
+      const orgId = 'o-12345678'
+      await store.saveOrganizationMetadata(orgId, 'structure', {
+        'r-root': {
+          accounts: ['arn:aws:organizations::o-12345678:account/o-12345678/100000000001']
+        }
+      })
+
+      // When getting accounts for a non-existent path
+      const [exists, accounts] = await client.getAccountsForOrgPath(orgId, [
+        'r-root',
+        'ou-nonexistent'
+      ])
+
+      // Then it should return false and empty array
+      expect(exists).toBe(false)
+      expect(accounts).toEqual([])
+    })
+
+    it('should return the accounts for the org path recursively', async () => {
+      // Given an org structure as in the example
+      const { store, client } = testStore()
+      const orgId = 'o-uch56v3mmz'
+      const orgStructure = {
+        'r-dh2e': {
+          children: {
+            'ou-dh2e-aps19rip': {
+              accounts: [
+                'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000001',
+                'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000002'
+              ]
+            },
+            'ou-dh2e-bm9olc5a': {
+              accounts: ['arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000003']
+            },
+            'ou-dh2e-hib9i2fv': {},
+            'ou-dh2e-kxtfc3s3': {
+              accounts: ['arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000004']
+            },
+            'ou-dh2e-lvgwe3dc': {
+              children: {
+                'ou-dh2e-1t6b0r7y': {
+                  accounts: [
+                    'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000005'
+                  ]
+                },
+                'ou-dh2e-434nky50': {
+                  accounts: [
+                    'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000006',
+                    'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000007',
+                    'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000008'
+                  ]
+                }
+              }
+            },
+            'ou-dh2e-s1150ym3': {
+              accounts: [
+                'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000009',
+                'arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000010'
+              ]
+            }
+          },
+          accounts: ['arn:aws:organizations::100000000011:account/o-uch56v3mmz/100000000011']
+        }
+      }
+
+      await store.saveOrganizationMetadata(orgId, 'structure', orgStructure)
+
+      // When getting accounts for a deep org path
+      const [exists, accounts] = await client.getAccountsForOrgPath(orgId, [
+        'r-dh2e',
+        'ou-dh2e-lvgwe3dc'
+      ])
+
+      // Then it should return all accounts under ou-dh2e-lvgwe3dc recursively
+      expect(exists).toBe(true)
+      expect(accounts).toEqual(['100000000005', '100000000006', '100000000007', '100000000008'])
+    })
+  })
+
+  describe('getAllPrincipalsInAccount', () => {
+    it('should return all principals in the account', async () => {
+      // Given an account with multiple principals
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const userArn = `arn:aws:iam::${accountId}:user/test-user`
+      const roleArn = `arn:aws:iam::${accountId}:role/test-role`
+      const groupArn = `arn:aws:iam::${accountId}:group/test-group`
+
+      await store.saveResourceMetadata(accountId, userArn, 'metadata', { arn: userArn })
+      await store.saveResourceMetadata(accountId, roleArn, 'metadata', { arn: roleArn })
+      await store.saveResourceMetadata(accountId, groupArn, 'metadata', { arn: groupArn })
+
+      // When getting all principals in the account
+      const principals = await client.getAllPrincipalsInAccount(accountId)
+
+      // Then it should return all principal ARNs
+      expect(principals).toEqual([userArn, roleArn])
+    })
+  })
 })

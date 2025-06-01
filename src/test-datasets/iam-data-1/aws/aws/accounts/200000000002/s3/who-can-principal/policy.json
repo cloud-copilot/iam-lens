@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SharingWithSpecificPrincipals",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5",
+          "arn:aws:iam::999999999999:role/missing-role",
+          "arn:aws:sts::999999999999:federated-user/Bob"
+        ]
+      },
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:DeleteObject", "s3:PutObject"],
+      "Resource": ["arn:aws:s3:::who-can-principal/*", "arn:aws:s3:::who-can-principal"]
+    }
+  ]
+}

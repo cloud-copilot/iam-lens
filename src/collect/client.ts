@@ -16,6 +16,10 @@ interface IamUserMetadata {
   created: string
 }
 
+interface ResourceMetadata {
+  arn: string
+}
+
 interface InlinePolicyMetadata {
   PolicyName: string
   PolicyDocument: any
@@ -50,12 +54,6 @@ interface OrgAccount {
 }
 
 type OrgAccounts = Record<string, OrgAccount>
-
-interface OrgPolicyMetadata {
-  arn: string
-  name: string
-  contents: any
-}
 
 interface StoredOrgPolicyMetadata {
   arn: string
@@ -94,8 +92,41 @@ interface RAMShare {
   policy: any
 }
 
+interface OrgStructureNode {
+  children?: OrgStructure | undefined
+  accounts?: string[] | undefined
+}
+
+interface OrgStructure {
+  [key: string]: OrgStructureNode
+}
+
+export interface IamCollectClientOptions {
+  enableCaching?: boolean
+}
+
 export class IamCollectClient {
-  constructor(private storageClient: AwsIamStore) {}
+  private _cache: Record<string, any> = {}
+  private _enableCaching: boolean
+
+  constructor(
+    private storageClient: AwsIamStore,
+    clientOptions?: IamCollectClientOptions
+  ) {
+    this._enableCaching = clientOptions?.enableCaching !== false
+  }
+
+  // Generic cache helper
+  private async withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {
+    if (this._enableCaching && cacheKey in this._cache) {
+      return this._cache[cacheKey]
+    }
+    const value = await fetcher()
+    if (this._enableCaching) {
+      this._cache[cacheKey] = value
+    }
+    return value
+  }
 
   /**
    * Checks if an account exists in the store.
@@ -105,6 +136,15 @@ export class IamCollectClient {
   async accountExists(accountId: string): Promise<boolean> {
     const accounts = await this.storageClient.listAccountIds()
     return accounts.includes(accountId)
+  }
+
+  /**
+   * Get all account IDs in the store.
+   *
+   * @returns all account IDs in the store
+   */
+  async allAccounts(): Promise<string[]> {
+    return this.storageClient.listAccountIds()
   }
 
   /**
@@ -141,42 +181,44 @@ export class IamCollectClient {
     accountId: string,
     policyType: OrgPolicyType
   ): Promise<SimulationOrgPolicies[]> {
-    const orgId = await this.getOrgIdForAccount(accountId)
-    if (!orgId) {
-      return []
-    }
+    const cacheKey = `orgPolicyHierarchy:${accountId}:${policyType}`
+    return this.withCache(cacheKey, async () => {
+      const orgId = await this.getOrgIdForAccount(accountId)
+      if (!orgId) {
+        return []
+      }
+      // SCPs and RCPs do not apply to the root account
+      const orgMetadata = await this.getOrganizationMetadata(orgId)
+      if (orgMetadata.rootAccountId === accountId) {
+        return []
+      }
 
-    // SCPs and RCPs do not apply to the root account
-    const orgMetadata = await this.getOrganizationMetadata(orgId)
-    if (orgMetadata.rootAccountId === accountId) {
-      return []
-    }
+      const policyHierarchy: SimulationOrgPolicies[] = []
+      const orgHierarchy = await this.getOrgUnitHierarchyForAccount(accountId)
 
-    const policyHierarchy: SimulationOrgPolicies[] = []
-    const orgHierarchy = await this.getOrgUnitHierarchyForAccount(accountId)
+      for (const ouId of orgHierarchy) {
+        const policies = await this.getOrgPoliciesForOrgUnit(orgId, ouId, policyType)
 
-    for (const ouId of orgHierarchy) {
-      const policies = await this.getOrgPoliciesForOrgUnit(orgId, ouId, policyType)
+        policyHierarchy.push({
+          orgIdentifier: ouId,
+          policies: policies.map((p) => ({
+            name: p.arn,
+            policy: p.policy
+          }))
+        })
+      }
 
+      const accountPolicies = await this.getOrgPoliciesForAccount(accountId, policyType)
       policyHierarchy.push({
-        orgIdentifier: ouId,
-        policies: policies.map((p) => ({
+        orgIdentifier: accountId,
+        policies: accountPolicies.map((p) => ({
           name: p.arn,
           policy: p.policy
         }))
       })
-    }
 
-    const accountPolicies = await this.getOrgPoliciesForAccount(accountId, policyType)
-    policyHierarchy.push({
-      orgIdentifier: accountId,
-      policies: accountPolicies.map((p) => ({
-        name: p.arn,
-        policy: p.policy
-      }))
+      return policyHierarchy
     })
-
-    return policyHierarchy
   }
 
   /**
@@ -214,7 +256,7 @@ export class IamCollectClient {
       return undefined
     }
 
-    const accounts = await this.getAccountDataForOrg(orgId)
+    const accounts = (await this.getAccountDataForOrg(orgId))!
     return accounts[accountId].ou
   }
 
@@ -254,7 +296,7 @@ export class IamCollectClient {
       return []
     }
 
-    const accounts = await this.getAccountDataForOrg(orgId)
+    const accounts = (await this.getAccountDataForOrg(orgId))!
     const orgInformation = accounts[accountId]
     const policyArns = orgInformation[policyType]
     const policies: OrgPolicy[] = []
@@ -271,7 +313,7 @@ export class IamCollectClient {
    * @param orgId The ID of the organization.
    * @returns The account data for the organization.
    */
-  async getAccountDataForOrg(orgId: string): Promise<OrgAccounts> {
+  async getAccountDataForOrg(orgId: string): Promise<OrgAccounts | undefined> {
     return this.storageClient.getOrganizationMetadata<OrgAccounts, OrgAccounts>(orgId, 'accounts')
   }
 
@@ -307,6 +349,9 @@ export class IamCollectClient {
       policyId,
       'policy'
     )
+    if (!policyDocument) {
+      console.error(`Policy document not found for ${policyArn} in org ${orgId}`)
+    }
 
     return {
       arn: policyData.arn,
@@ -449,6 +494,9 @@ export class IamCollectClient {
       policyArn,
       'policy'
     )
+    if (!policyDocument) {
+      console.error(`Policy document not found for ${policyArn} in account ${accountId}`)
+    }
     return {
       arn: policyMetadata.arn,
       name: policyMetadata.name,
@@ -691,5 +739,89 @@ export class IamCollectClient {
     >(accountId, resourceArn, 'metadata')
 
     return resourceMetadata?.id
+  }
+
+  /**
+   * Get the account IDs for an organization.
+   *
+   * @param organizationId the ID of the organization
+   * @returns a tuple containing a boolean indicating success and an array of account IDs
+   */
+  async getAccountsForOrganization(organizationId: string): Promise<[boolean, string[]]> {
+    const organizationAccounts = await this.getAccountDataForOrg(organizationId)
+    if (!organizationAccounts) {
+      return [false, []]
+    }
+    const accountIds = Object.keys(organizationAccounts)
+    return [true, accountIds]
+  }
+
+  /**
+   * Get the organization structure or an organization.
+   *
+   * @param orgId the ID of the organization
+   * @returns returns the organization structure or undefined if not found
+   */
+  async getOrganizationStructure(orgId: string): Promise<OrgStructure | undefined> {
+    return this.storageClient.getOrganizationMetadata<OrgStructure, OrgStructure>(
+      orgId,
+      'structure'
+    )
+  }
+
+  async getAccountsForOrgPath(orgId: string, ouIds: string[]): Promise<[boolean, string[]]> {
+    const orgUnits = await this.getOrganizationStructure(orgId)
+    if (!orgUnits || ouIds.length === 0) {
+      return [false, []]
+    }
+
+    const rootOu = orgUnits[ouIds[0]]
+
+    // Now look through the structure to find the OU
+    let currentStructure: OrgStructureNode | undefined = rootOu
+    for (const ou of ouIds.slice(1)) {
+      currentStructure = currentStructure.children?.[ou]
+      if (!currentStructure) {
+        return [false, []] // OU not found in the structure
+      }
+    }
+
+    const getAccountId = (a: string) => a.split('/').at(-1)!
+
+    const accounts = []
+    if (currentStructure.accounts) {
+      accounts.push(...currentStructure.accounts?.map(getAccountId))
+    }
+
+    const children = Object.values(currentStructure.children || {})
+
+    // Traverse the children to collect all accounts
+    while (children.length > 0) {
+      const child = children.shift()
+      if (child?.accounts) {
+        accounts.push(...child.accounts.map(getAccountId))
+      }
+      if (child?.children) {
+        children.push(...Object.values(child.children))
+      }
+    }
+
+    return [true, accounts]
+  }
+
+  async getAllPrincipalsInAccount(accountId: string): Promise<string[]> {
+    const iamUsers = await this.storageClient.findResourceMetadata<ResourceMetadata>(accountId, {
+      service: 'iam',
+      resourceType: 'user',
+      account: accountId
+    })
+
+    const iamRoles = await this.storageClient.findResourceMetadata<ResourceMetadata>(accountId, {
+      service: 'iam',
+      resourceType: 'role',
+      account: accountId
+    })
+
+    return [...iamUsers.map((user) => user.arn), ...iamRoles.map((role) => role.arn)]
   }
 }

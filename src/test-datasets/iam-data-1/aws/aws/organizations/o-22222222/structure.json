@@ -1,0 +1,40 @@
+{
+  "r-dh2e": {
+    "children": {
+      "ou-dh2e-aps19rip": {
+        "accounts": [
+          "arn:aws:organizations::200000000001:account/o-22222222/200000000002",
+          "arn:aws:organizations::200000000001:account/o-22222222/200000000003"
+        ]
+      },
+      "ou-dh2e-bm9olc5a": {
+        "accounts": ["arn:aws:organizations::200000000001:account/o-22222222/200000000004"]
+      },
+      "ou-dh2e-hib9i2fv": {},
+      "ou-dh2e-kxtfc3s3": {
+        "accounts": ["arn:aws:organizations::200000000001:account/o-22222222/200000000005"]
+      },
+      "ou-dh2e-lvgwe3dc": {
+        "children": {
+          "ou-dh2e-1t6b0r7y": {
+            "accounts": ["arn:aws:organizations::200000000001:account/o-22222222/200000000006"]
+          },
+          "ou-dh2e-434nky50": {
+            "accounts": [
+              "arn:aws:organizations::200000000001:account/o-22222222/200000000007",
+              "arn:aws:organizations::200000000001:account/o-22222222/200000000008",
+              "arn:aws:organizations::200000000001:account/o-22222222/200000000009"
+            ]
+          }
+        }
+      },
+      "ou-dh2e-s1150ym3": {
+        "accounts": [
+          "arn:aws:organizations::200000000001:account/o-22222222/200000000010",
+          "arn:aws:organizations::200000000001:account/o-22222222/200000000011"
+        ]
+      }
+    },
+    "accounts": ["arn:aws:organizations::200000000001:account/o-22222222/200000000001"]
+  }
+}

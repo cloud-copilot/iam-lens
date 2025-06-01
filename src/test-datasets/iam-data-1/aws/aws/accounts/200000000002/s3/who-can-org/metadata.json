@@ -1,0 +1,5 @@
+{
+  "name": "who-can-org",
+  "region": "us-west-2",
+  "arn": "arn:aws:s3:::who-can-org"
+}

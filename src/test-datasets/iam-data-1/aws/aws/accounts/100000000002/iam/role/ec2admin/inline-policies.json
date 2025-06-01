@@ -1,0 +1,16 @@
+[
+  {
+    "PolicyName": "ec2admin",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "AllEc2",
+          "Effect": "Allow",
+          "Action": ["ec2:*"],
+          "Resource": "*"
+        }
+      ]
+    }
+  }
+]

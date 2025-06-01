@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Statement1",
+      "Effect": "Allow",
+      "Action": ["ec2:List*", "ec2:Read*", "ec2:Describe*", "ec2:Get*"],
+      "Resource": ["*"]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "arn": "arn:aws:iam::aws:policy/AdministratorAccess",
+  "name": "AdministratorAccess",
+  "id": "ANPAXXXXXXXXXXXXXXX",
+  "defaultVersionId": "v1",
+  "path": "/",
+  "permissionsBoundaryUsageCount": 0,
+  "isAttachable": true,
+  "createDate": "2015-02-06T18:39:46.000Z",
+  "updateDate": "2015-02-06T18:39:46.000Z"
+}

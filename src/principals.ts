@@ -1,4 +1,3 @@
-import { AwsIamStore } from '@cloud-copilot/iam-collect'
 import {
   convertAssumedRoleArnToRoleArn,
   isAssumedRoleArn,
@@ -12,18 +11,6 @@ import {
   ManagedPolicy,
   SimulationOrgPolicies
 } from './collect/client.js'
-
-/**
- * Check if a principal exists in the specified AWS IAM store.
- */
-export async function principalExists(
-  storageClient: AwsIamStore,
-  principalArn: string
-): Promise<boolean> {
-  const accountId = splitArnParts(principalArn).accountId!
-  const principalData = await storageClient.getResourceMetadata(accountId, principalArn, 'metadata')
-  return !!principalData
-}
 
 export interface PrincipalPolicies {
   managedPolicies: ManagedPolicy[]

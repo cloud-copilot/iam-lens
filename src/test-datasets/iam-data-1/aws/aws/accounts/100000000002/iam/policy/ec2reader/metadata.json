@@ -1,0 +1,11 @@
+{
+  "arn": "arn:aws:iam::100000000002:policy/EC2Reader",
+  "name": "EC2Reader",
+  "id": "ANPAXXXXXXXXXXXX",
+  "defaultVersionId": "v1",
+  "path": "/",
+  "permissionsBoundaryUsageCount": 0,
+  "isAttachable": true,
+  "createDate": "2025-04-02T21:17:07.000Z",
+  "updateDate": "2025-04-02T21:17:07.000Z"
+}
