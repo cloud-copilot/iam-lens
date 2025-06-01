@@ -1,3 +1,10 @@
+## [0.1.8](https://github.com/cloud-copilot/iam-lens/compare/v0.1.7...v0.1.8) (2025-06-01)
+
+
+### Features
+
+* Add caching of SCPs and RCPs for multiple simulations ([0b314a4](https://github.com/cloud-copilot/iam-lens/commit/0b314a4390015e58c92511b2652b8be98fd31fe8))
+
 ## [0.1.7](https://github.com/cloud-copilot/iam-lens/compare/v0.1.6...v0.1.7) (2025-05-27)
 
 
