@@ -3,18 +3,12 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "iam:ChangePassword"
-      ],
-      "Resource": [
-        "arn:aws:iam::*:user/${aws:username}"
-      ]
+      "Action": ["iam:ChangePassword"],
+      "Resource": ["arn:aws:iam::*:user/${aws:username}"]
     },
     {
       "Effect": "Allow",
-      "Action": [
-        "iam:GetAccountPasswordPolicy"
-      ],
+      "Action": ["iam:GetAccountPasswordPolicy"],
       "Resource": "*"
     }
   ]

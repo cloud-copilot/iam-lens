@@ -4,17 +4,11 @@
     {
       "Sid": "RestrictEC2ForRoot",
       "Effect": "Deny",
-      "Action": [
-        "*"
-      ],
-      "Resource": [
-        "*"
-      ],
+      "Action": ["*"],
+      "Resource": ["*"],
       "Condition": {
         "StringLike": {
-          "aws:PrincipalArn": [
-            "arn:aws:iam::*:root"
-          ]
+          "aws:PrincipalArn": ["arn:aws:iam::*:root"]
         },
         "Null": {
           "aws:AssumedRoot": "true"
