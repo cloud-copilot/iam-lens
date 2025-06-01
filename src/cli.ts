@@ -26,7 +26,7 @@ const main = async () => {
             description:
               'The ARN of the resource to simulate access to. Ignore for wildcard actions'
           },
-          resourceAccountId: {
+          resourceAccount: {
             type: 'string',
             values: 'single',
             description:
@@ -110,14 +110,14 @@ const main = async () => {
   const collectClient = getCollectClient(collectConfigs, thePartition)
 
   if (cli.subcommand === 'simulate') {
-    const { principal, resource, resourceAccountId, action, context } = cli.args
+    const { principal, resource, resourceAccount, action, context } = cli.args
     const contextKeys = convertContextKeysToMap(context)
 
     const result = await simulateRequest(
       {
         principal: principal!,
         resourceArn: resource,
-        resourceAccount: resourceAccountId,
+        resourceAccount: resourceAccount,
         action: action!,
         customContextKeys: contextKeys
       },
