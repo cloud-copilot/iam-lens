@@ -4,7 +4,7 @@
 
 ## iam-lens
 
-Get visibility into the actual IAM permissions in your AWS organizations and accounts. Use your actual AWS IAM policies (downloaded via [iam-collect](https://github.com/cloud-copilot/iam-collect)) and evaluate the effective permissions.
+Get visibility into the IAM permissions in your AWS organizations and accounts. Use your actual AWS IAM policies (downloaded via [iam-collect](https://github.com/cloud-copilot/iam-collect)) and evaluate the effective permissions.
 
 ## Quick Start
 
@@ -28,19 +28,19 @@ iam-lens who-can --resource arn:aws:s3:::example-bucket
 
 ## What is iam-lens?
 
-iam-lens uses real IAM data from your AWS accounts (collected via [iam-collect](https://github.com/cloud-copilot/iam-collect)) to quickly simulate requests and discover the real effective permissions that apply to a principal or resource.
+iam-lens uses the IAM data from your AWS accounts (collected via [iam-collect](https://github.com/cloud-copilot/iam-collect)) to quickly simulate requests and understand the effective permissions that apply to a principal or resource.
 
 ## Why use it?
 
 1. **Understand** what permissions are actually in place and why. See the policies that determine the outcome of a request.
 2. **Verify** what's allowed or not after everything is deployed.
-3. **Discover** who can take action on a sensitive resource with a single command.
+3. **Discover** who can take action on a sensitive resource or account.
 4. **Audit** your IAM policies and ensure they are configured correctly.
 5. **Debug** permissions by simulating requests locally and iterate quickly without needing to deploy changes to your AWS environment.
 
 ## Getting Started
 
-1. **Download Your Policies** with [iam-collect](https://github.com/cloud-copilot/iam-collect) to get all your policies from all your AWS accounts. iam-collect is highly configurable and can be customized to collect the policies you need. It only downloads information to your file system or an S3 bucket, so you're in full control of your data.
+1. **Download Your Policies** with [iam-collect](https://github.com/cloud-copilot/iam-collect) to get all policies from your AWS accounts. iam-collect is highly configurable and can be customized to collect the policies you need. It only downloads information to your file system or an S3 bucket, so you're in full control of your data.
 
 ```bash
 npm install -g @cloud-copilot/iam-collect
@@ -48,9 +48,9 @@ iam-collect init
 iam-collect download
 ```
 
-To see the effect of SCPs and RCPs, you should download data from your management account; or an account with permissions to download organization information. Download data for member accounts you want to analyze. `iam-lens` will analyze cross-account and cross-organization requests if you have the data available.
+To see the effect of SCPs and RCPs, you should download data from your management account; or an account with permission to download organization information. Download data for member accounts you want to analyze. `iam-lens` will analyze cross-account and cross-organization requests if the data is available.
 
-You can download information for as many accounts, organizations, and regions as you like. The more data you have, the more accurate your simulations will be.
+You can download information for as many accounts, organizations, and regions as you like. The more data you have, the more accurate your answers will be.
 
 2. **Install iam-lens**
 
@@ -63,7 +63,10 @@ npm install -g @cloud-copilot/iam-lens
 Simulate a request:
 
 ```bash
-iam-lens simulate --principal arn:aws:iam::123456789012:role/ExampleRole --resource arn:aws:s3:::example-bucket/secret-file.txt --action s3:GetObject
+iam-lens simulate \
+  --principal arn:aws:iam::123456789012:role/ExampleRole \
+  --resource arn:aws:s3:::example-bucket/secret-file.txt \
+  --action s3:GetObject
 ```
 
 or
@@ -71,7 +74,9 @@ or
 Discover who can perform an action on a resource:
 
 ```bash
-iam-lens who-can --resource arn:aws:iam::111111111111:role/ImportantRole --actions sts:AssumeRole iam:PassRole
+iam-lens who-can \
+  --resource arn:aws:iam::111111111111:role/ImportantRole \
+  --actions sts:AssumeRole iam:PassRole
 ```
 
 ## Commands
@@ -82,7 +87,7 @@ iam-lens who-can --resource arn:aws:iam::111111111111:role/ImportantRole --actio
 iam-lens simulate [options]
 ```
 
-Evaluates whether a principal can perform a specified action on a resource (or wildcard). Returns a decision (Allowed/ImplicitlyDenied/ExplicitlyDenied), and exits nonzero if you provided an `--expect` that doesn’t match the result.
+Evaluates whether a principal can perform a specified action on a resource (or account for wildcard only actions). Returns a decision: `Allowed`, `ImplicitlyDenied`, or `ExplicitlyDenied`.
 
 **Options:**
 
@@ -90,10 +95,10 @@ Evaluates whether a principal can perform a specified action on a resource (or w
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `--principal <arn>`         | The principal the request is from. Can be a user, role, session, or AWS service.                                                                                                                                                                                     |
 | `--resource <arn>`          | The ARN of the resource to simulate access to. Ignore for wildcard-only actions such as `s3:ListAllMyBuckets`.                                                                                                                                                       |
-| `--resource-account <id>`   | The account ID of the resource, only required if it cannot be determined from the resource ARN.                                                                                                                                                                      |
+| `--resource-account <id>`   | The account ID of the resource. Only required if it cannot be determined from the resource ARN or the principal ARN for wildcard only actions.                                                                                                                       |
 | `--action <service:action>` | The action to simulate; must be a valid IAM service and action such as `s3:ListBucket`.                                                                                                                                                                              |
 | `--context <key=value>`     | One or more context keys to use for the simulation. Keys are formatted as `keyA=value1,value2 keyB=value1,value2`. Multiple keys are separated by spaces. Multiple values separated by commas. See [Context Keys](#context-keys) for what keys are set automatically |
-| `-v, --verbose`             | Enable verbose output for the simulation (exactly what statements applied or not and why).                                                                                                                                                                           |
+| `-v, --verbose`             | Enable verbose output for the simulation to see exactly what statements applied or not and why.                                                                                                                                                                      |
 | `--expect <result>`         | Optional expected outcome of the simulation. Valid values are `Allowed`, `ImplicitlyDenied`, `ExplicitlyDenied`, `AnyDeny`. If the result does not match the expected value, a non-zero exit code is returned                                                        |
 
 **Examples:**
@@ -108,7 +113,7 @@ iam-lens simulate \
 # Simulate a wildcard action (ListAllMyBuckets) – this will assume the principals account
 iam-lens simulate \
   --principal arn:aws:iam::222222222222:user/Alice \
-  --action s3:ListAllMyBuckets \
+  --action s3:ListAllMyBuckets
 
 # Include custom context keys
 iam-lens simulate \
@@ -132,7 +137,7 @@ iam-lens simulate \
 iam-lens who-can [options]
 ```
 
-Lists all principals in your IAM data who are allowed to perform one or more specified actions on a resource (or wildcard). If applicable it will check the resource policy to find cross-account permissions and AWS service principals.
+Lists all principals in your IAM data who are allowed to perform one or more specified actions on a resource (or account for wildcard only actions). If applicable it will check the resource policy to find cross-account permissions and AWS service principals.
 
 **Options:**
 
@@ -150,7 +155,7 @@ iam-lens who-can \
   --resource arn:aws:s3:::my-bucket/secret-file.txt \
   --actions s3:GetObject
 
-# Who can list all IAM roles in any account? (wildcard action – no resource)
+# Who can list all IAM roles in this account? (wildcard action – no resource)
 iam-lens who-can \
   --resource-account 555555555555 \
   --actions iam:ListRoles
@@ -159,6 +164,10 @@ iam-lens who-can \
 iam-lens who-can \
   --resource arn:aws:dynamodb:us-east-1:555555555555:table/Books \
   --actions dynamodb:Query dynamodb:UpdateItem
+
+# Check all actions for a bucket
+iam-lens who-can \
+  --resource arn:aws:s3:::my-bucket
 ```
 
 ### Global Options:
@@ -172,7 +181,7 @@ These options are available for all commands:
 
 ## Context Keys
 
-Below are the context keys that iam-lens populates by default during simulation. These keys are set based on your principal, resource, and organization data. Any keys provided via `--context` will override the defaults.
+iam-lens automatically populates the context keys below when simulating requests. These keys are set based on your principal, resource, and organization data. Any keys provided via `--context` will override the defaults.
 
 ### Default Context Keys
 
@@ -238,7 +247,7 @@ The following context keys are set when the principal is an AWS service (e.g., `
   The OU hierarchy path for the resource’s account (if part of an organization).
 
 - **`aws:PrincipalIsAWSService`**
-  Set to `true` for all service principals. Set to `false` for all IAM principals (users, roles, federated users).
+  Set to `true` for all service principals.
 
 #### Resource Context ([unless action is excluded](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-resourceaccount))
 
@@ -256,7 +265,7 @@ The following context keys are set when the principal is an AWS service (e.g., `
 
 ### Overriding Default Context Keys
 
-Any context keys supplied via the `--context key=value[,value2,…]` option will override the defaults described above. For example:
+Any context keys supplied via the `--context key=value[,value2,…]` argument will override the defaults described above. For example:
 
 ```bash
 iam-lens simulate \
