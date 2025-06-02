@@ -34,7 +34,7 @@ iam-lens uses the IAM data from your AWS accounts (collected via [iam-collect](h
 
 1. **Understand** what permissions are actually in place and why. See the policies that determine the outcome of a request.
 2. **Verify** what's allowed or not after everything is deployed.
-3. **Discover** who can take action on a sensitive resource or who can take sensitive actions.
+3. **Discover** who can take action on a sensitive resource or account.
 4. **Audit** your IAM policies and ensure they are configured correctly.
 5. **Debug** permissions by simulating requests locally and iterate quickly without needing to deploy changes to your AWS environment.
 
