@@ -4,6 +4,7 @@ import { parseCliArguments } from '@cloud-copilot/cli'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
 import { ContextKeys } from './simulate/contextKeys.js'
 import { resultMatchesExpectation, simulateRequest } from './simulate/simulate.js'
+import { calculateEffectivePolicy } from "./effectivePolicy.js"
 import { iamLensVersion } from './utils/packageVersion.js'
 import { whoCan } from './whoCan/whoCan.js'
 
@@ -81,6 +82,16 @@ const main = async () => {
           }
         }
       }
+      "effective-policy": {
+        description: "Compute the effective policy for a principal",
+        options: {
+          principal: {
+            type: "string",
+            values: "single",
+            description: "The principal ARN to calculate the effective policy for"
+          }
+        }
+      },
     },
     {
       collectConfigs: {
@@ -154,6 +165,11 @@ const main = async () => {
     })
 
     console.log(JSON.stringify(results, null, 2))
+  } else if (cli.subcommand === "effective-policy") {
+    const principal = cli.args.principal as string
+    const result = await calculateEffectivePolicy(collectClient, principal)
+    console.log(JSON.stringify(result, null, 2))
+
   }
 }
 
