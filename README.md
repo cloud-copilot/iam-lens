@@ -276,3 +276,7 @@ iam-lens simulate \
 ```
 
 In this case, `aws:CurrentTime` and `aws:PrincipalTag/Env` will use the provided values instead of what iam-lens would normally derive.
+
+## Acknowledgements
+
+Special thanks to [Ziyad Almbasher](https://www.linkedin.com/in/ziadmo/) for testing, validating, providing feedback, and for not letting up when the author thinks "this is fine".
