@@ -12,6 +12,9 @@ Get visibility into the IAM permissions in your AWS organizations and accounts. 
 # Install
 npm install -g @cloud-copilot/iam-collect @cloud-copilot/iam-lens
 
+# Update to lastest version (try sudo if it fails):
+npm update -g @cloud-copilot/iam-lens
+
 # Download all IAM policies in your account using default credentials, run download once per account
 iam-collect init
 iam-collect download
