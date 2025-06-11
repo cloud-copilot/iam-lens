@@ -492,7 +492,7 @@ export class IamCollectClient {
     const policyDocument = await this.storageClient.getResourceMetadata(
       accountId,
       policyArn,
-      'policy'
+      'current-policy'
     )
     if (!policyDocument) {
       console.error(`Policy document not found for ${policyArn} in account ${accountId}`)

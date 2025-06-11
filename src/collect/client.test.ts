@@ -968,7 +968,7 @@ describe('IamCollectClient', () => {
       await store.saveResourceMetadata(
         accountId,
         managedPolicyArn1,
-        'policy',
+        'current-policy',
         managedPolicy1.policy
       )
 
@@ -979,7 +979,7 @@ describe('IamCollectClient', () => {
       await store.saveResourceMetadata(
         accountId,
         managedPolicyArn2,
-        'policy',
+        'current-policy',
         managedPolicy2.policy
       )
 
@@ -1019,7 +1019,12 @@ describe('IamCollectClient', () => {
         arn: managedPolicyArn,
         name: 'Policy1'
       })
-      await store.saveResourceMetadata(accountId, managedPolicyArn, 'policy', managedPolicy.policy)
+      await store.saveResourceMetadata(
+        accountId,
+        managedPolicyArn,
+        'current-policy',
+        managedPolicy.policy
+      )
 
       // When getting the managed policy
       const result = await client.getManagedPolicy(accountId, managedPolicyArn)
@@ -1196,7 +1201,7 @@ describe('IamCollectClient', () => {
       await store.saveResourceMetadata(
         accountId,
         managedPolicyArn1,
-        'policy',
+        'current-policy',
         managedPolicy1.policy
       )
 
@@ -1207,7 +1212,7 @@ describe('IamCollectClient', () => {
       await store.saveResourceMetadata(
         accountId,
         managedPolicyArn2,
-        'policy',
+        'current-policy',
         managedPolicy2.policy
       )
 
@@ -1340,7 +1345,7 @@ describe('IamCollectClient', () => {
       await store.saveResourceMetadata(
         accountId,
         permissionsBoundaryArn,
-        'policy',
+        'current-policy',
         boundaryPolicy.policy
       )
 
@@ -1397,7 +1402,7 @@ describe('IamCollectClient', () => {
       await store.saveResourceMetadata(
         accountId,
         managedPolicyArn1,
-        'policy',
+        'current-policy',
         managedPolicy1.policy
       )
 
@@ -1408,7 +1413,7 @@ describe('IamCollectClient', () => {
       await store.saveResourceMetadata(
         accountId,
         managedPolicyArn2,
-        'policy',
+        'current-policy',
         managedPolicy2.policy
       )
 
@@ -1540,7 +1545,7 @@ describe('IamCollectClient', () => {
       await store.saveResourceMetadata(
         accountId,
         permissionsBoundaryArn,
-        'policy',
+        'current-policy',
         boundaryPolicy.policy
       )
 
