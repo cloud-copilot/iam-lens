@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { parseCliArguments } from '@cloud-copilot/cli'
+import { canWhat } from './canWhat/canWhat.js'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
 import { ContextKeys } from './simulate/contextKeys.js'
 import { resultMatchesExpectation, simulateRequest } from './simulate/simulate.js'
@@ -80,6 +81,21 @@ const main = async () => {
               'The action to check permissions for; must be a valid IAM service and action such as `s3:GetObject`'
           }
         }
+      },
+      'can-what': {
+        description: 'ALPHA: Find what actions a principal can perform',
+        options: {
+          principal: {
+            type: 'string',
+            values: 'single',
+            description: 'The principal to check permissions for. Can be a user or role'
+          },
+          shrinkActionLists: {
+            type: 'boolean',
+            character: 's',
+            description: 'Shrink action lists to reduce policy size'
+          }
+        }
       }
     },
     {
@@ -151,6 +167,19 @@ const main = async () => {
       resource: cli.args.resource!,
       actions: cli.args.actions!,
       resourceAccount: cli.args.resourceAccount
+    })
+
+    console.log(JSON.stringify(results, null, 2))
+  } else if (cli.subcommand === 'can-what') {
+    const { principal, shrinkActionLists } = cli.args
+    if (!principal) {
+      console.error('Error: Principal must be provided for can-what command')
+      process.exit(1)
+    }
+
+    const results = await canWhat(collectClient, {
+      principal: principal!,
+      shrinkActionLists
     })
 
     console.log(JSON.stringify(results, null, 2))
