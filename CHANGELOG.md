@@ -1,3 +1,10 @@
+## [0.1.15](https://github.com/cloud-copilot/iam-lens/compare/v0.1.14...v0.1.15) (2025-06-13)
+
+
+### Bug Fixes
+
+* Properly get account id for AWS managed policies ([72603b0](https://github.com/cloud-copilot/iam-lens/commit/72603b03efe9d069abbe2513bb7af2169c9002d6))
+
 ## [0.1.14](https://github.com/cloud-copilot/iam-lens/compare/v0.1.13...v0.1.14) (2025-06-13)
 
 ## [0.1.13](https://github.com/cloud-copilot/iam-lens/compare/v0.1.12...v0.1.13) (2025-06-12)
