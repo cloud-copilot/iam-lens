@@ -2,9 +2,20 @@
 
 [![NPM Version](https://img.shields.io/npm/v/@cloud-copilot/iam-lens.svg?logo=nodedotjs)](https://www.npmjs.com/package/@cloud-copilot/iam-lens) [![License: AGPL v3](https://img.shields.io/github/license/cloud-copilot/iam-lens)](LICENSE.txt) [![GuardDog](https://github.com/cloud-copilot/iam-lens/actions/workflows/guarddog.yml/badge.svg)](https://github.com/cloud-copilot/iam-lens/actions/workflows/guarddog.yml) [![Known Vulnerabilities](https://snyk.io/test/github/cloud-copilot/iam-lens/badge.svg?targetFile=package.json&style=flat-square)](https://snyk.io/test/github/cloud-copilot/iam-lens?targetFile=package.json)
 
-## iam-lens
-
 Get visibility into the IAM permissions in your AWS organizations and accounts. Use your actual AWS IAM policies (downloaded via [iam-collect](https://github.com/cloud-copilot/iam-collect)) and evaluate the effective permissions.
+
+## Table of Contents
+
+1. [Quick Start](#quick-start)
+2. [What is iam-lens?](#what-is-iam-lens)
+3. [Why use it?](#why-use-it)
+4. [Getting Started](#getting-started)
+5. [Commands](#commands)
+   - [simulate - Simulate a request](docs/Simulate.md)
+   - [who-can - Find who can perform an action on a resource](docs/WhoCan.md)
+   - [Global CLI Options](docs/GlobalCliOptions.md)
+6. [Contributing & Support](#contributing--support)
+7. [Acknowledgements](#acknowledgements)
 
 ## Quick Start
 
@@ -28,15 +39,15 @@ iam-lens who-can --resource arn:aws:s3:::example-bucket
 
 ## What is iam-lens?
 
-iam-lens uses the IAM data from your AWS accounts (collected via [iam-collect](https://github.com/cloud-copilot/iam-collect)) to quickly simulate requests and understand the effective permissions that apply to a principal or resource.
+**iam-lens** lets you **simulate** and **audit** real IAM requests against your collected IAM data from your AWS accounts (collected via [iam-collect](https://github.com/cloud-copilot/iam-collect)) and understand the effective permissions that apply to a principal or resource.
 
 ## Why use it?
 
-1. **Understand** what permissions are actually in place and why. See the policies that determine the outcome of a request.
-2. **Verify** what's allowed or not after everything is deployed.
-3. **Discover** who can take action on a sensitive resource or account.
-4. **Audit** your IAM policies and ensure they are configured correctly.
-5. **Debug** permissions by simulating requests locally and iterate quickly without needing to deploy changes to your AWS environment.
+- **Understand** the permissions that are actually in place.
+- **Verify** allowed and denied outcomes after all policies are deployed.
+- **Discover** every principal that can access a given resource.
+- **Audit** complex policy combinations across all your AWS accounts and orgs.
+- **Debug** complex conditions locally without deployment or network calls.
 
 ## Getting Started
 
@@ -81,27 +92,11 @@ iam-lens who-can \
 
 ## Commands
 
-### `simulate` - Simulate an IAM request
+### `simulate` - Simulate a request
 
-```bash
-iam-lens simulate [options]
-```
+Evaluates whether a principal can perform a specified action on a resource (or account for wildcard only actions). Returns a decision: `Allowed`, `ImplicitlyDenied`, or `ExplicitlyDenied`. All [condition keys](docs/Simulate.md#context-keys) are supported and [many context keys are set automatically](docs/Simulate.md#default-context-keys).
 
-Evaluates whether a principal can perform a specified action on a resource (or account for wildcard only actions). Returns a decision: `Allowed`, `ImplicitlyDenied`, or `ExplicitlyDenied`.
-
-**Options:**
-
-| Flag                        | Description                                                                                                                                                                                                                                                          |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--principal <arn>`         | The principal the request is from. Can be a user, role, session, or AWS service.                                                                                                                                                                                     |
-| `--resource <arn>`          | The ARN of the resource to simulate access to. Ignore for wildcard-only actions such as `s3:ListAllMyBuckets`.                                                                                                                                                       |
-| `--resource-account <id>`   | The account ID of the resource. Only required if it cannot be determined from the resource ARN or the principal ARN for wildcard only actions.                                                                                                                       |
-| `--action <service:action>` | The action to simulate; must be a valid IAM service and action such as `s3:ListBucket`.                                                                                                                                                                              |
-| `--context <key=value>`     | One or more context keys to use for the simulation. Keys are formatted as `keyA=value1,value2 keyB=value1,value2`. Multiple keys are separated by spaces. Multiple values separated by commas. See [Context Keys](#context-keys) for what keys are set automatically |
-| `-v, --verbose`             | Enable verbose output for the simulation to see exactly what statements applied or not and why.                                                                                                                                                                      |
-| `--expect <result>`         | Optional expected outcome of the simulation. Valid values are `Allowed`, `ImplicitlyDenied`, `ExplicitlyDenied`, `AnyDeny`. If the result does not match the expected value, a non-zero exit code is returned                                                        |
-
-**Examples:**
+[Full simulate documentation](docs/Simulate.md)
 
 ```bash
 # Simple simulate: can this role list objects in the bucket?
@@ -131,6 +126,8 @@ iam-lens simulate \
   --expect Allowed
 ```
 
+[Full simulate documentation](docs/Simulate.md)
+
 ### `who-can` - Find who can perform an action on a resource
 
 ```bash
@@ -139,13 +136,7 @@ iam-lens who-can [options]
 
 Lists all principals in your IAM data who are allowed to perform one or more specified actions on a resource (or account for wildcard only actions). If applicable it will check the resource policy to find cross-account permissions and AWS service principals.
 
-**Options:**
-
-| Flag                         | Description                                                                                                                                                                                                            |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--resource <arn>`           | The ARN of the resource to check permissions for. Ignore for wildcard-only actions such as `iam:ListRoles`                                                                                                             |
-| `--resource-account <id>`    | The account ID of the resource, only required if it cannot be determined from the resource ARN. Required for wildcard actions such as `ec2:DescribeInstances`                                                          |
-| `--actions <service:action>` | One or more actions to check such as `s3:GetObject`. Specify as many actions as you want. If omitted it will analyze all valid actions for the resource. If no `--resource` is specified then actions must be entered. |
+[Full who-can documentation](docs/WhoCan.md)
 
 **Examples:**
 
@@ -170,112 +161,11 @@ iam-lens who-can \
   --resource arn:aws:s3:::my-bucket
 ```
 
-### Global Options:
+[Full who-can documentation](docs/WhoCan.md)
 
-These options are available for all commands:
+## Contributing & Support
 
-| Flag                       | Description                                                           | Default             |
-| -------------------------- | --------------------------------------------------------------------- | ------------------- |
-| `--collectConfigs <files>` | One or more `iam-collect` config files to use for fetching IAM data.  | `iam-collect.jsonc` |
-| `--partition <partition>`  | The AWS partition (`aws`, `aws-cn`, `aws-us-gov`). Defaults to `aws`. | `aws`               |
-
-## Context Keys
-
-iam-lens automatically populates the context keys below when simulating requests. These keys are set based on your principal, resource, and organization data. Any keys provided via `--context` will override the defaults.
-
-### Default Context Keys
-
-- **`aws:SecureTransport`**
-  Always set to `true` to indicate the request is using a secure channel.
-
-- **`aws:CurrentTime`**
-  ISO 8601 timestamp of when the simulation is run (e.g., `2025-06-01T12:34:56.789Z`).
-
-- **`aws:EpochTime`**
-  Unix epoch time in seconds (e.g., `1717290896`).
-
-#### IAM Principal Context
-
-- **`aws:PrincipalArn`**
-  The full ARN of the principal (user, role, role session, or federated user) being simulated.
-
-- **`aws:PrincipalAccount`**
-  The AWS account ID extracted from the principal ARN.
-
-- **`aws:PrincipalOrgId`** _(if the account is in an organization)_
-  The Organization ID that owns the principal’s account.
-
-- **`aws:PrincipalOrgPaths`** _(if the account is in an organization)_
-  A list containing a single string of the form `<OrgId>/<OU1>/<OU2>/…/` indicating the account’s path in the OU hierarchy.
-
-- **`aws:PrincipalTag/<TagKey>`**
-  For each tag on the IAM principal, a context key of the form `aws:PrincipalTag/<TagKey>` with its tag value.
-
-- **`aws:PrincipalIsAWSService`**
-  Set to `false` for all IAM principals (users, roles, federated users).
-
-- **`aws:PrincipalType`**
-  One of: `Account`, `User`, `FederatedUser`, `AssumedRole`, indicating the type of principal.
-
-- **`aws:userid`**
-  The unique identifier for the principal session:
-
-  - For a root principal: the account ID
-  - For a user: the IAM user’s unique ID (or `UNKNOWN` if not found)
-  - For a federated user: `<AccountId>:<FederatedName>`
-  - For an assumed role: `<RoleUniqueId>:<SessionName>`
-
-  Setting `role-id:ec2-instance-id` for EC2 instances is not supported at this time.
-
-- **`aws:username`** _(only for IAM users)_
-  The IAM username portion of the principal ARN (e.g. `Alice`).
-
-#### Service Principal Context
-
-The following context keys are set when the principal is an AWS service (e.g., `lambda.amazonaws.com`, `ec2.amazonaws.com`):
-
-- **`aws:PrincipalServiceName`**
-  The service principal string (e.g. `lambda.amazonaws.com`).
-
-- **`aws:SourceAccount`**
-  The account ID of the resource.
-
-- **`aws:SourceOrgID`**
-  The organization ID of the resource’s account (if part of an organization).
-
-- **`aws:SourceOrgPaths`**
-  The OU hierarchy path for the resource’s account (if part of an organization).
-
-- **`aws:PrincipalIsAWSService`**
-  Set to `true` for all service principals.
-
-#### Resource Context ([unless action is excluded](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html#condition-keys-resourceaccount))
-
-- **`aws:ResourceAccount`**
-  The AWS account ID of the resource.
-
-- **`aws:ResourceOrgID`**
-  The Organization ID for the resource’s account (if part of an organization).
-
-- **`aws:ResourceOrgPaths`** _(if the resource account is in an organization)_
-  A list containing a single string of the form `<OrgId>/<OU1>/<OU2>/…/` for the resource’s account (if part of an organization).
-
-- **`aws:ResourceTag/<TagKey>`**
-  For each tag on the resource ARN, a context key `aws:ResourceTag/TagKey` with its tag value. **This is only for resources that are stored in your `iam-collect` data**, such as Roles, S3 Buckets, DynamoDB Tables, etc. For resources not stored in `iam-collect`, this key should be set manually.
-
-### Overriding Default Context Keys
-
-Any context keys supplied via the `--context key=value[,value2,…]` argument will override the defaults described above. For example:
-
-```bash
-iam-lens simulate \
-  --principal arn:aws:iam::123456789012:user/Alice \
-  --resource arn:aws:s3:::my-bucket \
-  --action s3:GetObject \
-  --context aws:CurrentTime=2025-01-01T00:00:00Z aws:PrincipalTag/Env=staging
-```
-
-In this case, `aws:CurrentTime` and `aws:PrincipalTag/Env` will use the provided values instead of what iam-lens would normally derive.
+The best way to support is to [open an issue](https://github.com/cloud-copilot/iam-lens/issues) and let us know of any bugs, feature requests, or questions you have. We're always looking for ways to improve the project and make it more useful for everyone.
 
 ## Acknowledgements
 
