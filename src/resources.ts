@@ -15,15 +15,14 @@ export async function getAccountIdForResource(
 ): Promise<string | undefined> {
   const arnParts = splitArnParts(resourceArn)
   let accountId = arnParts.accountId
-  if (accountId) {
+  if (accountId && accountId !== 'aws') {
     return accountId
   }
   if (arnParts.service === 's3' && arnParts.resourceType === '') {
     const bucketName = arnParts.resourcePath!.split('/')[0]
     return collectClient.getAccountIdForBucket(bucketName)
   } else if (arnParts.service === 'apigateway' && arnParts.resourceType === 'restapis') {
-    const apiId = arnParts.resourcePath!
-    return collectClient.getAccountIdForRestApi(apiId)
+    return collectClient.getAccountIdForRestApi(resourceArn)
   }
   return undefined
 }
