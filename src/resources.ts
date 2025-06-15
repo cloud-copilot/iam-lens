@@ -32,6 +32,7 @@ export async function getAccountIdForResource(
  *
  * @param collectClient the IAM collect client to use for retrieving RCPs
  * @param resourceArn the ARN of the resource to get RCPs for
+ * @param resourceAccount the account ID of the resource, if known
  * @returns an array of resource control policies for the specified resource
  */
 export async function getRcpsForResource(
@@ -46,6 +47,14 @@ export async function getRcpsForResource(
   return collectClient.getRcpHierarchyForAccount(accountId)
 }
 
+/**
+ * Get the resource policy for a resource, if any.
+ *
+ * @param collectClient the IAM collect client to use for retrieving the resource policy
+ * @param resourceArn the ARN of the resource to get the policy for
+ * @param resourceAccount the account ID of the resource, if known
+ * @returns  the resource policy for the specified resource, or undefined if not found
+ */
 export async function getResourcePolicyForResource(
   collectClient: IamCollectClient,
   resourceArn: string,
