@@ -36,9 +36,10 @@ export async function getAccountIdForResource(
  */
 export async function getRcpsForResource(
   collectClient: IamCollectClient,
-  resourceArn: string
+  resourceArn: string,
+  resourceAccount: string | undefined
 ): Promise<Simulation['resourceControlPolicies']> {
-  const accountId = await getAccountIdForResource(collectClient, resourceArn)
+  const accountId = resourceAccount || (await getAccountIdForResource(collectClient, resourceArn))
   if (!accountId) {
     throw new Error(`Unable to determine account ID for resource ARN: ${resourceArn}`)
   }
@@ -47,10 +48,11 @@ export async function getRcpsForResource(
 
 export async function getResourcePolicyForResource(
   collectClient: IamCollectClient,
-  resourceArn: string
+  resourceArn: string,
+  resourceAccount: string | undefined
 ): Promise<any | undefined> {
   //TODO: Should this return a policy object?
-  const accountId = await getAccountIdForResource(collectClient, resourceArn)
+  const accountId = resourceAccount || (await getAccountIdForResource(collectClient, resourceArn))
   if (!accountId) {
     throw new Error(`Unable to determine account ID for resource ARN: ${resourceArn}`)
   }
