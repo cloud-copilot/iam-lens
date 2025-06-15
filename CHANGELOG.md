@@ -1,3 +1,10 @@
+## [0.1.18](https://github.com/cloud-copilot/iam-lens/compare/v0.1.17...v0.1.18) (2025-06-15)
+
+
+### Bug Fixes
+
+* Fix simulating actions with AWS managed policies ([31566a9](https://github.com/cloud-copilot/iam-lens/commit/31566a9a791d0fea7e1000d24ea0e5401309f732))
+
 ## [0.1.17](https://github.com/cloud-copilot/iam-lens/compare/v0.1.16...v0.1.17) (2025-06-14)
 
 ## [0.1.16](https://github.com/cloud-copilot/iam-lens/compare/v0.1.15...v0.1.16) (2025-06-13)
