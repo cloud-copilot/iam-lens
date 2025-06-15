@@ -140,6 +140,19 @@ const simulateIntegrationTest: {
       customContextKeys: {}
     },
     expected: 'ExplicitlyDenied'
+  },
+  {
+    name: 'Delete AWS Managed Policy',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:iam::aws:policy/AdministratorAccess',
+      resourceAccount: '200000000001',
+      action: 'iam:DeletePolicy',
+      principal:
+        'arn:aws:iam::200000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {}
+    },
+    expected: 'ImplicitlyDenied'
   }
 ]
 

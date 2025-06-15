@@ -64,7 +64,8 @@ export async function simulateRequest(
 
   const { resourcePolicy, resourceRcps } = await getResourcePolicies(
     collectClient,
-    simulationRequest.resourceArn
+    simulationRequest.resourceArn,
+    simulationRequest.resourceAccount
   )
 
   const useResourcePolicy =
@@ -115,7 +116,8 @@ export async function simulateRequest(
 
 async function getResourcePolicies(
   collectClient: IamCollectClient,
-  resourceArn: string | undefined
+  resourceArn: string | undefined,
+  resourceAccount: string | undefined
 ): Promise<{
   resourcePolicy: any | undefined
   resourceRcps: SimulationOrgPolicies[]
@@ -124,8 +126,12 @@ async function getResourcePolicies(
     return { resourcePolicy: undefined, resourceRcps: [] }
   }
 
-  const resourcePolicy = await getResourcePolicyForResource(collectClient, resourceArn)
-  const resourceRcps = await getRcpsForResource(collectClient, resourceArn)
+  const resourcePolicy = await getResourcePolicyForResource(
+    collectClient,
+    resourceArn,
+    resourceAccount
+  )
+  const resourceRcps = await getRcpsForResource(collectClient, resourceArn, resourceAccount)
 
   return { resourcePolicy, resourceRcps }
 }

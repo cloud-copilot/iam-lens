@@ -70,7 +70,7 @@ export async function whoCan(
 
   let resourcePolicy: any = undefined
   if (resource) {
-    resourcePolicy = await getResourcePolicyForResource(collectClient, resource)
+    resourcePolicy = await getResourcePolicyForResource(collectClient, resource, resourceAccount)
     const resourceArn = new Arn(resource)
     if (
       (resourceArn.matches({ service: 'iam', resourceType: 'role' }) ||
