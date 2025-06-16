@@ -15,6 +15,8 @@ Simulations can be run for any principal type (user, role, assumed role, federat
 - Resource control policies (RCPs)
 - Permission boundaries
 
+Simulations support both inclusive and exclusive statement fields such as `Principal`, `NotPrincipal`, `Action`, `NotAction`, `Resource`, `NotResource`, `Condition`, and `Effect`. [All condition operators are supported](#supported-condition-keys).
+
 ## Cross Account and Organization Requests
 
 When simulating requests, iam-lens will detect the account for the principal and resource. If the accounts are different accounts, cross-account permissions will be evaluated. If the accounts are in different organizations or different organizational units in the same organization, iam-lens will use the correct SCPs for the principal and RCPs for the resource.
