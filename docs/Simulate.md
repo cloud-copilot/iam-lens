@@ -15,7 +15,7 @@ Simulations can be run for any principal type (user, role, assumed role, federat
 - Resource control policies (RCPs)
 - Permission boundaries
 
-Simulations support all inclusive an exclusive statement fields such as `Principal`, `NotPrincipal`, `Action`, `NotAction`, `Resource`, `NotResource`, `Condition`, and `Effect`. [All condition operators are supported](#supported-condition-keys).
+Simulations support both inclusive and exclusive statement fields such as `Principal`, `NotPrincipal`, `Action`, `NotAction`, `Resource`, `NotResource`, `Condition`, and `Effect`. [All condition operators are supported](#supported-condition-keys).
 
 ## Cross Account and Organization Requests
 
