@@ -1,5 +1,10 @@
 import { iamActionDetails, iamActionExists, iamServiceExists } from '@cloud-copilot/iam-data'
-import { EvaluationResult, runSimulation, Simulation } from '@cloud-copilot/iam-simulate'
+import {
+  EvaluationResult,
+  runSimulation,
+  Simulation,
+  SimulationMode
+} from '@cloud-copilot/iam-simulate'
 import { isIamRoleArn, splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient, SimulationOrgPolicies } from '../collect/client.js'
 import {
@@ -13,7 +18,7 @@ import {
   getResourcePolicyForResource
 } from '../resources.js'
 import { AssumeRoleActions } from '../utils/sts.js'
-import { ContextKeys, createContextKeys } from './contextKeys.js'
+import { ContextKeys, createContextKeys, knownContextKeys } from './contextKeys.js'
 
 export interface SimulationRequest {
   resourceArn: string | undefined
@@ -22,6 +27,7 @@ export interface SimulationRequest {
   principal: string
   // anonymous?: boolean
   customContextKeys: ContextKeys
+  simulationMode: SimulationMode
 }
 
 export async function simulateRequest(
@@ -109,7 +115,37 @@ export async function simulateRequest(
     resourcePolicy: useResourcePolicy ? resourcePolicy : undefined,
     permissionBoundaryPolicies: preparePermissionBoundary(principalPolicies)
   }
-  const result = await runSimulation(simulation, {})
+
+  // Assemble the strict context keys for the simulation
+  // Start with the default known context keys
+  const strictContextKeys = [...knownContextKeys]
+
+  if (!simulationRequest.principal.endsWith(':root')) {
+    // Treat this as strict unless it is a root principal
+    strictContextKeys.push('aws:AssumedRoot')
+  }
+
+  // S3 Access Points are Not Supported Right Now, Don't Add Noise
+  if (simulationRequest.action.startsWith('s3:')) {
+    strictContextKeys.push('s3:DataAccessPointAccount')
+    strictContextKeys.push('s3:DataAccessPointArn')
+  }
+
+  // Add the custom context keys from the simulation request
+  for (const key of Object.keys(simulationRequest.customContextKeys)) {
+    strictContextKeys.push(key)
+  }
+  // Add any tag keys
+  for (const key of Object.keys(context)) {
+    if (key.includes('Tag/')) {
+      strictContextKeys.push(key)
+    }
+  }
+
+  const result = await runSimulation(simulation, {
+    simulationMode: simulationRequest.simulationMode,
+    strictConditionKeys: strictContextKeys
+  })
 
   return result
 }

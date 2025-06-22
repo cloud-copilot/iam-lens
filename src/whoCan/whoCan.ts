@@ -31,6 +31,8 @@ export interface WhoCanAllowed {
   principal: string
   service: string
   action: string
+  level: string
+  conditions?: any
 }
 
 export interface WhoCanResponse {
@@ -161,21 +163,61 @@ async function runPrincipalForActions(
         resourceArn: resource,
         resourceAccount,
         action,
-        customContextKeys: {}
+        customContextKeys: {},
+        simulationMode: 'Strict'
       },
       collectClient
     )
     if (result.analysis?.result === 'Allowed') {
       const [service, serviceAction] = action.split(':')
+      const actionType = await getActionLevel(service, serviceAction)
       results.push({
         principal,
         service: service,
-        action: serviceAction
+        action: serviceAction,
+        level: actionType.toLowerCase()
       })
+    } else {
+      // Try again with Discovery mode enabled
+      const discoveryResult = await simulateRequest(
+        {
+          principal: principal,
+          resourceArn: resource,
+          resourceAccount,
+          action,
+          customContextKeys: {},
+          simulationMode: 'Discovery'
+        },
+        collectClient
+      )
+
+      if (discoveryResult.analysis?.result === 'Allowed') {
+        const [service, serviceAction] = action.split(':')
+        const actionType = await getActionLevel(service, serviceAction)
+        results.push({
+          principal,
+          service: service,
+          action: serviceAction,
+          level: actionType.toLowerCase(),
+          conditions: discoveryResult.analysis.ignoredConditions
+        })
+      }
     }
   }
 
   return results
+}
+
+/**
+ * Get the action level for a specific service action, will fail if the service or action does not exist.
+ *
+ * @param service the service the action belongs to
+ * @param action the action to get the level for
+ * @returns the access level of the action, e.g. 'Read', 'Write', 'List', 'Tagging', 'Permissions management', 'Other'
+ */
+async function getActionLevel(service: string, action: string): Promise<string> {
+  const details = await iamActionDetails(service, action)
+  return details.accessLevel
 }
 
 export async function uniqueAccountsToCheck(

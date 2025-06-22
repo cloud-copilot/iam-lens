@@ -5,6 +5,38 @@ import { SimulationRequest } from './simulate.js'
 
 export type ContextKeys = Record<string, string | string[]>
 
+export const knownContextKeys: readonly string[] = [
+  'aws:SecureTransport',
+  'aws:CurrentTime',
+  'aws:EpochTime',
+
+  'aws:PrincipalArn',
+  'aws:PrincipalAccount',
+  'aws:PrincipalOrgId',
+  'aws:PrincipalOrgPaths',
+
+  'aws:PrincipalType',
+  'aws:userid',
+  'aws:username',
+  'aws:ResourceAccount',
+  'aws:ResourceOrgID',
+  'aws:ResourceOrgPaths',
+
+  'aws:PrincipalIsAWSService',
+  'aws:PrincipalServiceName',
+  'aws:SourceAccount',
+  'aws:SourceOrgID',
+  'aws:SourceOrgPaths'
+]
+
+/**
+ * Get the context keys for a simulation request.
+ *
+ * @param collectClient the collect client to use for fetching data
+ * @param simulationRequest the simulation request to create context keys for
+ * @param contextKeyOverrides the context key overrides to apply
+ * @returns a promise that resolves to the context keys for the simulation request
+ */
 export async function createContextKeys(
   collectClient: IamCollectClient,
   simulationRequest: SimulationRequest,

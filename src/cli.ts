@@ -135,7 +135,8 @@ const main = async () => {
         resourceArn: resource,
         resourceAccount: resourceAccount,
         action: action!,
-        customContextKeys: contextKeys
+        customContextKeys: contextKeys,
+        simulationMode: 'Strict'
       },
       collectClient
     )
