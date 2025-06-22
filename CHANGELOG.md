@@ -1,3 +1,16 @@
+## [0.1.21](https://github.com/cloud-copilot/iam-lens/compare/v0.1.20...v0.1.21) (2025-06-22)
+
+
+### Bug Fixes
+
+* Add missing parameter for simulate call ([f5e0f62](https://github.com/cloud-copilot/iam-lens/commit/f5e0f62d252e3faafc1f3099a597ffdff5fa3c46))
+
+
+### Features
+
+* Add access level to the output of who-can ([4bbaaf1](https://github.com/cloud-copilot/iam-lens/commit/4bbaaf1df3ef4a3cbcd9a72d1d991070da49f53e))
+* Add condition reporting to who-can along with access level ([3811980](https://github.com/cloud-copilot/iam-lens/commit/3811980257c14da90324416fcff0551c4dcf990b))
+
 ## [0.1.20](https://github.com/cloud-copilot/iam-lens/compare/v0.1.19...v0.1.20) (2025-06-21)
 
 ## [0.1.19](https://github.com/cloud-copilot/iam-lens/compare/v0.1.18...v0.1.19) (2025-06-16)
