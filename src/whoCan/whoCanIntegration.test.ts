@@ -80,6 +80,12 @@ const whoCanIntegrationTests: {
         },
         {
           action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
+          service: 's3',
+          level: 'list'
+        },
+        {
+          action: 'ListBucket',
           principal:
             'arn:aws:iam::200000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
           service: 's3',
@@ -158,6 +164,35 @@ const whoCanIntegrationTests: {
           principal: 'lambda.amazonaws.com',
           service: 'sts',
           level: 'write'
+        }
+      ]
+    }
+  },
+  {
+    name: 'ListBucket with condition',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::vpc-bucket',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
+          service: 's3',
+          level: 'list',
+          conditions: {
+            identity: {
+              allow: [
+                {
+                  key: 'aws:SourceVpc',
+                  op: 'StringEquals',
+                  values: ['vpc-123456789']
+                }
+              ]
+            }
+          }
         }
       ]
     }

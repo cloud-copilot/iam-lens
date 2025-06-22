@@ -32,6 +32,7 @@ export interface WhoCanAllowed {
   service: string
   action: string
   level: string
+  conditions?: any
 }
 
 export interface WhoCanResponse {
@@ -162,7 +163,8 @@ async function runPrincipalForActions(
         resourceArn: resource,
         resourceAccount,
         action,
-        customContextKeys: {}
+        customContextKeys: {},
+        simulationMode: 'Strict'
       },
       collectClient
     )
@@ -177,6 +179,29 @@ async function runPrincipalForActions(
       })
     } else {
       // Try again with Discovery mode enabled
+      const discoveryResult = await simulateRequest(
+        {
+          principal: principal,
+          resourceArn: resource,
+          resourceAccount,
+          action,
+          customContextKeys: {},
+          simulationMode: 'Discovery'
+        },
+        collectClient
+      )
+
+      if (discoveryResult.analysis?.result === 'Allowed') {
+        const [service, serviceAction] = action.split(':')
+        const actionType = await getActionLevel(service, serviceAction)
+        results.push({
+          principal,
+          service: service,
+          action: serviceAction,
+          level: actionType.toLowerCase(),
+          conditions: discoveryResult.analysis.ignoredConditions
+        })
+      }
     }
   }
 

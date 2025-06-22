@@ -1,0 +1,20 @@
+[
+  {
+    "PolicyName": "ListBucket",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": ["s3:ListBucket"],
+          "Resource": ["arn:aws:s3:::vpc-bucket"],
+          "Condition": {
+            "StringEquals": {
+              "aws:SourceVpc": "vpc-123456789"
+            }
+          }
+        }
+      ]
+    }
+  }
+]

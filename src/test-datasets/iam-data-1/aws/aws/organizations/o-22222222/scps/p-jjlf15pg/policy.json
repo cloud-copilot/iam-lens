@@ -2,7 +2,7 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "RestrictEC2ForRoot",
+      "Sid": "RestrictRootUnlessAssumed",
       "Effect": "Deny",
       "Action": ["*"],
       "Resource": ["*"],
