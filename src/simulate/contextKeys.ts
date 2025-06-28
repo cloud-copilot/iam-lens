@@ -14,10 +14,10 @@ export const knownContextKeys: readonly string[] = [
   'aws:PrincipalAccount',
   'aws:PrincipalOrgId',
   'aws:PrincipalOrgPaths',
-
   'aws:PrincipalType',
   'aws:userid',
   'aws:username',
+
   'aws:ResourceAccount',
   'aws:ResourceOrgID',
   'aws:ResourceOrgPaths',
