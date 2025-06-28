@@ -82,8 +82,8 @@ const main = async () => {
           }
         }
       },
-      'can-what': {
-        description: 'ALPHA: Find what actions a principal can perform',
+      'principal-can': {
+        description: 'ALPHA: Create a consolidated view of all permissions for a principal',
         options: {
           principal: {
             type: 'string',
@@ -171,7 +171,7 @@ const main = async () => {
     })
 
     console.log(JSON.stringify(results, null, 2))
-  } else if (cli.subcommand === 'can-what') {
+  } else if (cli.subcommand === 'principal-can') {
     const { principal, shrinkActionLists } = cli.args
     if (!principal) {
       console.error('Error: Principal must be provided for can-what command')
