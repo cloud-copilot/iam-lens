@@ -174,7 +174,7 @@ const main = async () => {
   } else if (cli.subcommand === 'principal-can') {
     const { principal, shrinkActionLists } = cli.args
     if (!principal) {
-      console.error('Error: Principal must be provided for can-what command')
+      console.error('Error: Principal must be provided for principal-can command')
       process.exit(1)
     }
 
