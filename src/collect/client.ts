@@ -467,21 +467,24 @@ export class IamCollectClient {
    * @returns The managed policies for the user.
    */
   async getManagedPoliciesForUser(userArn: string): Promise<ManagedPolicy[]> {
-    const accountId = splitArnParts(userArn).accountId!
-    const managedPolicies = await this.storageClient.getResourceMetadata<string[], string[]>(
-      accountId,
-      userArn,
-      'managed-policies',
-      []
-    )
+    const cacheKey = `userManagedPolicies:${userArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(userArn).accountId!
+      const managedPolicies = await this.storageClient.getResourceMetadata<string[], string[]>(
+        accountId,
+        userArn,
+        'managed-policies',
+        []
+      )
 
-    const results: ManagedPolicy[] = []
+      const results: ManagedPolicy[] = []
 
-    for (const policyArn of managedPolicies) {
-      results.push(await this.getManagedPolicy(accountId, policyArn))
-    }
+      for (const policyArn of managedPolicies) {
+        results.push(await this.getManagedPolicy(accountId, policyArn))
+      }
 
-    return results
+      return results
+    })
   }
 
   async getManagedPolicy(accountId: string, policyArn: string): Promise<ManagedPolicy> {
@@ -510,16 +513,19 @@ export class IamCollectClient {
    * @returns The inline policies for the user.
    */
   async getInlinePoliciesForUser(userArn: string): Promise<InlinePolicy[]> {
-    const accountId = splitArnParts(userArn).accountId!
-    const inlinePolicies = await this.storageClient.getResourceMetadata<
-      InlinePolicyMetadata[],
-      InlinePolicyMetadata[]
-    >(accountId, userArn, 'inline-policies', [])
+    const cacheKey = `userInlinePolicies:${userArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(userArn).accountId!
+      const inlinePolicies = await this.storageClient.getResourceMetadata<
+        InlinePolicyMetadata[],
+        InlinePolicyMetadata[]
+      >(accountId, userArn, 'inline-policies', [])
 
-    return inlinePolicies.map((p) => ({
-      name: p.PolicyName,
-      policy: p.PolicyDocument
-    }))
+      return inlinePolicies.map((p) => ({
+        name: p.PolicyName,
+        policy: p.PolicyDocument
+      }))
+    })
   }
 
   async getIamUserMetadata(userArn: string): Promise<IamUserMetadata | undefined> {
@@ -539,19 +545,22 @@ export class IamCollectClient {
    * @returns The permissions boundary policy as an OrgPolicy, or undefined if none is set.
    */
   async getPermissionsBoundaryForUser(userArn: string): Promise<ManagedPolicy | undefined> {
-    const accountId = splitArnParts(userArn).accountId!
-    // The permissions boundary is stored as a policy ARN on the user resource metadata
-    const userMetadata = await this.getIamUserMetadata(userArn)
-    if (!userMetadata) {
-      return undefined
-    }
+    const cacheKey = `userPermissionBoundary:${userArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(userArn).accountId!
+      // The permissions boundary is stored as a policy ARN on the user resource metadata
+      const userMetadata = await this.getIamUserMetadata(userArn)
+      if (!userMetadata) {
+        return undefined
+      }
 
-    const permissionsBoundaryArn = userMetadata.permissionBoundary
-    if (!permissionsBoundaryArn) {
-      return undefined
-    }
+      const permissionsBoundaryArn = userMetadata.permissionBoundary
+      if (!permissionsBoundaryArn) {
+        return undefined
+      }
 
-    return this.getManagedPolicy(accountId, permissionsBoundaryArn)
+      return this.getManagedPolicy(accountId, permissionsBoundaryArn)
+    })
   }
 
   /**
@@ -560,14 +569,17 @@ export class IamCollectClient {
    * @returns An array of group ARNs the user belongs to.
    */
   async getGroupsForUser(userArn: string): Promise<string[]> {
-    const accountId = splitArnParts(userArn).accountId!
-    const groups = await this.storageClient.getResourceMetadata<string[], string[]>(
-      accountId,
-      userArn,
-      'groups',
-      []
-    )
-    return groups
+    const cacheKey = `groupsForUser:${userArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(userArn).accountId!
+      const groups = await this.storageClient.getResourceMetadata<string[], string[]>(
+        accountId,
+        userArn,
+        'groups',
+        []
+      )
+      return groups
+    })
   }
 
   /**
@@ -577,81 +589,96 @@ export class IamCollectClient {
    * @returns The managed policies for the group.
    */
   async getManagedPoliciesForGroup(groupArn: string): Promise<ManagedPolicy[]> {
-    const accountId = splitArnParts(groupArn).accountId!
-    const managedPolicies = await this.storageClient.getResourceMetadata<string[], string[]>(
-      accountId,
-      groupArn,
-      'managed-policies',
-      []
-    )
+    const cacheKey = `groupManagedPolicies:${groupArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(groupArn).accountId!
+      const managedPolicies = await this.storageClient.getResourceMetadata<string[], string[]>(
+        accountId,
+        groupArn,
+        'managed-policies',
+        []
+      )
 
-    const results: ManagedPolicy[] = []
+      const results: ManagedPolicy[] = []
 
-    for (const policyArn of managedPolicies) {
-      results.push(await this.getManagedPolicy(accountId, policyArn))
-    }
+      for (const policyArn of managedPolicies) {
+        results.push(await this.getManagedPolicy(accountId, policyArn))
+      }
 
-    return results
+      return results
+    })
   }
 
   async getInlinePoliciesForGroup(groupArn: string): Promise<InlinePolicy[]> {
-    const accountId = splitArnParts(groupArn).accountId!
-    const inlinePolicies = await this.storageClient.getResourceMetadata<
-      InlinePolicyMetadata[],
-      InlinePolicyMetadata[]
-    >(accountId, groupArn, 'inline-policies', [])
+    const cacheKey = `groupInlinePolicies:${groupArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(groupArn).accountId!
+      const inlinePolicies = await this.storageClient.getResourceMetadata<
+        InlinePolicyMetadata[],
+        InlinePolicyMetadata[]
+      >(accountId, groupArn, 'inline-policies', [])
 
-    return inlinePolicies.map((p) => ({
-      name: p.PolicyName,
-      policy: p.PolicyDocument
-    }))
+      return inlinePolicies.map((p) => ({
+        name: p.PolicyName,
+        policy: p.PolicyDocument
+      }))
+    })
   }
 
   async getManagedPoliciesForRole(roleArn: string): Promise<ManagedPolicy[]> {
-    const accountId = splitArnParts(roleArn).accountId!
-    const managedPolicies = await this.storageClient.getResourceMetadata<string[], string[]>(
-      accountId,
-      roleArn,
-      'managed-policies',
-      []
-    )
+    const cacheKey = `managedPoliciesForRole:${roleArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(roleArn).accountId!
+      const managedPolicies = await this.storageClient.getResourceMetadata<string[], string[]>(
+        accountId,
+        roleArn,
+        'managed-policies',
+        []
+      )
 
-    const results: ManagedPolicy[] = []
+      const results: ManagedPolicy[] = []
 
-    for (const policyArn of managedPolicies) {
-      results.push(await this.getManagedPolicy(accountId, policyArn))
-    }
+      for (const policyArn of managedPolicies) {
+        results.push(await this.getManagedPolicy(accountId, policyArn))
+      }
 
-    return results
+      return results
+    })
   }
 
   async getInlinePoliciesForRole(roleArn: string): Promise<InlinePolicy[]> {
-    const accountId = splitArnParts(roleArn).accountId!
-    const inlinePolicies = await this.storageClient.getResourceMetadata<
-      InlinePolicyMetadata[],
-      InlinePolicyMetadata[]
-    >(accountId, roleArn, 'inline-policies', [])
+    const cacheKey = `inlinePoliciesForRole:${roleArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(roleArn).accountId!
+      const inlinePolicies = await this.storageClient.getResourceMetadata<
+        InlinePolicyMetadata[],
+        InlinePolicyMetadata[]
+      >(accountId, roleArn, 'inline-policies', [])
 
-    return inlinePolicies.map((p) => ({
-      name: p.PolicyName,
-      policy: p.PolicyDocument
-    }))
+      return inlinePolicies.map((p) => ({
+        name: p.PolicyName,
+        policy: p.PolicyDocument
+      }))
+    })
   }
 
   async getPermissionsBoundaryForRole(roleArn: string): Promise<ManagedPolicy | undefined> {
-    const accountId = splitArnParts(roleArn).accountId!
-    // The permissions boundary is stored as a policy ARN on the user resource metadata
-    const roleMetadata = await this.getIamUserMetadata(roleArn)
-    if (!roleMetadata) {
-      return undefined
-    }
+    const cacheKey = `permissionBoundaryForRole:${roleArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(roleArn).accountId!
+      // The permissions boundary is stored as a policy ARN on the user resource metadata
+      const roleMetadata = await this.getIamUserMetadata(roleArn)
+      if (!roleMetadata) {
+        return undefined
+      }
 
-    const permissionsBoundaryArn = roleMetadata.permissionBoundary
-    if (!permissionsBoundaryArn) {
-      return undefined
-    }
+      const permissionsBoundaryArn = roleMetadata.permissionBoundary
+      if (!permissionsBoundaryArn) {
+        return undefined
+      }
 
-    return this.getManagedPolicy(accountId, permissionsBoundaryArn)
+      return this.getManagedPolicy(accountId, permissionsBoundaryArn)
+    })
   }
 
   /**

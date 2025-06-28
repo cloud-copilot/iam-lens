@@ -33,6 +33,7 @@ export interface WhoCanAllowed {
   action: string
   level: string
   conditions?: any
+  dependsOnSessionName?: boolean
 }
 
 export interface WhoCanResponse {
@@ -157,49 +158,48 @@ async function runPrincipalForActions(
 ): Promise<WhoCanAllowed[]> {
   const results: WhoCanAllowed[] = []
   for (const action of actions) {
-    const result = await simulateRequest(
+    const [service, serviceAction] = action.split(':')
+    const discoveryResult = await simulateRequest(
       {
         principal: principal,
         resourceArn: resource,
         resourceAccount,
         action,
         customContextKeys: {},
-        simulationMode: 'Strict'
+        simulationMode: 'Discovery'
       },
       collectClient
     )
-    if (result.analysis?.result === 'Allowed') {
-      const [service, serviceAction] = action.split(':')
-      const actionType = await getActionLevel(service, serviceAction)
-      results.push({
-        principal,
-        service: service,
-        action: serviceAction,
-        level: actionType.toLowerCase()
-      })
-    } else {
-      // Try again with Discovery mode enabled
-      const discoveryResult = await simulateRequest(
+
+    if (discoveryResult.analysis?.result === 'Allowed') {
+      const result = await simulateRequest(
         {
           principal: principal,
           resourceArn: resource,
           resourceAccount,
           action,
           customContextKeys: {},
-          simulationMode: 'Discovery'
+          simulationMode: 'Strict'
         },
         collectClient
       )
-
-      if (discoveryResult.analysis?.result === 'Allowed') {
-        const [service, serviceAction] = action.split(':')
+      if (result.analysis?.result === 'Allowed') {
+        const actionType = await getActionLevel(service, serviceAction)
+        results.push({
+          principal,
+          service: service,
+          action: serviceAction,
+          level: actionType.toLowerCase()
+        })
+      } else {
         const actionType = await getActionLevel(service, serviceAction)
         results.push({
           principal,
           service: service,
           action: serviceAction,
           level: actionType.toLowerCase(),
-          conditions: discoveryResult.analysis.ignoredConditions
+          conditions: discoveryResult.analysis.ignoredConditions,
+          dependsOnSessionName: discoveryResult.analysis.ignoredRoleSessionName ? true : undefined
         })
       }
     }

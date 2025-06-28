@@ -137,7 +137,7 @@ export async function simulateRequest(
   }
   // Add any tag keys
   for (const key of Object.keys(context)) {
-    if (key.includes('Tag/')) {
+    if (key.toLowerCase().includes('tag/')) {
       strictContextKeys.push(key)
     }
   }
