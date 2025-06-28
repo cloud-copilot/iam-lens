@@ -1,3 +1,13 @@
+## [0.1.22](https://github.com/cloud-copilot/iam-lens/compare/v0.1.21...v0.1.22) (2025-06-28)
+
+
+### Features
+
+* changing can-what to principal-can ([cd217f8](https://github.com/cloud-copilot/iam-lens/commit/cd217f8674fb405f5ac6a0782beb8193c17a3895))
+* improve handling of tag keys in simulate ([5315d30](https://github.com/cloud-copilot/iam-lens/commit/5315d307bf6575961d864d9c97cee6bfb7086d08))
+* Improve performance of who-can ([4d1ada6](https://github.com/cloud-copilot/iam-lens/commit/4d1ada64c34fc2a51abff8cab97f863922ac888f))
+* improved caching of policies ([0b82808](https://github.com/cloud-copilot/iam-lens/commit/0b828085fdd75dfdaa656bb64ddb9f97cfad58d5))
+
 ## [0.1.21](https://github.com/cloud-copilot/iam-lens/compare/v0.1.20...v0.1.21) (2025-06-22)
 
 
