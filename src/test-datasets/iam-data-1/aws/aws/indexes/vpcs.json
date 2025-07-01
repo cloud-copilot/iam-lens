@@ -1,0 +1,45 @@
+{
+  "vpcs": {
+    "vpc-00000000001": {
+      "arn": "arn:aws:ec2:us-west-2:100000000002:vpc/vpc-00000000001",
+      "endpoints": [
+        {
+          "id": "vpce-00000000001",
+          "service": "s3"
+        }
+      ]
+    },
+    "vpc-00000000002": {
+      "arn": "arn:aws:ec2:us-west-2:100000000002:vpc/vpc-00000000002",
+      "endpoints": [
+        {
+          "id": "vpce-00000000002",
+          "service": "s3"
+        }
+      ]
+    },
+    "vpc-00000000003": {
+      "arn": "arn:aws:ec2:us-west-2:100000000002:vpc/vpc-00000000003",
+      "endpoints": [
+        {
+          "id": "vpce-00000000003",
+          "service": "s3"
+        }
+      ]
+    }
+  },
+  "endpoints": {
+    "vpce-00000000001": {
+      "arn": "arn:aws:ec2:us-west-2:100000000002:vpc-endpoint/vpce-00000000001",
+      "vpc": "vpc-00000000001"
+    },
+    "vpce-00000000002": {
+      "arn": "arn:aws:ec2:us-west-2:100000000002:vpc-endpoint/vpce-00000000002",
+      "vpc": "vpc-00000000002"
+    },
+    "vpce-00000000003": {
+      "arn": "arn:aws:ec2:us-west-2:100000000002:vpc-endpoint/vpce-00000000003",
+      "vpc": "vpc-00000000003"
+    }
+  }
+}

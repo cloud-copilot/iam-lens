@@ -11,11 +11,11 @@
     "accountId": "200000000002",
     "region": "us-west-2"
   },
-  "who-can-org": {
+  "who-can-acct": {
     "accountId": "200000000002",
     "region": "us-west-2"
   },
-  "who-can-acct": {
+  "who-can-org": {
     "accountId": "200000000002",
     "region": "us-west-2"
   },

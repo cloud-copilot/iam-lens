@@ -23,7 +23,8 @@ const simulateIntegrationTest: {
       action: 's3:GetBucketPolicy',
       principal:
         'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'Allowed'
   },
@@ -36,7 +37,8 @@ const simulateIntegrationTest: {
       action: 's3:ListBucket',
       principal:
         'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'Allowed'
   },
@@ -49,7 +51,8 @@ const simulateIntegrationTest: {
       action: 's3:PutBucketPolicy',
       principal:
         'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'ExplicitlyDenied'
   },
@@ -62,7 +65,8 @@ const simulateIntegrationTest: {
       action: 's3:GetBucketPolicy',
       principal:
         'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'ExplicitlyDenied'
   },
@@ -74,7 +78,8 @@ const simulateIntegrationTest: {
       resourceAccount: undefined,
       action: 's3:ListAllMyBuckets',
       principal: 'arn:aws:iam::100000000002:user/user1',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'ExplicitlyDenied'
   },
@@ -86,7 +91,8 @@ const simulateIntegrationTest: {
       resourceAccount: undefined,
       action: 's3:ListAllMyBuckets',
       principal: 'arn:aws:iam::100000000002:user/user2',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'ExplicitlyDenied'
   },
@@ -98,7 +104,8 @@ const simulateIntegrationTest: {
       resourceAccount: undefined,
       action: 'ec2:TerminateInstances',
       principal: 'arn:aws:iam::100000000002:role/EC2Admin',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'ImplicitlyDenied'
   },
@@ -112,7 +119,8 @@ const simulateIntegrationTest: {
       action: 's3:ListBucket',
       principal:
         'arn:aws:iam::200000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'Allowed'
   },
@@ -124,7 +132,8 @@ const simulateIntegrationTest: {
       resourceAccount: undefined,
       action: 's3:ListBucket',
       principal: 'arn:aws:iam::200000000002:user/user1',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'ExplicitlyDenied'
   },
@@ -137,7 +146,8 @@ const simulateIntegrationTest: {
       action: 's3:GetObject',
       principal:
         'arn:aws:iam::200000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
     },
     expected: 'ExplicitlyDenied'
   },
@@ -150,7 +160,104 @@ const simulateIntegrationTest: {
       action: 'iam:DeletePolicy',
       principal:
         'arn:aws:iam::200000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
-      customContextKeys: {}
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    },
+    expected: 'ImplicitlyDenied'
+  },
+  {
+    name: 'Get VPCE from aws:SourceVpc allowed',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {
+        'aws:SourceVpc': 'vpc-00000000001'
+      },
+      simulationMode: 'Strict'
+    },
+    expected: 'Allowed'
+  },
+  {
+    name: 'Get VPCE from aws:SourceVpc ExplicitlyDenied',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {
+        'aws:SourceVpc': 'vpc-00000000002'
+      },
+      simulationMode: 'Strict'
+    },
+    expected: 'ExplicitlyDenied'
+  },
+  {
+    name: 'Get VPCE from aws:SourceVpc ImplicitlyDenied',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {
+        'aws:SourceVpc': 'vpc-00000000003'
+      },
+      simulationMode: 'Strict'
+    },
+    expected: 'ImplicitlyDenied'
+  },
+  {
+    name: 'Get VPCE from aws:SourceVpce Allowed',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {
+        'aws:SourceVpce': 'vpce-00000000001'
+      },
+      simulationMode: 'Strict'
+    },
+    expected: 'Allowed'
+  },
+  {
+    name: 'Get VPCE from aws:SourceVpce ExplicitlyDenied',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {
+        'aws:SourceVpce': 'vpce-00000000002'
+      },
+      simulationMode: 'Strict'
+    },
+    expected: 'ExplicitlyDenied'
+  },
+  {
+    name: 'Get VPCE from aws:SourceVpce ImplicitlyDenied',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {
+        'aws:SourceVpce': 'vpce-00000000003'
+      },
+      simulationMode: 'Strict'
     },
     expected: 'ImplicitlyDenied'
   }
@@ -173,7 +280,7 @@ describe('simulateIntegrationTest', () => {
         )
       } else {
         // When we run the simulation
-        const result = await simulateRequest(request, collectClient)
+        const { result } = await simulateRequest(request, collectClient)
 
         // Then the result should not have errors
         expect(result.errors).toBeUndefined()

@@ -75,6 +75,32 @@ iam-lens will automatically populate context keys (see below) and allows you to 
 
 iam-lens automatically populates the context keys below when simulating requests. These keys are set based on your principal, resource, and organization data. Any keys provided via `--context` will override the defaults.
 
+## Using VPC Endpoint Policies
+
+To simulate requests through VPC endpoints you can specify either the VPC id or the VPC endpoint id as part of the context. For example:
+
+```bash
+iam-lens simulate \
+  --principal arn:aws:iam::222222222222:user/Alice \
+  --action s3:GetObject
+  --resource arn:aws:s3:::my-bucket/my-object.txt \
+  --context aws:SourceVpc=vpc-myvpcid
+```
+
+Will automatically look up the VPC endpoint for S3 within VPC `vpc-myvpcid` and include the endpoint policy in the simulation. It will also automatically set the context key `aws:SourceVpce` to the VPC endpoint id.
+
+If you know the VPC endpoint id you can specify it directly. For example:
+
+```bash
+iam-lens simulate \
+  --principal arn:aws:iam::222222222222:user/Alice \
+  --action s3:GetObject
+  --resource arn:aws:s3:::my-bucket/my-object.txt \
+  --context aws:SourceVpce=vpce-myvpcendpointid
+```
+
+Will lookup the VPC endpoint and include the endpoint policy in the simulation. It will also automatically set the context key for `aws:SourceVpc` to the VPC id that endpoint is in.
+
 ### Default Context Keys
 
 - **`aws:SecureTransport`**
@@ -111,7 +137,6 @@ iam-lens automatically populates the context keys below when simulating requests
 
 - **`aws:userid`**
   The unique identifier for the principal session:
-
   - For a root principal: the account ID
   - For a user: the IAM user’s unique ID (or `UNKNOWN` if not found)
   - For a federated user: `<AccountId>:<FederatedName>`

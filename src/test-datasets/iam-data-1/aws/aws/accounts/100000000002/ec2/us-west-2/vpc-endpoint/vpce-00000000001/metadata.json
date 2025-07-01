@@ -1,0 +1,7 @@
+{
+  "id": "vpce-00000000001",
+  "vpc": "arn:aws:ec2:us-west-2:100000000002:vpc/vpc-00000000001",
+  "type": "Gateway",
+  "serviceName": "com.amazonaws.us-west-2.s3",
+  "arn": "arn:aws:ec2:us-west-2:100000000002:vpc-endpoint/vpce-00000000001"
+}

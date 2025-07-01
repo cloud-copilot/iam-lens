@@ -101,6 +101,12 @@ interface OrgStructure {
   [key: string]: OrgStructureNode
 }
 
+export interface VpcIndex {
+  vpcs: Record<string, { arn: string; endpoints: { id: string; service: string }[] }>
+
+  endpoints: Record<string, { arn: string; vpc: string }>
+}
+
 export interface IamCollectClientOptions {
   enableCaching?: boolean
 }
@@ -850,5 +856,69 @@ export class IamCollectClient {
     })
 
     return [...iamUsers.map((user) => user.arn), ...iamRoles.map((role) => role.arn)]
+  }
+
+  /**
+   * Get the VPC endpoint policy for a given VPC endpoint ARN.
+   *
+   * @param vpcEndpointArn the ARN of the VPC endpoint
+   * @returns the VPC endpoint policy, or undefined if not found
+   */
+  async getVpcEndpointPolicyForArn(vpcEndpointArn: string): Promise<any | undefined> {
+    const accountId = splitArnParts(vpcEndpointArn).accountId!
+    const vpcEndpointPolicy = await this.storageClient.getResourceMetadata<any, any>(
+      accountId,
+      vpcEndpointArn,
+      'endpoint-policy'
+    )
+    return vpcEndpointPolicy
+  }
+
+  /**
+   * Get the ARN of a VPC endpoint given its ID.
+   * @param vpcEndpointId the ID of the VPC endpoint
+   * @returns the ARN of the VPC endpoint, or undefined if not found
+   */
+  async getVpcEndpointArnForVpcEndpointId(vpcEndpointId: string): Promise<string | undefined> {
+    const index = await this.storageClient.getIndex<VpcIndex>('vpcs', {
+      endpoints: {},
+      vpcs: {}
+    })
+    return index.data.endpoints[vpcEndpointId]?.arn
+  }
+
+  /**
+   * Gets the VPC endpoint ID for a given VPC ID and service name.
+   *
+   * @param vpcId the ID of the VPC
+   * @param service the service name of the VPC endpoint (e.g., s3, ec2, etc.)
+   * @returns the VPC endpoint ID, or undefined if not found
+   */
+  async getVpcEndpointIdForVpcService(vpcId: string, service: string): Promise<string | undefined> {
+    const index = await this.storageClient.getIndex<VpcIndex>('vpcs', {
+      endpoints: {},
+      vpcs: {}
+    })
+
+    const vpc = index.data.vpcs[vpcId]
+    if (!vpc) {
+      return undefined
+    }
+    const endpoint = vpc.endpoints.find((ep) => ep.service === service)
+    return endpoint?.id
+  }
+
+  /**
+   * Lookup the VPC ID for a given VPC endpoint ID.
+   *
+   * @param vpcEndpointId the ID of the VPC endpoint
+   * @returns the VPC ID, or undefined if not found
+   */
+  async getVpcIdForVpcEndpointId(vpcEndpointId: string): Promise<string | undefined> {
+    const index = await this.storageClient.getIndex<VpcIndex>('vpcs', {
+      endpoints: {},
+      vpcs: {}
+    })
+    return index.data.endpoints[vpcEndpointId]?.vpc
   }
 }

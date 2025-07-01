@@ -90,20 +90,59 @@ export async function simulateRequest(
     simulationRequest.customContextKeys
   )
 
+  const vpcEndpointKey = Object.keys(context).find((key) => key.toLowerCase() == 'aws:sourcevpce')
+  let vpcEndpointId = vpcEndpointKey ? context[vpcEndpointKey] : undefined
+  let vpcId: string | string[] | undefined = undefined
+
+  if (!vpcEndpointId) {
+    const vpcKey = Object.keys(context).find((key) => key.toLowerCase() == 'aws:sourcevpc')
+    if (vpcKey) {
+      vpcId = context[vpcKey]
+      if (vpcId && typeof vpcId === 'string') {
+        vpcEndpointId = await collectClient.getVpcEndpointIdForVpcService(vpcId, service)
+      }
+    }
+  }
+
+  let vpcEndpointPolicy: { name: string; policy: any } | undefined = undefined
+  if (vpcEndpointId && typeof vpcEndpointId === 'string') {
+    const vpcEndpointArn = await collectClient.getVpcEndpointArnForVpcEndpointId(vpcEndpointId)
+    if (vpcEndpointArn) {
+      const vpcPolicy = await collectClient.getVpcEndpointPolicyForArn(vpcEndpointArn)
+      if (vpcPolicy) {
+        vpcEndpointPolicy = { name: vpcEndpointArn, policy: vpcPolicy }
+      }
+    }
+  }
+
+  if (vpcEndpointId && !vpcId) {
+    if (typeof vpcEndpointId == 'string') {
+      const vpcId = await collectClient.getVpcIdForVpcEndpointId(vpcEndpointId)
+      if (vpcId) {
+        context['aws:SourceVpc'] = vpcId
+      }
+    }
+  }
+  if (vpcEndpointId && !vpcEndpointKey) {
+    context['aws:SourceVpce'] = vpcEndpointId
+  }
+
   const applicableScps = isServiceLinkedRole(simulationRequest.principal)
     ? []
     : principalPolicies.scps
 
-  const simulation: Simulation = {
-    request: {
-      action: simulationRequest.action,
-      resource: {
-        resource: simulationRequest.resourceArn || '*',
-        accountId: simulationRequest.resourceAccount
-      },
-      principal: simulationRequest.principal,
-      contextVariables: context
+  const request: Simulation['request'] = {
+    action: simulationRequest.action,
+    resource: {
+      resource: simulationRequest.resourceArn || '*',
+      accountId: simulationRequest.resourceAccount
     },
+    principal: simulationRequest.principal,
+    contextVariables: context
+  }
+
+  const simulation: Simulation = {
+    request,
     identityPolicies: prepareIdentityPolicies(simulationRequest.principal, principalPolicies),
     serviceControlPolicies: applicableScps,
     resourceControlPolicies: rcpsForRequest(
@@ -113,7 +152,8 @@ export async function simulateRequest(
       principalPolicies.rcps
     ),
     resourcePolicy: useResourcePolicy ? resourcePolicy : undefined,
-    permissionBoundaryPolicies: preparePermissionBoundary(principalPolicies)
+    permissionBoundaryPolicies: preparePermissionBoundary(principalPolicies),
+    vpcEndpointPolicies: vpcEndpointPolicy ? [vpcEndpointPolicy] : undefined
   }
 
   // Assemble the strict context keys for the simulation
@@ -147,7 +187,7 @@ export async function simulateRequest(
     strictConditionKeys: strictContextKeys
   })
 
-  return result
+  return { request, result }
 }
 
 async function getResourcePolicies(

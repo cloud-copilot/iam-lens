@@ -171,7 +171,7 @@ async function runPrincipalForActions(
       collectClient
     )
 
-    if (discoveryResult.analysis?.result === 'Allowed') {
+    if (discoveryResult?.result.analysis?.result === 'Allowed') {
       const result = await simulateRequest(
         {
           principal: principal,
@@ -183,7 +183,7 @@ async function runPrincipalForActions(
         },
         collectClient
       )
-      if (result.analysis?.result === 'Allowed') {
+      if (result?.result.analysis?.result === 'Allowed') {
         const actionType = await getActionLevel(service, serviceAction)
         results.push({
           principal,
@@ -198,8 +198,10 @@ async function runPrincipalForActions(
           service: service,
           action: serviceAction,
           level: actionType.toLowerCase(),
-          conditions: discoveryResult.analysis.ignoredConditions,
-          dependsOnSessionName: discoveryResult.analysis.ignoredRoleSessionName ? true : undefined
+          conditions: discoveryResult?.result.analysis.ignoredConditions,
+          dependsOnSessionName: discoveryResult?.result.analysis.ignoredRoleSessionName
+            ? true
+            : undefined
         })
       }
     }

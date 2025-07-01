@@ -129,7 +129,7 @@ const main = async () => {
     const { principal, resource, resourceAccount, action, context } = cli.args
     const contextKeys = convertContextKeysToMap(context)
 
-    const result = await simulateRequest(
+    const { request, result } = await simulateRequest(
       {
         principal: principal!,
         resourceArn: resource,
@@ -149,7 +149,7 @@ const main = async () => {
 
     console.log(`Simulation Result: ${result.analysis?.result}`)
     if (cli.args.verbose) {
-      console.log(JSON.stringify(result, null, 2))
+      console.log(JSON.stringify({ request, result }, null, 2))
     }
 
     if (!resultMatchesExpectation(cli.args.expect, result.analysis?.result!)) {
