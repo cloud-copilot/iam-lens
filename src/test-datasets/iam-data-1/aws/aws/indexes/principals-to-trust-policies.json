@@ -1,0 +1,37 @@
+{
+  "100000000001": {
+    "principal": {
+      "arn:aws:iam::100000000001:saml-provider/AWSSSO_eaa8c24d827e9175_DO_NOT_DELETE": [
+        "arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5"
+      ]
+    }
+  },
+  "100000000002": {
+    "principal": {
+      "arn:aws:iam::100000000002:saml-provider/AWSSSO_eaa8c24d827e9175_DO_NOT_DELETE": [
+        "arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5"
+      ],
+      "arn:aws:iam::100000000002:root": [
+        "arn:aws:iam::100000000002:role/EC2Admin",
+        "arn:aws:iam::100000000002:role/IAMCollect"
+      ]
+    }
+  },
+  "200000000001": {
+    "principal": {
+      "arn:aws:iam::200000000001:saml-provider/AWSSSO_eaa8c24d827e9175_DO_NOT_DELETE": [
+        "arn:aws:iam::200000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5"
+      ]
+    }
+  },
+  "200000000002": {
+    "principal": {
+      "lambda.amazonaws.com": [
+        "arn:aws:iam::200000000002:role/LambdaRole"
+      ],
+      "arn:aws:iam::200000000002:root": [
+        "arn:aws:iam::200000000002:role/VpcBucketRole"
+      ]
+    }
+  }
+}
