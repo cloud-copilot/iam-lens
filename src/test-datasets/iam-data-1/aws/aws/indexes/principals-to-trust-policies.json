@@ -26,12 +26,8 @@
   },
   "200000000002": {
     "principal": {
-      "lambda.amazonaws.com": [
-        "arn:aws:iam::200000000002:role/LambdaRole"
-      ],
-      "arn:aws:iam::200000000002:root": [
-        "arn:aws:iam::200000000002:role/VpcBucketRole"
-      ]
+      "lambda.amazonaws.com": ["arn:aws:iam::200000000002:role/LambdaRole"],
+      "arn:aws:iam::200000000002:root": ["arn:aws:iam::200000000002:role/VpcBucketRole"]
     }
   }
 }
