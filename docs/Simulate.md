@@ -77,7 +77,7 @@ iam-lens automatically populates the context keys below when simulating requests
 
 ## Using VPC Endpoint Policies
 
-To simulate requests through VPC endpoints you can to specify either the VPC id or the VPC endpoint id as part of the context. For example:
+To simulate requests through VPC endpoints you can specify either the VPC id or the VPC endpoint id as part of the context. For example:
 
 ```bash
 iam-lens simulate \
