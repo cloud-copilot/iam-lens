@@ -99,7 +99,7 @@ iam-lens simulate \
   --context aws:SourceVpce=vpce-myvpcendpointid
 ```
 
-Will lookup the the VPC endpoint and include the endpoint policy in the simulation. It will also automatically set the context key for `aws:SourceVpc` to the VPC id that endpoint is in.
+Will lookup the VPC endpoint and include the endpoint policy in the simulation. It will also automatically set the context key for `aws:SourceVpc` to the VPC id that endpoint is in.
 
 ### Default Context Keys
 
