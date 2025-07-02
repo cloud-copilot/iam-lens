@@ -1,3 +1,10 @@
+## [0.1.24](https://github.com/cloud-copilot/iam-lens/compare/v0.1.23...v0.1.24) (2025-07-02)
+
+
+### Features
+
+* Add support for loading and evaluating vpc endpoint policies ([2169fc5](https://github.com/cloud-copilot/iam-lens/commit/2169fc5e4628f37087bb39e53520eb1d9bde2f3a))
+
 ## [0.1.23](https://github.com/cloud-copilot/iam-lens/compare/v0.1.22...v0.1.23) (2025-06-29)
 
 ## [0.1.22](https://github.com/cloud-copilot/iam-lens/compare/v0.1.21...v0.1.22) (2025-06-28)
