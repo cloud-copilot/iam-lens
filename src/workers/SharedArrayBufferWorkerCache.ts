@@ -9,7 +9,6 @@ export class SharedArrayBufferWorkerCache implements Cache {
 
   constructor(private parentPort: MessagePort) {
     this.parentPort.on('message', (msg) => {
-      // console.log('Received message in worker cache:', msg)
       if (msg.type === 'cacheHit' || msg.type === 'cacheMiss') {
         const resolver = this.parentPromiseMap[msg.cacheKey]
         if (resolver) {
@@ -29,7 +28,6 @@ export class SharedArrayBufferWorkerCache implements Cache {
       try {
         const parentPromise = new Promise<SharedArrayBuffer | false>((resolve) => {
           this.parentPromiseMap[cacheKey] = resolve
-          // console.log('Requesting cacheKey from worker thread:', cacheKey)
           this.parentPort.postMessage({ type: 'getCache', cacheKey })
         })
 

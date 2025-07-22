@@ -11,7 +11,6 @@ export class SharedArrayBufferMainCache implements Cache {
   constructor(workers: Worker[]) {
     for (const worker of workers) {
       worker.on('message', (message) => {
-        // console.log('Received message in main cache:', message)
         if (message.type === 'getCache') {
           const cacheKey = message.cacheKey
           const value = this.cache[cacheKey]

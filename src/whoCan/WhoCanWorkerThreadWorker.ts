@@ -18,8 +18,6 @@ const { concurrency, collectConfigs, partition } = workerData as {
   partition: string
 }
 
-// console.log(JSON.stringify(workerData))
-
 const taskPromises: Record<number, (val: any) => void> = {}
 
 parentPort.on('message', (msg) => {
@@ -29,19 +27,8 @@ parentPort.on('message', (msg) => {
   } else if (msg.type === 'workAvailable') {
     jobRunner.notifyWorkAvailable()
   } else if (msg.type === 'finishWork') {
-    // console.log('Worker received finishWork message')
     jobRunner.finishAllWork().then(() => {
-      // console.log('Worker finished all work, sending finished message')
       parentPort!.postMessage({ type: 'finished' })
-      // new Promise((resolve) => {
-      //   setTimeout(() => {
-      //     console.log(
-      //       `Worker exiting. Requests: ${requestCount}, Tasks: ${taskCount}, Returns: ${returnCount}`
-      //     )
-
-      //     parentPort!.postMessage({ type: 'finished' })
-      //   }, 2000)
-      // })
     })
   }
 })
@@ -63,18 +50,14 @@ const jobRunner = new PullBasedJobRunner<
     })
   },
   (taskDetails) => {
-    // console.log(`Worker creating job for task: ${JSON.stringify(taskDetails)}`)
-    // return createJobForWhoCanWorkItem(taskDetails, collectClient)
     return {
       properties: {},
       execute: async (context) => {
-        // console.log(`Worker executing job for task: ${JSON.stringify(taskDetails)}`)
         return executeWhoCan(taskDetails, collectClient)
       }
     }
   },
   async (result) => {
-    // console.log('Worker posting result back to main thread', result)
     parentPort!.postMessage({ type: 'result', result })
   }
 )
