@@ -56,6 +56,12 @@ const main = async () => {
             validValues: ['Allowed', 'ImplicitlyDenied', 'ExplicitlyDenied', 'AnyDeny'],
             description:
               'The expected result of the simulation, if the result does not match the expected response a non-zero exit code will be returned'
+          },
+          ignoreMissingPrincipal: {
+            type: 'boolean',
+            description:
+              'Ignore if the principal does not exist. Useful for simulating actions from principals that may not exist or are outside your data set',
+            character: 'i'
           }
         }
       },
@@ -126,7 +132,8 @@ const main = async () => {
   const collectClient = getCollectClient(collectConfigs, thePartition)
 
   if (cli.subcommand === 'simulate') {
-    const { principal, resource, resourceAccount, action, context } = cli.args
+    const { principal, resource, resourceAccount, action, context, ignoreMissingPrincipal } =
+      cli.args
     const contextKeys = convertContextKeysToMap(context)
 
     const { request, result } = await simulateRequest(
@@ -136,7 +143,8 @@ const main = async () => {
         resourceAccount: resourceAccount,
         action: action!,
         customContextKeys: contextKeys,
-        simulationMode: 'Strict'
+        simulationMode: 'Strict',
+        ignoreMissingPrincipal
       },
       collectClient
     )
@@ -164,7 +172,7 @@ const main = async () => {
       process.exit(1)
     }
 
-    const results = await whoCan(collectClient, {
+    const results = await whoCan(collectConfigs, thePartition, {
       resource: cli.args.resource!,
       actions: cli.args.actions!,
       resourceAccount: cli.args.resourceAccount

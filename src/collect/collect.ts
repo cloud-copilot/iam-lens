@@ -1,5 +1,5 @@
 import { TopLevelConfig, createStorageClient, loadConfigFiles } from '@cloud-copilot/iam-collect'
-import { IamCollectClient } from './client.js'
+import { IamCollectClient, IamCollectClientOptions } from './client.js'
 
 /**
  * Load IAM collect configs from the specified paths.
@@ -18,6 +18,10 @@ export async function loadCollectConfigs(configPaths: string[]): Promise<TopLeve
  * @param partition which partition to use (aws, aws-cn, aws-us-gov)
  * @returns the iam-collect client to use for retrieving IAM resources
  */
-export function getCollectClient(configs: TopLevelConfig[], partition: string): IamCollectClient {
-  return new IamCollectClient(createStorageClient(configs, partition))
+export function getCollectClient(
+  configs: TopLevelConfig[],
+  partition: string,
+  clientOptions?: IamCollectClientOptions
+): IamCollectClient {
+  return new IamCollectClient(createStorageClient(configs, partition), clientOptions)
 }

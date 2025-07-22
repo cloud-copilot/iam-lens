@@ -1,3 +1,4 @@
+import { TopLevelConfig } from '@cloud-copilot/iam-collect'
 import {
   iamActionDetails,
   iamActionExists,
@@ -15,11 +16,19 @@ import {
   isServicePrincipal,
   splitArnParts
 } from '@cloud-copilot/iam-utils'
+import { JobResult, numberOfCpus, StreamingJobQueue } from '@cloud-copilot/job'
+import { Worker } from 'worker_threads'
 import { IamCollectClient } from '../collect/client.js'
+import { getCollectClient } from '../collect/collect.js'
 import { getAccountIdForResource, getResourcePolicyForResource } from '../resources.js'
-import { simulateRequest } from '../simulate/simulate.js'
 import { Arn } from '../utils/arn.js'
 import { AssumeRoleActions } from '../utils/sts.js'
+import { getWorkerScriptPath } from '../utils/workerScript.js'
+import { ArrayStreamingWorkQueue } from '../workers/ArrayStreamingWorkQueue.js'
+import { SharedArrayBufferMainCache } from '../workers/SharedArrayBufferMainCache.js'
+import { StreamingWorkQueue } from '../workers/StreamingWorkQueue.js'
+import { createMainThreadStreamingWorkQueue } from './WhoCanMainThreadWorker.js'
+import { WhoCanWorkItem } from './WhoCanWorker.js'
 
 export interface ResourceAccessRequest {
   resource?: string
@@ -46,10 +55,28 @@ export interface WhoCanResponse {
 }
 
 export async function whoCan(
-  collectClient: IamCollectClient,
+  // collectClient: IamCollectClient,
+  collectConfigs: TopLevelConfig[],
+  partition: string,
   request: ResourceAccessRequest
 ): Promise<WhoCanResponse> {
+  const cpus = numberOfCpus()
   const { resource } = request
+
+  const workerPath = getWorkerScriptPath('whoCan/WhoCanWorkerThreadWorker.js')
+  const workers = new Array(cpus - 1).fill(undefined).map((val) => {
+    return new Worker(workerPath, {
+      workerData: {
+        collectConfigs: collectConfigs,
+        partition,
+        concurrency: 50
+      }
+    })
+  })
+
+  const collectClient = getCollectClient(collectConfigs, partition, {
+    cacheProvider: new SharedArrayBufferMainCache(workers)
+  })
 
   if (!request.resourceAccount && !request.resource) {
     throw new Error('Either resourceAccount or resource must be provided in the request.')
@@ -95,48 +122,136 @@ export async function whoCan(
 
   const whoCanResults: WhoCanAllowed[] = []
 
-  for (const account of uniqueAccounts.accounts) {
-    const principals = await collectClient.getAllPrincipalsInAccount(account)
-    for (const principal of principals) {
-      const principalResults = await runPrincipalForActions(
-        collectClient,
-        principal,
-        resource,
-        resourceAccount,
-        actions
-      )
-      whoCanResults.push(...principalResults)
+  const concurrency = Math.min(50, Math.max(1, numberOfCpus() * 2))
+
+  let simulationCount = 0
+  const simulateQueue = new StreamingWorkQueue<WhoCanWorkItem>()
+
+  const simulationErrors: any[] = []
+
+  const onComplete = (result: JobResult<WhoCanAllowed | undefined, Record<string, unknown>>) => {
+    simulationCount++
+    if (result.status === 'fulfilled' && result.value) {
+      whoCanResults.push(result.value)
+    } else if (result.status === 'rejected') {
+      console.error('Error running simulation:', result.reason)
+      simulationErrors.push(result)
     }
+  }
+
+  const mainThreadWorker = createMainThreadStreamingWorkQueue(
+    simulateQueue,
+    collectClient,
+    onComplete
+  )
+
+  workers.forEach((worker) => {
+    worker.on('message', (msg) => {
+      if (msg.type === 'requestTask') {
+        const task = simulateQueue.dequeue()
+        worker.postMessage({ type: 'task', workerId: msg.workerId, task })
+      }
+      if (msg.type === 'result') {
+        onComplete(msg.result)
+      }
+    })
+  })
+
+  simulateQueue.setWorkAvailableCallback(() => {
+    mainThreadWorker.notifyWorkAvailable()
+    workers.forEach((w) => w.postMessage({ type: 'workAvailable' }))
+  })
+
+  const accountQueue = new StreamingJobQueue<void, Record<string, unknown>>(
+    concurrency,
+    console,
+    async (response) => {}
+  )
+
+  for (const account of uniqueAccounts.accounts) {
+    accountQueue.enqueue({
+      properties: {},
+      execute: async () => {
+        const principals = await collectClient.getAllPrincipalsInAccount(account)
+        for (const principal of principals) {
+          await runPrincipalForActions(
+            collectClient,
+            simulateQueue,
+            principal,
+            resource,
+            resourceAccount,
+            actions
+          )
+        }
+      }
+    })
   }
 
   const principalsNotFound: string[] = []
   for (const principal of accountsToCheck.specificPrincipals) {
-    if (isServicePrincipal(principal)) {
-      const principalResults = await runPrincipalForActions(
-        collectClient,
-        principal,
-        resource,
-        resourceAccount,
-        actions
-      )
-      whoCanResults.push(...principalResults)
-    } else if (isIamUserArn(principal) || isIamRoleArn(principal) || isAssumedRoleArn(principal)) {
-      const principalExists = await collectClient.principalExists(principal)
-      if (!principalExists) {
-        principalsNotFound.push(principal)
-      } else {
-        const principalResults = await runPrincipalForActions(
-          collectClient,
-          principal,
-          resource,
-          resourceAccount,
-          actions
-        )
-        whoCanResults.push(...principalResults)
+    accountQueue.enqueue({
+      properties: {},
+      execute: async () => {
+        if (isServicePrincipal(principal)) {
+          await runPrincipalForActions(
+            collectClient,
+            simulateQueue,
+            principal,
+            resource,
+            resourceAccount,
+            actions
+          )
+        } else if (
+          isIamUserArn(principal) ||
+          isIamRoleArn(principal) ||
+          isAssumedRoleArn(principal)
+        ) {
+          const principalExists = await collectClient.principalExists(principal)
+          if (!principalExists) {
+            principalsNotFound.push(principal)
+          } else {
+            await runPrincipalForActions(
+              collectClient,
+              simulateQueue,
+              principal,
+              resource,
+              resourceAccount,
+              actions
+            )
+          }
+        } else {
+          // TODO: Add a check for OIDC and SAML providers here
+          principalsNotFound.push(principal)
+        }
       }
-    } else {
-      principalsNotFound.push(principal)
-    }
+    })
+  }
+
+  await accountQueue.finishAllWork()
+  // await simulateQueue.finishAllWork()
+
+  const workerPromises = workers.map((worker) => {
+    return new Promise<void>((resolve, reject) => {
+      worker.on('message', (msg) => {
+        if (msg.type === 'finished') {
+          worker.terminate().then(() => resolve())
+        }
+      })
+      worker.on('error', (err) => {
+        console.error('Worker error:', err)
+        reject(err)
+      })
+      worker.postMessage({ type: 'finishWork' })
+    })
+  })
+
+  await Promise.all([mainThreadWorker.finishAllWork(), ...workerPromises])
+
+  if (simulationErrors.length > 0) {
+    console.error(`Completed with ${simulationErrors.length} simulation errors.`)
+    throw new Error(
+      `Completed with ${simulationErrors.length} simulation errors. See previous logs.`
+    )
   }
 
   return {
@@ -149,77 +264,30 @@ export async function whoCan(
   }
 }
 
+let enqueuedCount = 0
+
 async function runPrincipalForActions(
   collectClient: IamCollectClient,
+  simulationQueue: StreamingWorkQueue<WhoCanWorkItem> | ArrayStreamingWorkQueue<WhoCanWorkItem>,
   principal: string,
   resource: string | undefined,
   resourceAccount: string,
   actions: string[]
-): Promise<WhoCanAllowed[]> {
-  const results: WhoCanAllowed[] = []
+): Promise<void> {
   for (const action of actions) {
-    const [service, serviceAction] = action.split(':')
-    const discoveryResult = await simulateRequest(
-      {
-        principal: principal,
-        resourceArn: resource,
-        resourceAccount,
-        action,
-        customContextKeys: {},
-        simulationMode: 'Discovery'
-      },
-      collectClient
-    )
+    enqueuedCount++
+    simulationQueue.enqueue({
+      resource,
+      action,
+      principal,
+      resourceAccount
+    })
 
-    if (discoveryResult?.result.analysis?.result === 'Allowed') {
-      const result = await simulateRequest(
-        {
-          principal: principal,
-          resourceArn: resource,
-          resourceAccount,
-          action,
-          customContextKeys: {},
-          simulationMode: 'Strict'
-        },
-        collectClient
-      )
-      if (result?.result.analysis?.result === 'Allowed') {
-        const actionType = await getActionLevel(service, serviceAction)
-        results.push({
-          principal,
-          service: service,
-          action: serviceAction,
-          level: actionType.toLowerCase()
-        })
-      } else {
-        const actionType = await getActionLevel(service, serviceAction)
-        results.push({
-          principal,
-          service: service,
-          action: serviceAction,
-          level: actionType.toLowerCase(),
-          conditions: discoveryResult?.result.analysis.ignoredConditions,
-          dependsOnSessionName: discoveryResult?.result.analysis.ignoredRoleSessionName
-            ? true
-            : undefined
-        })
-      }
-    }
+    // simulationQueue.enqueue({
+    //   properties: {},
+
+    // })
   }
-
-  return results
-}
-
-/**
- * Get the action level for a specific service action, will fail if the service or action does not exist.
- *
- * @param service the service the action belongs to
- * @param action the action to get the level for
- * @returns the access level of the action, e.g. 'Read', 'Write', 'List', 'Tagging', 'Permissions management', 'Other'
- */
-async function getActionLevel(service: string, action: string): Promise<string> {
-  const details = await iamActionDetails(service, action)
-  return details.accessLevel
 }
 
 export async function uniqueAccountsToCheck(

@@ -26,7 +26,8 @@ export const knownContextKeys: readonly string[] = [
   'aws:PrincipalServiceName',
   'aws:SourceAccount',
   'aws:SourceOrgID',
-  'aws:SourceOrgPaths'
+  'aws:SourceOrgPaths',
+  'aws:SourceOwner'
 ]
 
 /**
@@ -90,6 +91,7 @@ export async function createContextKeys(
     } else if (arnParts.resourceType === 'assumed-role') {
       result['aws:PrincipalType'] = 'AssumedRole'
 
+      //TODO: Set aws:userId for role principals
       const sessionName = arnParts.resourcePath?.split('/').at(-1)!
       const roleArn = convertAssumedRoleArnToRoleArn(simulationRequest.principal)
       const roleUniqueId = await collectClient.getUniqueIdForIamResource(roleArn)
@@ -129,6 +131,7 @@ export async function createContextKeys(
     result['aws:PrincipalIsAWSService'] = 'true'
     result['aws:PrincipalServiceName'] = simulationRequest.principal
     result['aws:SourceAccount'] = simulationRequest.resourceAccount!
+    result['aws:SourceOwner'] = simulationRequest.resourceAccount!
     result['aws:SourceOrgID'] = result['aws:ResourceOrgID']
     result['aws:SourceOrgPaths'] = result['aws:ResourceOrgPaths']
   }

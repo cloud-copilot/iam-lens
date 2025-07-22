@@ -294,3 +294,43 @@ describe('simulateIntegrationTest', () => {
     })
   }
 })
+
+describe('simulatePrincipalDoesNotExist', () => {
+  it('should throw an error if the principal does not exist', async () => {
+    // Given a request with a non-existent principal
+    const collectClient = getTestDatasetClient('1')
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::100000000002:role/NonExistentRole',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    }
+
+    // When we run the simulation
+    await expect(simulateRequest(request, collectClient)).rejects.toThrow(
+      new RegExp('Principal arn:aws:iam::100000000002:role/NonExistentRole does not exist.*')
+    )
+  })
+
+  it('should not throw an error if ignoreMissingPrincipal is true', async () => {
+    // Given a request with a non-existent principal and ignoreMissingPrincipal set to true
+    const collectClient = getTestDatasetClient('1')
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::100000000002:role/NonExistentRole',
+      customContextKeys: {},
+      simulationMode: 'Strict',
+      ignoreMissingPrincipal: true
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+  })
+})

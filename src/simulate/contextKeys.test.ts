@@ -921,6 +921,38 @@ describe('createContextKeys', () => {
     })
   })
 
+  describe('aws:SourceOwner', () => {
+    it('should set aws:SourceOwner to the owner of the resource account for service principals', async () => {
+      // Given a simulation request with a service principal and a resource account
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        principal: 'lambda.amazonaws.com',
+        resourceAccount: '123456789012'
+      }
+
+      // When creating context keys
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+
+      // Then aws:SourceAccount should be set to the resource account ID
+      expect(contextKeys['aws:SourceOwner']).toBe('123456789012')
+    })
+
+    it('should not set aws:SourceOwner for IAM users or roles', async () => {
+      // Given a simulation request with an IAM user principal
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        principal: 'arn:aws:iam::123456789012:user/test-user',
+        resourceAccount: '123456789012'
+      }
+
+      // When creating context keys
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+
+      // Then aws:SourceAccount should not be set
+      expect(contextKeys['aws:SourceOwner']).toBeUndefined()
+    })
+  })
+
   describe('aws:SourceOrgID', () => {
     it('should set aws:SourceOrgID to the organization ID of the resource account for service principals', async () => {
       // Given a simulation request with a service principal and a resource account in an org
