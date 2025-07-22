@@ -55,7 +55,6 @@ export interface WhoCanResponse {
 }
 
 export async function whoCan(
-  // collectClient: IamCollectClient,
   collectConfigs: TopLevelConfig[],
   partition: string,
   request: ResourceAccessRequest
@@ -264,8 +263,6 @@ export async function whoCan(
   }
 }
 
-let enqueuedCount = 0
-
 async function runPrincipalForActions(
   collectClient: IamCollectClient,
   simulationQueue: StreamingWorkQueue<WhoCanWorkItem> | ArrayStreamingWorkQueue<WhoCanWorkItem>,
@@ -275,18 +272,12 @@ async function runPrincipalForActions(
   actions: string[]
 ): Promise<void> {
   for (const action of actions) {
-    enqueuedCount++
     simulationQueue.enqueue({
       resource,
       action,
       principal,
       resourceAccount
     })
-
-    // simulationQueue.enqueue({
-    //   properties: {},
-
-    // })
   }
 }
 
