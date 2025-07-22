@@ -485,7 +485,6 @@ export class IamCollectClient {
    * @returns The org ID for the account, or undefined if not found.
    */
   async getOrgIdForAccount(accountId: string): Promise<string | undefined> {
-    // const index = await this.storageClient.getIndex<Record<string, string>>('accounts-to-orgs', {})
     const index = await this.getIndex<Record<string, string>>('accounts-to-orgs', {})
     const accountToOrgMap = index.data
     return accountToOrgMap[accountId]
@@ -504,10 +503,6 @@ export class IamCollectClient {
    * @returns The account ID for the bucket, or undefined if not found.
    */
   async getAccountIdForBucket(bucketName: string): Promise<string | undefined> {
-    // const index = await this.storageClient.getIndex<Record<string, { accountId: string }>>(
-    //   'buckets-to-accounts',
-    //   {}
-    // )
     const index = await this.getIndex<Record<string, { accountId: string }>>(
       'buckets-to-accounts',
       {}
