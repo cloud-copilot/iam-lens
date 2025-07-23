@@ -29,7 +29,7 @@ export interface CanWhatInput {
  *
  * @param collectClient the IAM collect client to use for retrieving policies.
  * @param input the input containing the principal and options.
- * @returns
+ * @returns A promise that resolves to the permissions the principal can perform, or void if the implementation is incomplete.
  */
 export async function canWhat(collectClient: IamCollectClient, input: CanWhatInput) {
   const { principal } = input
