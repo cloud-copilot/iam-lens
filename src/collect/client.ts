@@ -112,7 +112,7 @@ export interface VpcIndex {
  */
 export interface IamCollectClientOptions {
   /**
-   * Which #{@link CacheProvider} to use for caching results.
+   * Which {@link CacheProvider} to use for caching results.
    */
   cacheProvider?: CacheProvider
 }
