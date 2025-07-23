@@ -1,3 +1,10 @@
+## [0.1.27](https://github.com/cloud-copilot/iam-lens/compare/v0.1.26...v0.1.27) (2025-07-23)
+
+
+### Features
+
+* Export functions with supporting interfaces and classes. ([3a30c0b](https://github.com/cloud-copilot/iam-lens/commit/3a30c0b472431e2f2dbf1241472de3bb45ce7f07))
+
 ## [0.1.26](https://github.com/cloud-copilot/iam-lens/compare/v0.1.25...v0.1.26) (2025-07-23)
 
 
