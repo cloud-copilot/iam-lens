@@ -21,17 +21,54 @@ import {
 import { AssumeRoleActions } from '../utils/sts.js'
 import { ContextKeys, createContextKeys, knownContextKeys } from './contextKeys.js'
 
+/**
+ * The request details for simulating an IAM request.
+ */
 export interface SimulationRequest {
+  /**
+   * The ARN of the resource to simulate access to. Can be undefined for wildcard actions.
+   */
   resourceArn: string | undefined
+
+  /**
+   * The account ID of the resource, only required if it cannot be determined from the resource ARN.
+   */
   resourceAccount: string | undefined
+
+  /**
+   * The action to simulate; must be a valid IAM service and action such as `s3:ListBucket`.
+   */
   action: string
+
+  /**
+   * The ARN of the principal to simulate. Can be a user, role, session, or AWS service.
+   */
   principal: string
   // anonymous?: boolean
+
+  /**
+   * Any custom context keys to use for the simulation.
+   */
   customContextKeys: ContextKeys
+
+  /**
+   * The simulation mode to use for the request.
+   */
   simulationMode: SimulationMode
+
+  /**
+   * Whether to ignore missing principal errors.
+   */
   ignoreMissingPrincipal?: boolean
 }
 
+/**
+ * Simulate an IAM request against the collected IAM data.
+ *
+ * @param simulationRequest the simulation request details.
+ * @param collectClient the IAM collect client to use for data access.
+ * @returns the simulation result, including the request and the evaluation result.
+ */
 export async function simulateRequest(
   simulationRequest: SimulationRequest,
   collectClient: IamCollectClient

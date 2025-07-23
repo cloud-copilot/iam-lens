@@ -107,15 +107,27 @@ export interface VpcIndex {
   endpoints: Record<string, { arn: string; vpc: string }>
 }
 
+/**
+ * Options for the IamCollectClient.
+ */
 export interface IamCollectClientOptions {
+  /**
+   * Which #{@link CacheProvider} to use for caching results.
+   */
   cacheProvider?: CacheProvider
 }
 
+/**
+ * An interface for a cache provider that can be used to cache results.
+ */
 export interface CacheProvider {
   withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T>
 }
 
-class InMemoryCacheProvider implements CacheProvider {
+/**
+ * A cache provider that stores results in memory for a single worker.
+ */
+export class InMemoryCacheProvider implements CacheProvider {
   private cache: Record<string, any> = {}
 
   public async withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {
@@ -128,15 +140,27 @@ class InMemoryCacheProvider implements CacheProvider {
   }
 }
 
+/**
+ * A cache provider that does not cache results.
+ */
 export class NoCacheProvider implements CacheProvider {
   public async withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {
     return fetcher()
   }
 }
 
+/**
+ * A client for simplifying access to the IAM collect data store.
+ */
 export class IamCollectClient {
   private cacheProvider: CacheProvider
 
+  /**
+   * Creates a new instance of the IamCollectClient.
+   *
+   * @param storageClient the iam-collect storage client to use for data access
+   * @param clientOptions optional configuration options for the client. By default, uses an in-memory cache provider.
+   */
   constructor(
     private storageClient: AwsIamStore,
     clientOptions?: IamCollectClientOptions
@@ -592,6 +616,12 @@ export class IamCollectClient {
     })
   }
 
+  /**
+   * Gets metadata for an IAM user.
+   *
+   * @param userArn the ARN of the user.
+   * @returns the metadata for the user, or undefined if not found.
+   */
   async getIamUserMetadata(userArn: string): Promise<IamUserMetadata | undefined> {
     const cacheKey = `iamUserMetadata:${userArn}`
     return this.withCache(cacheKey, async () => {
@@ -676,6 +706,12 @@ export class IamCollectClient {
     })
   }
 
+  /**
+   * Get the inline policies attached to a group.
+   *
+   * @param groupArn the ARN of the group.
+   * @returns the inline policies for the group.
+   */
   async getInlinePoliciesForGroup(groupArn: string): Promise<InlinePolicy[]> {
     const cacheKey = `groupInlinePolicies:${groupArn}`
     return this.withCache(cacheKey, async () => {
@@ -692,6 +728,11 @@ export class IamCollectClient {
     })
   }
 
+  /**
+   * Gets the managed policies attached to a role.
+   * @param roleArn the ARN of the role.
+   * @returns the managed policies attached to the role.
+   */
   async getManagedPoliciesForRole(roleArn: string): Promise<ManagedPolicy[]> {
     const cacheKey = `managedPoliciesForRole:${roleArn}`
     return this.withCache(cacheKey, async () => {
@@ -713,6 +754,12 @@ export class IamCollectClient {
     })
   }
 
+  /**
+   * Get the inline policies attached to a role.
+   *
+   * @param roleArn the ARN of the role.
+   * @returns the inline policies for the role.
+   */
   async getInlinePoliciesForRole(roleArn: string): Promise<InlinePolicy[]> {
     const cacheKey = `inlinePoliciesForRole:${roleArn}`
     return this.withCache(cacheKey, async () => {
@@ -729,6 +776,11 @@ export class IamCollectClient {
     })
   }
 
+  /**
+   * Get the permissions boundary policy attached to a role, if any.
+   * @param roleArn the ARN of the role.
+   * @returns the permissions boundary policy as a ManagedPolicy, or undefined if none is set.
+   */
   async getPermissionsBoundaryForRole(roleArn: string): Promise<ManagedPolicy | undefined> {
     const cacheKey = `permissionBoundaryForRole:${roleArn}`
     return this.withCache(cacheKey, async () => {
@@ -881,6 +933,13 @@ export class IamCollectClient {
     })
   }
 
+  /**
+   * Get the accounts for a given organization path.
+   *
+   * @param orgId the ID of the organization
+   * @param ouIds the ids of the organizational units in the path
+   * @returns a tuple containing a boolean indicating success and an array of account IDs
+   */
   async getAccountsForOrgPath(orgId: string, ouIds: string[]): Promise<[boolean, string[]]> {
     const cacheKey = `accountsForOrgPath:${orgId}:${ouIds.join('/')}`
     return this.withCache(cacheKey, async () => {
@@ -924,6 +983,12 @@ export class IamCollectClient {
     })
   }
 
+  /**
+   * Get all the principals (users and roles) in a given account.
+   *
+   * @param accountId the ID of the account
+   * @returns a list of all principal ARNs in the account
+   */
   async getAllPrincipalsInAccount(accountId: string): Promise<string[]> {
     const cacheKey = `allPrincipalsInAccount:${accountId}`
     return this.withCache(cacheKey, async () => {

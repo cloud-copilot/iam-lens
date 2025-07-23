@@ -3,6 +3,13 @@ import { IamCollectClient } from '../collect/client.js'
 import { isArnPrincipal, isServicePrincipal } from '../principals.js'
 import { SimulationRequest } from './simulate.js'
 
+/**
+ * Context keys for IAM simulation requests.
+ *
+ * These keys are used to provide additional context for the simulation, such as
+ * the principal making the request, the resource being accessed, and any additional
+ * context keys that may be required for the simulation.
+ */
 export type ContextKeys = Record<string, string | string[]>
 
 export const knownContextKeys: readonly string[] = [

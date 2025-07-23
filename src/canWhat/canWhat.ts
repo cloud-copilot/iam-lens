@@ -9,11 +9,28 @@ import {
   toPolicyStatements
 } from './permissionSet.js'
 
+/**
+ * Input for the can-what command.
+ */
 export interface CanWhatInput {
+  /**
+   * The ARN of the principal to check permissions for.
+   */
   principal: string
+
+  /**
+   * Whether to shrink action lists in the resulting policy document.
+   */
   shrinkActionLists: boolean
 }
 
+/**
+ * Get what actions a principal can perform based on their policies.
+ *
+ * @param collectClient the IAM collect client to use for retrieving policies.
+ * @param input the input containing the principal and options.
+ * @returns
+ */
 export async function canWhat(collectClient: IamCollectClient, input: CanWhatInput) {
   const { principal } = input
 
