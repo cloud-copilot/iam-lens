@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getTestDatasetClient } from '../test-datasets/testClient.js'
+import { getTestDatasetConfigs } from '../test-datasets/testClient.js'
 import { ResourceAccessRequest, whoCan, WhoCanAllowed } from './whoCan.js'
 
 const whoCanIntegrationTests: {
@@ -199,24 +199,35 @@ const whoCanIntegrationTests: {
   }
 ]
 
+function sortWhoCanResults(who: WhoCanAllowed[]) {
+  return who.sort((a, b) => {
+    if (a.principal < b.principal) return -1
+    if (a.principal > b.principal) return 1
+    if (a.action < b.action) return -1
+    if (a.action > b.action) return 1
+    return 0
+  })
+}
+
 describe('whoCan Integration Tests', () => {
   for (const test of whoCanIntegrationTests) {
     const { name, comment, request, expected, only, data } = test
     const func = only ? it.only : it
     func(name, async () => {
       //Given a client
-      const client = getTestDatasetClient(data)
+      const configs = getTestDatasetConfigs(data)
+      // const client = getTestDatasetClient(data)
 
       //When we call whoCan
-      const result = await whoCan(client, request)
+      const result = await whoCan(configs, 'aws', request)
 
       //Then we expect the result to match the expected output
-      expect(result.allowed).toEqual(expected.who)
+      expect(sortWhoCanResults(result.allowed)).toEqual(sortWhoCanResults(expected.who))
       expect(result.allAccountsChecked).toEqual(!!expected.allAccountsChecked)
       expect(result.organizationalUnitsNotFound).toEqual(expected.organizationalUnitsNotFound || [])
       expect(result.accountsNotFound).toEqual(expected.accountsNotFound || [])
       expect(result.organizationsNotFound).toEqual(expected.organizationsNotFound || [])
-      expect(result.principalsNotFound).toEqual(expected.principalsNotFound || [])
+      expect(result.principalsNotFound.sort()).toEqual(expected.principalsNotFound?.sort() || [])
     })
   }
 })

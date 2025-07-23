@@ -10,6 +10,7 @@ import { IamCollectClient, SimulationOrgPolicies } from '../collect/client.js'
 import {
   getAllPoliciesForPrincipal,
   isServiceLinkedRole,
+  principalExists,
   PrincipalPolicies
 } from '../principals.js'
 import {
@@ -28,6 +29,7 @@ export interface SimulationRequest {
   // anonymous?: boolean
   customContextKeys: ContextKeys
   simulationMode: SimulationMode
+  ignoreMissingPrincipal?: boolean
 }
 
 export async function simulateRequest(
@@ -60,6 +62,13 @@ export async function simulateRequest(
 
   if (!simulationRequest.resourceAccount) {
     throw new Error(`Unable to find account ID for resource ${simulationRequest.resourceArn}`)
+  }
+
+  const principalFound = await principalExists(simulationRequest.principal, collectClient)
+  if (!principalFound && !simulationRequest.ignoreMissingPrincipal) {
+    throw new Error(
+      `Principal ${simulationRequest.principal} does not exist. Use --ignore-missing-principal to ignore this.`
+    )
   }
 
   //Lookup the principal policies

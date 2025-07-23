@@ -96,7 +96,11 @@ export async function getAllPoliciesForPrincipal(
   collectClient: IamCollectClient,
   principalArn: string
 ): Promise<PrincipalPolicies> {
-  if (isServicePrincipal(principalArn)) {
+  if (
+    isServicePrincipal(principalArn) ||
+    isSamlPrincipal(principalArn) ||
+    isOidcPrincipal(principalArn)
+  ) {
     return {
       scps: [],
       rcps: [],
@@ -129,4 +133,38 @@ export function isServicePrincipal(principal: string): boolean {
 export function isServiceLinkedRole(principal: string): boolean {
   const arnParts = splitArnParts(principal)
   return isArnPrincipal(principal) && !!arnParts.resourcePath?.startsWith('aws-service-role/')
+}
+
+export function isOidcPrincipal(principal: string): boolean {
+  if (!isArnPrincipal(principal)) {
+    return false
+  }
+  const parts = splitArnParts(principal)
+  return parts.service === 'iam' && parts.resourceType === 'oidc-provider'
+}
+
+export function isSamlPrincipal(principal: string): boolean {
+  if (!isArnPrincipal(principal)) {
+    return false
+  }
+  const parts = splitArnParts(principal)
+  return parts.service === 'iam' && parts.resourceType === 'saml-provider'
+}
+
+/**
+ * Check to see if a principal exists or is an AWS service principal.
+ *
+ * @param principal the principal to check
+ * @param collectClient the IAM collect client to use for checking existence
+ * @returns true if the principal exists or is a service principal, false otherwise
+ */
+export async function principalExists(
+  principal: string,
+  collectClient: IamCollectClient
+): Promise<boolean> {
+  if (isServicePrincipal(principal)) {
+    return true
+  }
+
+  return collectClient.principalExists(principal)
 }

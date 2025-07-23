@@ -108,30 +108,48 @@ export interface VpcIndex {
 }
 
 export interface IamCollectClientOptions {
-  enableCaching?: boolean
+  cacheProvider?: CacheProvider
+}
+
+export interface CacheProvider {
+  withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T>
+}
+
+class InMemoryCacheProvider implements CacheProvider {
+  private cache: Record<string, any> = {}
+
+  public async withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {
+    if (cacheKey in this.cache) {
+      return this.cache[cacheKey]
+    }
+    const value = await fetcher()
+    this.cache[cacheKey] = value
+    return value
+  }
+}
+
+export class NoCacheProvider implements CacheProvider {
+  public async withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {
+    return fetcher()
+  }
 }
 
 export class IamCollectClient {
-  private _cache: Record<string, any> = {}
-  private _enableCaching: boolean
+  private cacheProvider: CacheProvider
 
   constructor(
     private storageClient: AwsIamStore,
     clientOptions?: IamCollectClientOptions
   ) {
-    this._enableCaching = clientOptions?.enableCaching !== false
+    if (clientOptions?.cacheProvider === undefined) {
+      this.cacheProvider = new InMemoryCacheProvider()
+    } else {
+      this.cacheProvider = clientOptions.cacheProvider
+    }
   }
 
-  // Generic cache helper
   private async withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {
-    if (this._enableCaching && cacheKey in this._cache) {
-      return this._cache[cacheKey]
-    }
-    const value = await fetcher()
-    if (this._enableCaching) {
-      this._cache[cacheKey] = value
-    }
-    return value
+    return this.cacheProvider.withCache<T>(cacheKey, fetcher)
   }
 
   /**
@@ -140,8 +158,11 @@ export class IamCollectClient {
    * @returns True if the account exists, false otherwise.
    */
   async accountExists(accountId: string): Promise<boolean> {
-    const accounts = await this.storageClient.listAccountIds()
-    return accounts.includes(accountId)
+    const cacheKey = `accountExists:${accountId}`
+    return this.withCache(cacheKey, async () => {
+      const accounts = await this.storageClient.listAccountIds()
+      return accounts.includes(accountId)
+    })
   }
 
   /**
@@ -150,7 +171,10 @@ export class IamCollectClient {
    * @returns all account IDs in the store
    */
   async allAccounts(): Promise<string[]> {
-    return this.storageClient.listAccountIds()
+    const cacheKey = `allAccounts`
+    return this.withCache(cacheKey, async () => {
+      return this.storageClient.listAccountIds()
+    })
   }
 
   /**
@@ -159,13 +183,16 @@ export class IamCollectClient {
    * @returns True if the principal exists, false otherwise.
    */
   async principalExists(principalArn: string): Promise<boolean> {
-    const accountId = splitArnParts(principalArn).accountId!
-    const principalData = await this.storageClient.getResourceMetadata(
-      accountId,
-      principalArn,
-      'metadata'
-    )
-    return !!principalData
+    const cacheKey = `principalExists:${principalArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(principalArn).accountId!
+      const principalData = await this.storageClient.getResourceMetadata(
+        accountId,
+        principalArn,
+        'metadata'
+      )
+      return !!principalData
+    })
   }
 
   /**
@@ -234,21 +261,24 @@ export class IamCollectClient {
    * @returns The OUs for the account.
    */
   async getOrgUnitHierarchyForAccount(accountId: string): Promise<string[]> {
-    const orgId = await this.getOrgIdForAccount(accountId)
-    if (!orgId) {
-      return []
-    }
-    const ouIds: string[] = []
-    let ouId = await this.getOrgUnitIdForAccount(accountId)
-    ouIds.push(ouId!)
-    while (ouId) {
-      const parentOuId = await this.getParentOrgUnitIdForOrgUnit(orgId, ouId)
-      if (parentOuId) {
-        ouIds.unshift(parentOuId)
+    const cacheKey = `orgUnitHierarchy:${accountId}`
+    return this.withCache(cacheKey, async () => {
+      const orgId = await this.getOrgIdForAccount(accountId)
+      if (!orgId) {
+        return []
       }
-      ouId = parentOuId
-    }
-    return ouIds
+      const ouIds: string[] = []
+      let ouId = await this.getOrgUnitIdForAccount(accountId)
+      ouIds.push(ouId!)
+      while (ouId) {
+        const parentOuId = await this.getParentOrgUnitIdForOrgUnit(orgId, ouId)
+        if (parentOuId) {
+          ouIds.unshift(parentOuId)
+        }
+        ouId = parentOuId
+      }
+      return ouIds
+    })
   }
 
   /**
@@ -257,13 +287,16 @@ export class IamCollectClient {
    * @returns The org unit ID for the account, or undefined if not found.
    */
   async getOrgUnitIdForAccount(accountId: string): Promise<string | undefined> {
-    const orgId = await this.getOrgIdForAccount(accountId)
-    if (!orgId) {
-      return undefined
-    }
+    const cacheKey = `orgUnitId:${accountId}`
+    return this.withCache(cacheKey, async () => {
+      const orgId = await this.getOrgIdForAccount(accountId)
+      if (!orgId) {
+        return undefined
+      }
 
-    const accounts = (await this.getAccountDataForOrg(orgId))!
-    return accounts[accountId].ou
+      const accounts = (await this.getAccountDataForOrg(orgId))!
+      return accounts[accountId].ou
+    })
   }
 
   /**
@@ -273,9 +306,12 @@ export class IamCollectClient {
    * @returns The parent org unit ID, or undefined if not found.
    */
   async getParentOrgUnitIdForOrgUnit(orgId: string, ouId: string): Promise<string | undefined> {
-    const ouData = await this.getOrgUnitsDataForOrg(orgId)
-    const ou = ouData[ouId]
-    return ou.parent
+    const cacheKey = `parentOrgUnit:${orgId}:${ouId}`
+    return this.withCache(cacheKey, async () => {
+      const ouData = await this.getOrgUnitsDataForOrg(orgId)
+      const ou = ouData[ouId]
+      return ou.parent
+    })
   }
 
   /**
@@ -297,21 +333,24 @@ export class IamCollectClient {
     accountId: string,
     policyType: OrgPolicyType
   ): Promise<OrgPolicy[]> {
-    const orgId = await this.getOrgIdForAccount(accountId)
-    if (!orgId) {
-      return []
-    }
+    const cacheKey = `orgPoliciesForAccount:${accountId}:${policyType}`
+    return this.withCache(cacheKey, async () => {
+      const orgId = await this.getOrgIdForAccount(accountId)
+      if (!orgId) {
+        return []
+      }
 
-    const accounts = (await this.getAccountDataForOrg(orgId))!
-    const orgInformation = accounts[accountId]
-    const policyArns = orgInformation[policyType]
-    const policies: OrgPolicy[] = []
-    for (const policyArn of policyArns) {
-      const policyInfo = await this.getOrgPolicy(orgId, policyType, policyArn)
-      policies.push(policyInfo)
-    }
+      const accounts = (await this.getAccountDataForOrg(orgId))!
+      const orgInformation = accounts[accountId]
+      const policyArns = orgInformation[policyType]
+      const policies: OrgPolicy[] = []
+      for (const policyArn of policyArns) {
+        const policyInfo = await this.getOrgPolicy(orgId, policyType, policyArn)
+        policies.push(policyInfo)
+      }
 
-    return policies
+      return policies
+    })
   }
 
   /**
@@ -320,7 +359,10 @@ export class IamCollectClient {
    * @returns The account data for the organization.
    */
   async getAccountDataForOrg(orgId: string): Promise<OrgAccounts | undefined> {
-    return this.storageClient.getOrganizationMetadata<OrgAccounts, OrgAccounts>(orgId, 'accounts')
+    const cacheKey = `accountDataForOrg:${orgId}`
+    return this.withCache(cacheKey, async () => {
+      return this.storageClient.getOrganizationMetadata<OrgAccounts, OrgAccounts>(orgId, 'accounts')
+    })
   }
 
   /**
@@ -329,7 +371,10 @@ export class IamCollectClient {
    * @returns The org units data for the organization.
    */
   async getOrgUnitsDataForOrg(orgId: string): Promise<OrgUnits> {
-    return this.storageClient.getOrganizationMetadata<OrgUnits, OrgUnits>(orgId, 'ous')
+    const cacheKey = `orgUnitsDataForOrg:${orgId}`
+    return this.withCache(cacheKey, async () => {
+      return this.storageClient.getOrganizationMetadata<OrgUnits, OrgUnits>(orgId, 'ous')
+    })
   }
 
   /**
@@ -344,26 +389,29 @@ export class IamCollectClient {
     policyType: OrgPolicyType,
     policyArn: string
   ): Promise<OrgPolicy> {
-    const policyId = policyArn.split('/').at(-1)!
-    const policyData = await this.storageClient.getOrganizationPolicyMetadata<
-      StoredOrgPolicyMetadata,
-      StoredOrgPolicyMetadata
-    >(orgId, policyType, policyId, 'metadata')
-    const policyDocument = await this.storageClient.getOrganizationPolicyMetadata(
-      orgId,
-      policyType,
-      policyId,
-      'policy'
-    )
-    if (!policyDocument) {
-      console.error(`Policy document not found for ${policyArn} in org ${orgId}`)
-    }
+    const cacheKey = `orgPolicy:${orgId}:${policyType}:${policyArn}`
+    return this.withCache(cacheKey, async () => {
+      const policyId = policyArn.split('/').at(-1)!
+      const policyData = await this.storageClient.getOrganizationPolicyMetadata<
+        StoredOrgPolicyMetadata,
+        StoredOrgPolicyMetadata
+      >(orgId, policyType, policyId, 'metadata')
+      const policyDocument = await this.storageClient.getOrganizationPolicyMetadata(
+        orgId,
+        policyType,
+        policyId,
+        'policy'
+      )
+      if (!policyDocument) {
+        console.error(`Policy document not found for ${policyArn} in org ${orgId}`)
+      }
 
-    return {
-      arn: policyData.arn,
-      name: policyData.name,
-      policy: policyDocument
-    }
+      return {
+        arn: policyData.arn,
+        name: policyData.name,
+        policy: policyDocument
+      }
+    })
   }
 
   /**
@@ -406,16 +454,19 @@ export class IamCollectClient {
     orgUnitId: string,
     policyType: OrgPolicyType
   ): Promise<OrgPolicy[]> {
-    const orgUnitInformation = await this.getOrgUnitsDataForOrg(orgId)
-    const orgUnit = orgUnitInformation[orgUnitId]
-    const orgPolicies = orgUnit[policyType]
-    const policies: OrgPolicy[] = []
-    for (const policyArn of orgPolicies) {
-      const policyInfo = await this.getOrgPolicy(orgId, policyType, policyArn)
-      policies.push(policyInfo)
-    }
+    const cacheKey = `orgPoliciesForOrgUnit:${orgId}:${orgUnitId}:${policyType}`
+    return this.withCache(cacheKey, async () => {
+      const orgUnitInformation = await this.getOrgUnitsDataForOrg(orgId)
+      const orgUnit = orgUnitInformation[orgUnitId]
+      const orgPolicies = orgUnit[policyType]
+      const policies: OrgPolicy[] = []
+      for (const policyArn of orgPolicies) {
+        const policyInfo = await this.getOrgPolicy(orgId, policyType, policyArn)
+        policies.push(policyInfo)
+      }
 
-    return policies
+      return policies
+    })
   }
 
   /**
@@ -434,9 +485,16 @@ export class IamCollectClient {
    * @returns The org ID for the account, or undefined if not found.
    */
   async getOrgIdForAccount(accountId: string): Promise<string | undefined> {
-    const index = await this.storageClient.getIndex<Record<string, string>>('accounts-to-orgs', {})
+    const index = await this.getIndex<Record<string, string>>('accounts-to-orgs', {})
     const accountToOrgMap = index.data
     return accountToOrgMap[accountId]
+  }
+
+  async getIndex<T>(indexName: string, defaultValue: T): Promise<{ lockId: string; data: T }> {
+    const cacheKey = `index:${indexName}`
+    return this.withCache(cacheKey, async () => {
+      return this.storageClient.getIndex<T>(indexName, defaultValue)
+    })
   }
 
   /**
@@ -445,7 +503,7 @@ export class IamCollectClient {
    * @returns The account ID for the bucket, or undefined if not found.
    */
   async getAccountIdForBucket(bucketName: string): Promise<string | undefined> {
-    const index = await this.storageClient.getIndex<Record<string, { accountId: string }>>(
+    const index = await this.getIndex<Record<string, { accountId: string }>>(
       'buckets-to-accounts',
       {}
     )
@@ -459,10 +517,7 @@ export class IamCollectClient {
    * @returns The account ID for the API Gateway, or undefined if not found.
    */
   async getAccountIdForRestApi(apiArn: string): Promise<string | undefined> {
-    const index = await this.storageClient.getIndex<Record<string, string>>(
-      'apigateways-to-accounts',
-      {}
-    )
+    const index = await this.getIndex<Record<string, string>>('apigateways-to-accounts', {})
     const bucketToAccountMap = index.data
     return bucketToAccountMap[apiArn]
   }
@@ -494,23 +549,26 @@ export class IamCollectClient {
   }
 
   async getManagedPolicy(accountId: string, policyArn: string): Promise<ManagedPolicy> {
-    const policyMetadata = await this.storageClient.getResourceMetadata<
-      ManagedPolicyMetadata,
-      ManagedPolicyMetadata
-    >(accountId, policyArn, 'metadata')
-    const policyDocument = await this.storageClient.getResourceMetadata(
-      accountId,
-      policyArn,
-      'current-policy'
-    )
-    if (!policyDocument) {
-      console.error(`Policy document not found for ${policyArn} in account ${accountId}`)
-    }
-    return {
-      arn: policyMetadata.arn,
-      name: policyMetadata.name,
-      policy: policyDocument
-    }
+    const cacheKey = `managedPolicy:${accountId}:${policyArn}`
+    return this.withCache(cacheKey, async () => {
+      const policyMetadata = await this.storageClient.getResourceMetadata<
+        ManagedPolicyMetadata,
+        ManagedPolicyMetadata
+      >(accountId, policyArn, 'metadata')
+      const policyDocument = await this.storageClient.getResourceMetadata(
+        accountId,
+        policyArn,
+        'current-policy'
+      )
+      if (!policyDocument) {
+        console.error(`Policy document not found for ${policyArn} in account ${accountId}`)
+      }
+      return {
+        arn: policyMetadata.arn,
+        name: policyMetadata.name,
+        policy: policyDocument
+      }
+    })
   }
 
   /**
@@ -535,13 +593,16 @@ export class IamCollectClient {
   }
 
   async getIamUserMetadata(userArn: string): Promise<IamUserMetadata | undefined> {
-    const accountId = splitArnParts(userArn).accountId!
-    // The permissions boundary is stored as a policy ARN on the user resource metadata
-    return this.storageClient.getResourceMetadata<IamUserMetadata, IamUserMetadata>(
-      accountId,
-      userArn,
-      'metadata'
-    )
+    const cacheKey = `iamUserMetadata:${userArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(userArn).accountId!
+      // The permissions boundary is stored as a policy ARN on the user resource metadata
+      return this.storageClient.getResourceMetadata<IamUserMetadata, IamUserMetadata>(
+        accountId,
+        userArn,
+        'metadata'
+      )
+    })
   }
 
   /**
@@ -694,10 +755,13 @@ export class IamCollectClient {
    * @returns the metadata for the organization
    */
   async getOrganizationMetadata(organizationId: string): Promise<OrganizationMetadata> {
-    return this.storageClient.getOrganizationMetadata<OrganizationMetadata, OrganizationMetadata>(
-      organizationId,
-      'metadata'
-    )
+    const cacheKey = `organizationMetadata:${organizationId}`
+    return this.withCache(cacheKey, async () => {
+      return this.storageClient.getOrganizationMetadata<OrganizationMetadata, OrganizationMetadata>(
+        organizationId,
+        'metadata'
+      )
+    })
   }
 
   /**
@@ -708,19 +772,22 @@ export class IamCollectClient {
    * @returns The resource policy, or undefined if not found.
    */
   async getResourcePolicyForArn(resourceArn: string, accountId: string): Promise<any | undefined> {
-    const arnParts = splitArnParts(resourceArn)
-    let metadataKey = 'policy'
+    const cacheKey = `resourcePolicy:${accountId}:${resourceArn}`
+    return this.withCache(cacheKey, async () => {
+      const arnParts = splitArnParts(resourceArn)
+      let metadataKey = 'policy'
 
-    if (arnParts.service === 'iam' && arnParts.resourceType === 'role') {
-      metadataKey = 'trust-policy'
-    }
+      if (arnParts.service === 'iam' && arnParts.resourceType === 'role') {
+        metadataKey = 'trust-policy'
+      }
 
-    const resourcePolicy = await this.storageClient.getResourceMetadata<string, string>(
-      accountId,
-      resourceArn,
-      metadataKey
-    )
-    return resourcePolicy
+      const resourcePolicy = await this.storageClient.getResourceMetadata<string, string>(
+        accountId,
+        resourceArn,
+        metadataKey
+      )
+      return resourcePolicy
+    })
   }
 
   /**
@@ -731,11 +798,14 @@ export class IamCollectClient {
    * @returns The RAM share policy, or undefined if not found.
    */
   async getRamSharePolicyForArn(resourceArn: string, accountId: string): Promise<any | undefined> {
-    const armSharePolicy = await this.storageClient.getRamResource<RAMShare, RAMShare>(
-      accountId,
-      resourceArn
-    )
-    return armSharePolicy?.policy
+    const cacheKey = `ramSharePolicy:${accountId}:${resourceArn}`
+    return this.withCache(cacheKey, async () => {
+      const armSharePolicy = await this.storageClient.getRamResource<RAMShare, RAMShare>(
+        accountId,
+        resourceArn
+      )
+      return armSharePolicy?.policy
+    })
   }
 
   /**
@@ -749,11 +819,14 @@ export class IamCollectClient {
     resourceArn: string,
     accountId: string
   ): Promise<Record<string, string>> {
-    const tags = await this.storageClient.getResourceMetadata<
-      Record<string, string>,
-      Record<string, string>
-    >(accountId, resourceArn, 'tags')
-    return tags || {}
+    const cacheKey = `tagsForResource:${accountId}:${resourceArn}`
+    return this.withCache(cacheKey, async () => {
+      const tags = await this.storageClient.getResourceMetadata<
+        Record<string, string>,
+        Record<string, string>
+      >(accountId, resourceArn, 'tags')
+      return tags || {}
+    })
   }
 
   /**
@@ -765,13 +838,16 @@ export class IamCollectClient {
    * @returns a unique ID for the resource, or undefined if not found
    */
   async getUniqueIdForIamResource(resourceArn: string): Promise<string | undefined> {
-    const accountId = splitArnParts(resourceArn).accountId!
-    const resourceMetadata = await this.storageClient.getResourceMetadata<
-      IamUserMetadata,
-      IamUserMetadata
-    >(accountId, resourceArn, 'metadata')
+    const cacheKey = `uniqueIdForIamResource:${resourceArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(resourceArn).accountId!
+      const resourceMetadata = await this.storageClient.getResourceMetadata<
+        IamUserMetadata,
+        IamUserMetadata
+      >(accountId, resourceArn, 'metadata')
 
-    return resourceMetadata?.id
+      return resourceMetadata?.id
+    })
   }
 
   /**
@@ -796,66 +872,75 @@ export class IamCollectClient {
    * @returns returns the organization structure or undefined if not found
    */
   async getOrganizationStructure(orgId: string): Promise<OrgStructure | undefined> {
-    return this.storageClient.getOrganizationMetadata<OrgStructure, OrgStructure>(
-      orgId,
-      'structure'
-    )
+    const cacheKey = `organizationStructure:${orgId}`
+    return this.withCache(cacheKey, async () => {
+      return this.storageClient.getOrganizationMetadata<OrgStructure, OrgStructure>(
+        orgId,
+        'structure'
+      )
+    })
   }
 
   async getAccountsForOrgPath(orgId: string, ouIds: string[]): Promise<[boolean, string[]]> {
-    const orgUnits = await this.getOrganizationStructure(orgId)
-    if (!orgUnits || ouIds.length === 0) {
-      return [false, []]
-    }
-
-    const rootOu = orgUnits[ouIds[0]]
-
-    // Now look through the structure to find the OU
-    let currentStructure: OrgStructureNode | undefined = rootOu
-    for (const ou of ouIds.slice(1)) {
-      currentStructure = currentStructure.children?.[ou]
-      if (!currentStructure) {
-        return [false, []] // OU not found in the structure
+    const cacheKey = `accountsForOrgPath:${orgId}:${ouIds.join('/')}`
+    return this.withCache(cacheKey, async () => {
+      const orgUnits = await this.getOrganizationStructure(orgId)
+      if (!orgUnits || ouIds.length === 0) {
+        return [false, []]
       }
-    }
 
-    const getAccountId = (a: string) => a.split('/').at(-1)!
+      const rootOu = orgUnits[ouIds[0]]
 
-    const accounts = []
-    if (currentStructure.accounts) {
-      accounts.push(...currentStructure.accounts?.map(getAccountId))
-    }
-
-    const children = Object.values(currentStructure.children || {})
-
-    // Traverse the children to collect all accounts
-    while (children.length > 0) {
-      const child = children.shift()
-      if (child?.accounts) {
-        accounts.push(...child.accounts.map(getAccountId))
+      // Now look through the structure to find the OU
+      let currentStructure: OrgStructureNode | undefined = rootOu
+      for (const ou of ouIds.slice(1)) {
+        currentStructure = currentStructure.children?.[ou]
+        if (!currentStructure) {
+          return [false, []] // OU not found in the structure
+        }
       }
-      if (child?.children) {
-        children.push(...Object.values(child.children))
-      }
-    }
 
-    return [true, accounts]
+      const getAccountId = (a: string) => a.split('/').at(-1)!
+
+      const accounts = []
+      if (currentStructure.accounts) {
+        accounts.push(...currentStructure.accounts?.map(getAccountId))
+      }
+
+      const children = Object.values(currentStructure.children || {})
+
+      // Traverse the children to collect all accounts
+      while (children.length > 0) {
+        const child = children.shift()
+        if (child?.accounts) {
+          accounts.push(...child.accounts.map(getAccountId))
+        }
+        if (child?.children) {
+          children.push(...Object.values(child.children))
+        }
+      }
+
+      return [true, accounts]
+    })
   }
 
   async getAllPrincipalsInAccount(accountId: string): Promise<string[]> {
-    const iamUsers = await this.storageClient.findResourceMetadata<ResourceMetadata>(accountId, {
-      service: 'iam',
-      resourceType: 'user',
-      account: accountId
-    })
+    const cacheKey = `allPrincipalsInAccount:${accountId}`
+    return this.withCache(cacheKey, async () => {
+      const iamUsers = await this.storageClient.findResourceMetadata<ResourceMetadata>(accountId, {
+        service: 'iam',
+        resourceType: 'user',
+        account: accountId
+      })
 
-    const iamRoles = await this.storageClient.findResourceMetadata<ResourceMetadata>(accountId, {
-      service: 'iam',
-      resourceType: 'role',
-      account: accountId
-    })
+      const iamRoles = await this.storageClient.findResourceMetadata<ResourceMetadata>(accountId, {
+        service: 'iam',
+        resourceType: 'role',
+        account: accountId
+      })
 
-    return [...iamUsers.map((user) => user.arn), ...iamRoles.map((role) => role.arn)]
+      return [...iamUsers.map((user) => user.arn), ...iamRoles.map((role) => role.arn)]
+    })
   }
 
   /**
@@ -865,13 +950,16 @@ export class IamCollectClient {
    * @returns the VPC endpoint policy, or undefined if not found
    */
   async getVpcEndpointPolicyForArn(vpcEndpointArn: string): Promise<any | undefined> {
-    const accountId = splitArnParts(vpcEndpointArn).accountId!
-    const vpcEndpointPolicy = await this.storageClient.getResourceMetadata<any, any>(
-      accountId,
-      vpcEndpointArn,
-      'endpoint-policy'
-    )
-    return vpcEndpointPolicy
+    const cacheKey = `vpcEndpointPolicy:${vpcEndpointArn}`
+    return this.withCache(cacheKey, async () => {
+      const accountId = splitArnParts(vpcEndpointArn).accountId!
+      const vpcEndpointPolicy = await this.storageClient.getResourceMetadata<any, any>(
+        accountId,
+        vpcEndpointArn,
+        'endpoint-policy'
+      )
+      return vpcEndpointPolicy
+    })
   }
 
   /**
@@ -880,7 +968,7 @@ export class IamCollectClient {
    * @returns the ARN of the VPC endpoint, or undefined if not found
    */
   async getVpcEndpointArnForVpcEndpointId(vpcEndpointId: string): Promise<string | undefined> {
-    const index = await this.storageClient.getIndex<VpcIndex>('vpcs', {
+    const index = await this.getIndex<VpcIndex>('vpcs', {
       endpoints: {},
       vpcs: {}
     })
@@ -895,7 +983,7 @@ export class IamCollectClient {
    * @returns the VPC endpoint ID, or undefined if not found
    */
   async getVpcEndpointIdForVpcService(vpcId: string, service: string): Promise<string | undefined> {
-    const index = await this.storageClient.getIndex<VpcIndex>('vpcs', {
+    const index = await this.getIndex<VpcIndex>('vpcs', {
       endpoints: {},
       vpcs: {}
     })
@@ -915,7 +1003,7 @@ export class IamCollectClient {
    * @returns the VPC ID, or undefined if not found
    */
   async getVpcIdForVpcEndpointId(vpcEndpointId: string): Promise<string | undefined> {
-    const index = await this.storageClient.getIndex<VpcIndex>('vpcs', {
+    const index = await this.getIndex<VpcIndex>('vpcs', {
       endpoints: {},
       vpcs: {}
     })

@@ -111,12 +111,14 @@
   },
   "dependencies": {
     "@cloud-copilot/cli": "^0.1.30",
-    "@cloud-copilot/iam-collect": "^0.1.86",
+    "@cloud-copilot/iam-collect": "^0.1.92",
     "@cloud-copilot/iam-data": "^0.9.202505242",
     "@cloud-copilot/iam-expand": "^0.11.13",
     "@cloud-copilot/iam-policy": "^0.1.35",
     "@cloud-copilot/iam-shrink": "^0.1.21",
-    "@cloud-copilot/iam-simulate": "^0.1.57",
-    "@cloud-copilot/iam-utils": "^0.1.7"
+    "@cloud-copilot/iam-simulate": "^0.1.60",
+    "@cloud-copilot/iam-utils": "^0.1.7",
+    "@cloud-copilot/job": "^0.1.0",
+    "@cloud-copilot/log": "^0.1.0"
   }
 }

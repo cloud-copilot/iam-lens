@@ -1,3 +1,4 @@
+import { TopLevelConfig } from '@cloud-copilot/iam-collect'
 import { existsSync } from 'fs'
 import { join, resolve } from 'path'
 import { IamCollectClient } from '../collect/client.js'
@@ -29,4 +30,16 @@ export function getTestDatasetClient(dataSetId: string): IamCollectClient {
     ],
     'aws'
   )
+}
+
+export function getTestDatasetConfigs(dataSetId: string): TopLevelConfig[] {
+  return [
+    {
+      iamCollectVersion: '0.0.0',
+      storage: {
+        type: 'file',
+        path: resolve(join('./src', 'test-datasets', `iam-data-${dataSetId}`))
+      }
+    }
+  ]
 }
