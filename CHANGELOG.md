@@ -1,3 +1,10 @@
+## [0.1.26](https://github.com/cloud-copilot/iam-lens/compare/v0.1.25...v0.1.26) (2025-07-23)
+
+
+### Features
+
+* Improved performance for who-can. Improved handling of context keys. Ensure principal exists before running a simulate command. ([c4a5a87](https://github.com/cloud-copilot/iam-lens/commit/c4a5a87bc91570dc26a77c4dcf53b20127c95b8c))
+
 ## [0.1.25](https://github.com/cloud-copilot/iam-lens/compare/v0.1.24...v0.1.25) (2025-07-12)
 
 ## [0.1.24](https://github.com/cloud-copilot/iam-lens/compare/v0.1.23...v0.1.24) (2025-07-02)
