@@ -831,7 +831,6 @@ export class IamCollectClient {
 
     const cacheKey = `resourcePolicy:${accountId}:${resourceArn}`
     return this.withCache(cacheKey, async () => {
-      const arnParts = splitArnParts(resourceArn)
       let metadataKey = 'policy'
 
       if (arnParts.service === 'iam' && arnParts.resourceType === 'role') {
