@@ -1,3 +1,10 @@
+## [0.1.29](https://github.com/cloud-copilot/iam-lens/compare/v0.1.28...v0.1.29) (2025-07-30)
+
+
+### Bug Fixes
+
+* Use S3 bucket policy when testing for S3 objects ([7b6ff2e](https://github.com/cloud-copilot/iam-lens/commit/7b6ff2ec1be0ffd99d8d1cb9d4c4d54d61cd12f3))
+
 ## [0.1.28](https://github.com/cloud-copilot/iam-lens/compare/v0.1.27...v0.1.28) (2025-07-26)
 
 ## [0.1.27](https://github.com/cloud-copilot/iam-lens/compare/v0.1.26...v0.1.27) (2025-07-23)
