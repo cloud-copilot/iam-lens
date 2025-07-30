@@ -824,9 +824,13 @@ export class IamCollectClient {
    * @returns The resource policy, or undefined if not found.
    */
   async getResourcePolicyForArn(resourceArn: string, accountId: string): Promise<any | undefined> {
+    const arnParts = splitArnParts(resourceArn)
+    if (arnParts.service === 's3' && arnParts.region === '' && arnParts.accountId === '') {
+      resourceArn = resourceArn.split('/')[0]
+    }
+
     const cacheKey = `resourcePolicy:${accountId}:${resourceArn}`
     return this.withCache(cacheKey, async () => {
-      const arnParts = splitArnParts(resourceArn)
       let metadataKey = 'policy'
 
       if (arnParts.service === 'iam' && arnParts.resourceType === 'role') {

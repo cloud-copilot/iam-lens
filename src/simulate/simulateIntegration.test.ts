@@ -260,6 +260,20 @@ const simulateIntegrationTest: {
       simulationMode: 'Strict'
     },
     expected: 'ImplicitlyDenied'
+  },
+  {
+    name: 'Get S3 Object with bucket policy allowing access',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::who-can-principal/an-object.txt',
+      resourceAccount: undefined,
+      action: 's3:GetObject',
+      principal:
+        'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    },
+    expected: 'Allowed'
   }
 ]
 

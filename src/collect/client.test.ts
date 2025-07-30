@@ -1604,6 +1604,23 @@ describe('IamCollectClient', () => {
       // Then it should return the trust policy
       expect(result).toEqual(trustPolicy)
     })
+
+    it('should return a bucket policy for an S3 object ARN', async () => {
+      // Given a bucket with a bucket policy
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+      const bucketPolicy = {
+        Statement: [{ Effect: 'Allow', Action: 's3:GetObject', Resource: `${bucketArn}/*` }]
+      }
+      await store.saveResourceMetadata(accountId, bucketArn, 'policy', bucketPolicy)
+
+      // When getting the resource policy for the S3 object ARN
+      const result = await client.getResourcePolicyForArn(`${bucketArn}/my-object`, accountId)
+
+      // Then it should return the bucket policy
+      expect(result).toEqual(bucketPolicy)
+    })
   })
 
   describe('getRamSharePolicyForArn', () => {
