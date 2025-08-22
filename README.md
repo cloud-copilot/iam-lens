@@ -115,7 +115,7 @@ iam-lens simulate \
   --principal arn:aws:iam::333333333333:role/DevRole \
   --resource arn:aws:sqs:us-east-1:333333333333:my-queue \
   --action sqs:SendMessage \
-  --context aws:SourceVpc=vpc-1234567890abcdef0 \
+  --context aws:SourceVpc vpc-1234567890abcdef0 \
   --verbose
 
 # Assert the result must be “Allowed”; exit code will be nonzero if not

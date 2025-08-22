@@ -3,13 +3,13 @@
 import {
   booleanArgument,
   enumArgument,
+  mapArgument,
   parseCliArguments,
   stringArgument,
   stringArrayArgument
 } from '@cloud-copilot/cli'
 import { canWhat } from './canWhat/canWhat.js'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
-import { ContextKeys } from './simulate/contextKeys.js'
 import { resultMatchesExpectation, simulateRequest } from './simulate/simulate.js'
 import { iamLensVersion } from './utils/packageVersion.js'
 import { whoCan } from './whoCan/whoCan.js'
@@ -36,10 +36,10 @@ const main = async () => {
             description:
               'The action to simulate; must be a valid IAM service and action such as `s3:ListBucket`'
           }),
-          context: stringArrayArgument({
+          context: mapArgument({
             description:
               'The context keys to use for the simulation. Keys are formatted as key=value. Multiple values can be separated by commas (key=value1,value2,value3)',
-            defaultValue: []
+            defaultValue: {}
           }),
           verbose: booleanArgument({
             description: 'Enable verbose output for the simulation',
@@ -119,7 +119,6 @@ const main = async () => {
   if (cli.subcommand === 'simulate') {
     const { principal, resource, resourceAccount, action, context, ignoreMissingPrincipal } =
       cli.args
-    const contextKeys = convertContextKeysToMap(context)
 
     const { request, result } = await simulateRequest(
       {
@@ -127,7 +126,7 @@ const main = async () => {
         resourceArn: resource,
         resourceAccount: resourceAccount,
         action: action!,
-        customContextKeys: contextKeys,
+        customContextKeys: context,
         simulationMode: 'Strict',
         ignoreMissingPrincipal
       },
@@ -187,25 +186,3 @@ main()
   })
   .then(() => {})
   .finally(() => {})
-
-/**
- * Convert the context keys from the CLI arguments into a map.
- *
- * @param contextKeys the context keys from the CLI arguments, formatted as key=value1,value2,...
- * @returns a map of context keys where each key is associated with a single value or an array of values
- */
-function convertContextKeysToMap(contextKeys: string[]): ContextKeys {
-  const contextMap: Record<string, string | string[]> = {}
-  for (const key of contextKeys) {
-    const [keyName, value] = key.split('=')
-    if (value) {
-      const values = value.split(',')
-      if (values.length > 1) {
-        contextMap[keyName] = values
-      } else {
-        contextMap[keyName] = values[0]
-      }
-    }
-  }
-  return contextMap
-}
