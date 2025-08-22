@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 
-import { parseCliArguments } from '@cloud-copilot/cli'
+import {
+  booleanArgument,
+  enumArgument,
+  parseCliArguments,
+  stringArgument,
+  stringArrayArgument
+} from '@cloud-copilot/cli'
 import { canWhat } from './canWhat/canWhat.js'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
 import { ContextKeys } from './simulate/contextKeys.js'
@@ -9,127 +15,106 @@ import { iamLensVersion } from './utils/packageVersion.js'
 import { whoCan } from './whoCan/whoCan.js'
 
 const main = async () => {
-  const version = await iamLensVersion()
-  const cli = parseCliArguments(
+  const cli = await parseCliArguments(
     'iam-lens',
     {
       simulate: {
         description: 'Simulate an IAM request',
-        options: {
-          principal: {
-            type: 'string',
-            values: 'single',
+        arguments: {
+          principal: stringArgument({
             description: 'The principal to simulate. Can be a user, role, session, or AWS service'
-          },
-          resource: {
-            type: 'string',
-            values: 'single',
+          }),
+          resource: stringArgument({
             description:
               'The ARN of the resource to simulate access to. Ignore for wildcard actions'
-          },
-          resourceAccount: {
-            type: 'string',
-            values: 'single',
+          }),
+          resourceAccount: stringArgument({
             description:
               'The account ID of the resource, only required if it cannot be determined from the resource ARN.'
-          },
-          action: {
-            type: 'string',
-            values: 'single',
+          }),
+          action: stringArgument({
             description:
               'The action to simulate; must be a valid IAM service and action such as `s3:ListBucket`'
-          },
-          context: {
-            type: 'string',
-            values: 'multiple',
+          }),
+          context: stringArrayArgument({
             description:
-              'The context keys to use for the simulation. Keys are formatted as key=value. Multiple values can be separated by commas (key=value1,value2,value3)'
-          },
-          verbose: {
-            type: 'boolean',
+              'The context keys to use for the simulation. Keys are formatted as key=value. Multiple values can be separated by commas (key=value1,value2,value3)',
+            defaultValue: []
+          }),
+          verbose: booleanArgument({
             description: 'Enable verbose output for the simulation',
             character: 'v'
-          },
-          expect: {
-            type: 'enum',
-            values: 'single',
-            validValues: ['Allowed', 'ImplicitlyDenied', 'ExplicitlyDenied', 'AnyDeny'],
+          }),
+          expect: enumArgument({
             description:
-              'The expected result of the simulation, if the result does not match the expected response a non-zero exit code will be returned'
-          },
-          ignoreMissingPrincipal: {
-            type: 'boolean',
+              'The expected result of the simulation, if the result does not match the expected response a non-zero exit code will be returned',
+            validValues: ['Allowed', 'ImplicitlyDenied', 'ExplicitlyDenied', 'AnyDeny']
+          }),
+          ignoreMissingPrincipal: booleanArgument({
             description:
               'Ignore if the principal does not exist. Useful for simulating actions from principals that may not exist or are outside your data set',
             character: 'i'
-          }
+          })
         }
       },
       'who-can': {
         description: 'Find who can perform an action on a resource',
-        options: {
-          resource: {
-            type: 'string',
-            values: 'single',
+        arguments: {
+          resource: stringArgument({
             description:
               'The ARN of the resource to check permissions for. Ignore for wildcard actions'
-          },
-          resourceAccount: {
-            type: 'string',
-            values: 'single',
+          }),
+          resourceAccount: stringArgument({
             description:
               'The account ID of the resource, only required if it cannot be determined from the resource ARN. Required for wildcard actions'
-          },
-          actions: {
-            type: 'string',
-            values: 'multiple',
+          }),
+          actions: stringArrayArgument({
             description:
-              'The action to check permissions for; must be a valid IAM service and action such as `s3:GetObject`'
-          }
+              'The actions to check permissions for; must be a valid IAM service and action such as `s3:GetObject`',
+            defaultValue: []
+          })
         }
       },
       'principal-can': {
         description: 'ALPHA: Create a consolidated view of all permissions for a principal',
-        options: {
-          principal: {
-            type: 'string',
-            values: 'single',
+        arguments: {
+          principal: stringArgument({
             description: 'The principal to check permissions for. Can be a user or role'
-          },
-          shrinkActionLists: {
-            type: 'boolean',
-            character: 's',
-            description: 'Shrink action lists to reduce policy size'
-          }
+          }),
+          shrinkActionLists: booleanArgument({
+            description: 'Shrink action lists to reduce policy size',
+            character: 's'
+          })
         }
       }
     },
     {
-      collectConfigs: {
-        type: 'string',
+      collectConfigs: stringArrayArgument({
         description: 'The iam-collect configuration files to use',
-        values: 'multiple'
-      },
-      partition: {
-        type: 'string',
-        description: 'The AWS partition to use (aws, aws-cn, aws-us-gov). Defaults to aws.',
-        values: 'single'
-      }
+        defaultValue: []
+      }),
+      partition: stringArgument({
+        description: 'The AWS partition to use (aws, aws-cn, aws-us-gov).',
+        defaultValue: 'aws'
+      })
     },
     {
       envPrefix: 'IAM_LENS',
       showHelpIfNoArgs: true,
       requireSubcommand: true,
-      version
+      expectOperands: false,
+      version: {
+        currentVersion: iamLensVersion,
+        checkForUpdates: '@cloud-copilot/iam-lens'
+      }
     }
   )
 
   if (cli.args.collectConfigs.length === 0) {
     cli.args.collectConfigs.push('./iam-collect.jsonc')
   }
-  const thePartition = cli.args.partition || 'aws'
   const collectConfigs = await loadCollectConfigs(cli.args.collectConfigs)
-  const collectClient = getCollectClient(collectConfigs, thePartition)
+  const collectClient = getCollectClient(collectConfigs, cli.args.partition)
 
   if (cli.subcommand === 'simulate') {
     const { principal, resource, resourceAccount, action, context, ignoreMissingPrincipal } =
@@ -172,7 +157,7 @@ const main = async () => {
       process.exit(1)
     }
 
-    const results = await whoCan(collectConfigs, thePartition, {
+    const results = await whoCan(collectConfigs, cli.args.partition, {
       resource: cli.args.resource!,
       actions: cli.args.actions!,
       resourceAccount: cli.args.resourceAccount

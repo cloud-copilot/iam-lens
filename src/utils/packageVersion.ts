@@ -1,4 +1,4 @@
-import { readPackageFile } from './readPackageFile.js'
+import { getPackageFileReader } from './readPackageFile.js'
 
 interface PackageInfo {
   version: string
@@ -13,7 +13,7 @@ let packageCache: PackageInfo | undefined = undefined
  */
 async function getPackageData(): Promise<PackageInfo> {
   if (!packageCache) {
-    const packageJson = await readPackageFile(['package.json'])
+    const packageJson = await getPackageFileReader().readFile(['package.json'])
     packageCache = JSON.parse(packageJson)
   }
   return packageCache!
