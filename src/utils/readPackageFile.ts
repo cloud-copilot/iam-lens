@@ -1,11 +1,15 @@
-import { readRelativeFile } from '@cloud-copilot/cli'
+import { createPackageFileReader, PackageFileReader } from '@cloud-copilot/cli'
 
 let levels = 3
 if (__filename.includes('src')) {
   levels = 2
 }
 
-export async function readPackageFile(pathParts: string[]): Promise<string> {
-  const packageFile = await readRelativeFile(__filename, levels, pathParts)
-  return packageFile
+let fileReader: PackageFileReader | undefined = undefined
+
+export function getPackageFileReader(): PackageFileReader {
+  if (!fileReader) {
+    fileReader = createPackageFileReader(__filename, levels)
+  }
+  return fileReader
 }
