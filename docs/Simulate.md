@@ -23,16 +23,16 @@ When simulating requests, iam-lens will detect the account for the principal and
 
 ## Options
 
-| Flag                               | Description                                                                                                                                                                                                                                                          |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--principal <arn>`                | The principal the request is from. Can be a user, role, session, or AWS service.                                                                                                                                                                                     |
-| `--resource <arn>`                 | The ARN of the resource to simulate access to. Ignore for wildcard-only actions such as `s3:ListAllMyBuckets`.                                                                                                                                                       |
-| `--resource-account <id>`          | The account ID of the resource. Only required if it cannot be determined from the resource ARN or the principal ARN for wildcard only actions.                                                                                                                       |
-| `--action <service:action>`        | The action to simulate; must be a valid IAM service and action such as `s3:ListBucket`.                                                                                                                                                                              |
-| `--context <key=value>`            | One or more context keys to use for the simulation. Keys are formatted as `keyA=value1,value2 keyB=value1,value2`. Multiple keys are separated by spaces. Multiple values separated by commas. See [Context Keys](#context-keys) for what keys are set automatically |
-| `-v`, `--verbose`                  | Enable verbose output for the simulation to see exactly what statements applied or not and why.                                                                                                                                                                      |
-| `--expect <result>`                | Optional expected outcome of the simulation. Valid values are `Allowed`, `ImplicitlyDenied`, `ExplicitlyDenied`, `AnyDeny`. If the result does not match the expected value, a non-zero exit code is returned                                                        |
-| `-i`, `--ignore-missing-principal` | Ignore if the principal is not found in the data. By default a simulation will fail if the principal is not in your iam-collect data. Use this flag if you want to simulate a request for a principal that may not exist in the downloaded data.                     |
+| Flag                               | Description                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--principal <arn>`                | The principal the request is from. Can be a user, role, session, or AWS service.                                                                                                                                                                                                                                        |
+| `--resource <arn>`                 | The ARN of the resource to simulate access to. Ignore for wildcard-only actions such as `s3:ListAllMyBuckets`.                                                                                                                                                                                                          |
+| `--resource-account <id>`          | The account ID of the resource. Only required if it cannot be determined from the resource ARN or the principal ARN for wildcard only actions.                                                                                                                                                                          |
+| `--action <service:action>`        | The action to simulate; must be a valid IAM service and action such as `s3:ListBucket`.                                                                                                                                                                                                                                 |
+| `--context <key value1 value2>`    | One or more context keys to use for the simulation. Keys are formatted as `keyA value1 value2`. To specify multiple keys simply provide the argument more than once. For instance `--context keyA valueA1 valueA2 --context keyB valueB1 valueB2` See [Context Keys](#context-keys) for what keys are set automatically |
+| `-v`, `--verbose`                  | Enable verbose output for the simulation to see exactly what statements applied or not and why.                                                                                                                                                                                                                         |
+| `--expect <result>`                | Optional expected outcome of the simulation. Valid values are `Allowed`, `ImplicitlyDenied`, `ExplicitlyDenied`, `AnyDeny`. If the result does not match the expected value, a non-zero exit code is returned                                                                                                           |
+| `-i`, `--ignore-missing-principal` | Ignore if the principal is not found in the data. By default a simulation will fail if the principal is not in your iam-collect data. Use this flag if you want to simulate a request for a principal that may not exist in the downloaded data.                                                                        |
 
 You can also include any [Global CLI Options](GlobalCliOptions.md).
 
@@ -55,7 +55,7 @@ iam-lens simulate \
   --principal arn:aws:iam::333333333333:role/DevRole \
   --resource arn:aws:sqs:us-east-1:333333333333:my-queue \
   --action sqs:SendMessage \
-  --context aws:SourceVpc=vpc-1234567890abcdef0 \
+  --context aws:SourceVpc vpc-1234567890abcdef0 \
   --verbose
 
 # Assert the result must be “Allowed”; exit code will be nonzero if not
@@ -85,7 +85,7 @@ iam-lens simulate \
   --principal arn:aws:iam::222222222222:user/Alice \
   --action s3:GetObject
   --resource arn:aws:s3:::my-bucket/my-object.txt \
-  --context aws:SourceVpc=vpc-myvpcid
+  --context aws:SourceVpc vpc-myvpcid
 ```
 
 Will automatically look up the VPC endpoint for S3 within VPC `vpc-myvpcid` and include the endpoint policy in the simulation. It will also automatically set the context key `aws:SourceVpce` to the VPC endpoint id.
@@ -97,7 +97,7 @@ iam-lens simulate \
   --principal arn:aws:iam::222222222222:user/Alice \
   --action s3:GetObject
   --resource arn:aws:s3:::my-bucket/my-object.txt \
-  --context aws:SourceVpce=vpce-myvpcendpointid
+  --context aws:SourceVpce vpce-myvpcendpointid
 ```
 
 Will lookup the VPC endpoint and include the endpoint policy in the simulation. It will also automatically set the context key for `aws:SourceVpc` to the VPC id that endpoint is in.
@@ -183,14 +183,15 @@ The following context keys are set when the principal is an AWS service (e.g., `
 
 ### Overriding Default Context Keys
 
-Any context keys supplied via the `--context key=value[,value2,…]` argument will override the defaults described above. For example:
+Any context keys supplied via the `--context key value [value2] [value3]` argument will override the defaults described above. For example:
 
 ```bash
 iam-lens simulate \
   --principal arn:aws:iam::123456789012:user/Alice \
   --resource arn:aws:s3:::my-bucket \
   --action s3:GetObject \
-  --context aws:CurrentTime=2025-01-01T00:00:00Z aws:PrincipalTag/Env=staging
+  --context aws:CurrentTime 2025-01-01T00:00:00Z \
+  --context aws:PrincipalTag/Env staging
 ```
 
 In this case, `aws:CurrentTime` and `aws:PrincipalTag/Env` will use the provided values instead of what iam-lens would normally derive.
