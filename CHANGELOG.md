@@ -1,3 +1,10 @@
+## [0.1.34](https://github.com/cloud-copilot/iam-lens/compare/v0.1.33...v0.1.34) (2025-08-22)
+
+
+### Features
+
+* Improve ux for custom context keys ([2cb9aa8](https://github.com/cloud-copilot/iam-lens/commit/2cb9aa872922f8192283db8b87964410a83b27a7))
+
 ## [0.1.33](https://github.com/cloud-copilot/iam-lens/compare/v0.1.32...v0.1.33) (2025-08-22)
 
 ## [0.1.32](https://github.com/cloud-copilot/iam-lens/compare/v0.1.31...v0.1.32) (2025-08-16)
