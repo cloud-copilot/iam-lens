@@ -38,7 +38,7 @@ const main = async () => {
           }),
           context: mapArgument({
             description:
-              'The context keys to use for the simulation. Keys are formatted as key=value. Multiple values can be separated by commas (key=value1,value2,value3)',
+              'The context keys to use for the simulation. The first value is the key and the rest are the values. Specify multiple keys by using --context multiple times',
             defaultValue: {}
           }),
           verbose: booleanArgument({
@@ -94,7 +94,7 @@ const main = async () => {
         defaultValue: []
       }),
       partition: stringArgument({
-        description: 'The AWS partition to use (aws, aws-cn, aws-us-gov).',
+        description: 'The AWS partition to use (aws, aws-cn, aws-us-gov). Defaults to aws',
         defaultValue: 'aws'
       })
     },
