@@ -1,3 +1,10 @@
+## [0.1.35](https://github.com/cloud-copilot/iam-lens/compare/v0.1.34...v0.1.35) (2025-08-25)
+
+
+### Features
+
+* Upgrade iam-data ([1039dac](https://github.com/cloud-copilot/iam-lens/commit/1039dac8899055d39296e2290c4f638807e92b50))
+
 ## [0.1.34](https://github.com/cloud-copilot/iam-lens/compare/v0.1.33...v0.1.34) (2025-08-22)
 
 
