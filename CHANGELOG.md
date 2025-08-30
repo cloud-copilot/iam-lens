@@ -1,3 +1,10 @@
+## [0.1.36](https://github.com/cloud-copilot/iam-lens/compare/v0.1.35...v0.1.36) (2025-08-30)
+
+
+### Features
+
+* Automatically set aws:VpceAccount, aws:VpceOrgID, and aws:VpceOrgPaths for supported services when a VPC endpoint is specified. ([1d56a13](https://github.com/cloud-copilot/iam-lens/commit/1d56a136abbf6da372442fd543419d94640c81c5))
+
 ## [0.1.35](https://github.com/cloud-copilot/iam-lens/compare/v0.1.34...v0.1.35) (2025-08-25)
 
 
