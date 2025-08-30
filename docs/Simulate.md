@@ -102,6 +102,10 @@ iam-lens simulate \
 
 Will lookup the VPC endpoint and include the endpoint policy in the simulation. It will also automatically set the context key for `aws:SourceVpc` to the VPC id that endpoint is in.
 
+### VPC Endpoint Account and Organization Context Keys
+
+If the AWS service supports `aws:VpceAccount`, `aws:VpceOrgID`, and `aws:VpceOrgPaths`. Those keys will automatically be set based on the VPC endpoint's account and organization information.
+
 ### Default Context Keys
 
 - **`aws:SecureTransport`**

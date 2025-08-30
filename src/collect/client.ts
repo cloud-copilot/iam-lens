@@ -1078,4 +1078,54 @@ export class IamCollectClient {
     })
     return index.data.endpoints[vpcEndpointId]?.vpc
   }
+
+  /**
+   * Lookup the account ID for a given VPC endpoint ID.
+   *
+   * @param vpcEndpointId the ID of the VPC endpoint
+   * @returns the account ID, or undefined if not found
+   */
+  async getAccountIdForVpcEndpointId(vpcEndpointId: string): Promise<string | undefined> {
+    const index = await this.getIndex<VpcIndex>('vpcs', {
+      endpoints: {},
+      vpcs: {}
+    })
+    const vpcArn = index.data.endpoints[vpcEndpointId]?.arn
+    if (!vpcArn) {
+      return undefined
+    }
+    return splitArnParts(vpcArn).accountId
+  }
+
+  /**
+   * Get the organization ID for a given VPC endpoint ID.
+   *
+   * @param vpcEndpointId the ID of the VPC endpoint
+   * @returns the organization ID, or undefined if not found
+   */
+  async getOrgIdForVpcEndpointId(vpcEndpointId: string): Promise<string | undefined> {
+    const accountId = await this.getAccountIdForVpcEndpointId(vpcEndpointId)
+    if (!accountId) {
+      return undefined
+    }
+    return this.getOrgIdForAccount(accountId)
+  }
+
+  /**
+   * Get the organization unit hierarchy for a given VPC endpoint ID.
+   *
+   * @param vpcEndpointId the ID of the VPC endpoint
+   * @returns the organization unit hierarchy, or undefined if not found
+   */
+  async getOrgUnitHierarchyForVpcEndpointId(vpcEndpointId: string): Promise<string[] | undefined> {
+    const accountId = await this.getAccountIdForVpcEndpointId(vpcEndpointId)
+    if (!accountId) {
+      return undefined
+    }
+    const hierarchy = await this.getOrgUnitHierarchyForAccount(accountId)
+    if (hierarchy.length === 0) {
+      return undefined
+    }
+    return hierarchy
+  }
 }

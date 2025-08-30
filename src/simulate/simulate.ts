@@ -19,7 +19,13 @@ import {
   getResourcePolicyForResource
 } from '../resources.js'
 import { AssumeRoleActions } from '../utils/sts.js'
-import { ContextKeys, createContextKeys, knownContextKeys } from './contextKeys.js'
+import {
+  CONTEXT_KEYS,
+  type ContextKeys,
+  contextValue,
+  createContextKeys,
+  knownContextKeys
+} from './contextKeys.js'
 
 /**
  * The request details for simulating an IAM request.
@@ -133,23 +139,11 @@ export async function simulateRequest(
   const context = await createContextKeys(
     collectClient,
     simulationRequest,
+    service,
     simulationRequest.customContextKeys
   )
 
-  const vpcEndpointKey = Object.keys(context).find((key) => key.toLowerCase() == 'aws:sourcevpce')
-  let vpcEndpointId = vpcEndpointKey ? context[vpcEndpointKey] : undefined
-  let vpcId: string | string[] | undefined = undefined
-
-  if (!vpcEndpointId) {
-    const vpcKey = Object.keys(context).find((key) => key.toLowerCase() == 'aws:sourcevpc')
-    if (vpcKey) {
-      vpcId = context[vpcKey]
-      if (vpcId && typeof vpcId === 'string') {
-        vpcEndpointId = await collectClient.getVpcEndpointIdForVpcService(vpcId, service)
-      }
-    }
-  }
-
+  const vpcEndpointId = contextValue(context, CONTEXT_KEYS.vpcEndpointId)
   let vpcEndpointPolicy: { name: string; policy: any } | undefined = undefined
   if (vpcEndpointId && typeof vpcEndpointId === 'string') {
     const vpcEndpointArn = await collectClient.getVpcEndpointArnForVpcEndpointId(vpcEndpointId)
@@ -159,18 +153,6 @@ export async function simulateRequest(
         vpcEndpointPolicy = { name: vpcEndpointArn, policy: vpcPolicy }
       }
     }
-  }
-
-  if (vpcEndpointId && !vpcId) {
-    if (typeof vpcEndpointId == 'string') {
-      const vpcId = await collectClient.getVpcIdForVpcEndpointId(vpcEndpointId)
-      if (vpcId) {
-        context['aws:SourceVpc'] = vpcId
-      }
-    }
-  }
-  if (vpcEndpointId && !vpcEndpointKey) {
-    context['aws:SourceVpce'] = vpcEndpointId
   }
 
   const applicableScps = isServiceLinkedRole(simulationRequest.principal)
@@ -208,7 +190,7 @@ export async function simulateRequest(
 
   if (!simulationRequest.principal.endsWith(':root')) {
     // Treat this as strict unless it is a root principal
-    strictContextKeys.push('aws:AssumedRoot')
+    strictContextKeys.push(CONTEXT_KEYS.assumedRoot)
   }
 
   // S3 Access Points are Not Supported Right Now, Don't Add Noise
