@@ -37,17 +37,53 @@ export const knownContextKeys: readonly string[] = [
   'aws:SourceOwner'
 ]
 
+export const CONTEXT_KEYS = {
+  assumedRoot: 'aws:AssumedRoot',
+  vpc: 'aws:SourceVpc',
+  vpcEndpointId: 'aws:SourceVpce',
+  vpcEndpointAccount: 'aws:VpceAccount',
+  vpcEndpointOrgId: 'aws:VpceOrgID',
+  vpcEndpointOrgPaths: 'aws:VpceOrgPaths'
+}
+
+/**
+ * Checks if a context has a specific key (case-insensitive).
+ *
+ * @param context - The context to check.
+ * @param key - The key to check for.
+ * @returns True if the context has the key, false otherwise.
+ */
+export function contextHasKey(context: ContextKeys, key: string): boolean {
+  return !!contextValue(context, key)
+}
+
+/**
+ * Get the value of a context key (case-insensitive).
+ *
+ * @param context - The context to check.
+ * @param key - The key to get the value for.
+ * @returns The value of the context key, or undefined if it doesn't exist.
+ */
+export function contextValue(context: ContextKeys, key: string): string | string[] | undefined {
+  const matchingKey = Object.keys(context).find(
+    (contextKey) => contextKey.toLowerCase() === key.toLowerCase()
+  )
+  return matchingKey ? context[matchingKey] : undefined
+}
+
 /**
  * Get the context keys for a simulation request.
  *
  * @param collectClient the collect client to use for fetching data
  * @param simulationRequest the simulation request to create context keys for
+ * @param service the service the request is for
  * @param contextKeyOverrides the context key overrides to apply
  * @returns a promise that resolves to the context keys for the simulation request
  */
 export async function createContextKeys(
   collectClient: IamCollectClient,
   simulationRequest: SimulationRequest,
+  service: string,
   contextKeyOverrides: ContextKeys
 ): Promise<ContextKeys> {
   const result: ContextKeys = {
@@ -67,7 +103,7 @@ export async function createContextKeys(
       result['aws:PrincipalOrgId'] = orgId
 
       const orgStructure = await collectClient.getOrgUnitHierarchyForAccount(principalAccountId)
-      result['aws:PrincipalOrgPaths'] = [`${orgId}/${orgStructure.join('/')}/`]
+      result['aws:PrincipalOrgPaths'] = makeOrgPaths(orgId, orgStructure)
     }
 
     const tags = await collectClient.getTagsForResource(
@@ -118,7 +154,7 @@ export async function createContextKeys(
         simulationRequest.resourceAccount!
       )
 
-      result['aws:ResourceOrgPaths'] = [`${resourceOrgId}/${orgStructure.join('/')}/`]
+      result['aws:ResourceOrgPaths'] = makeOrgPaths(resourceOrgId, orgStructure)
     }
   }
 
@@ -148,7 +184,81 @@ export async function createContextKeys(
     result[key] = value
   }
 
+  //Add VPC context keys
+  const vpcKeys = await getVpcKeys(result, service, collectClient)
+  for (const [key, value] of Object.entries(vpcKeys)) {
+    result[key] = value
+  }
+
   return result
+}
+
+/**
+ * Get the VPC keys that should be added to the context for a simulation.
+ *
+ * @param context the existing context
+ * @param service the service the request is for
+ * @param collectClient the IAM collect client
+ * @returns a record of VPC context keys
+ */
+export async function getVpcKeys(
+  context: ContextKeys,
+  service: string,
+  collectClient: IamCollectClient
+): Promise<ContextKeys> {
+  const vpcKeys: ContextKeys = {}
+
+  let vpcEndpointId = contextValue(context, CONTEXT_KEYS.vpcEndpointId)
+  const hasVpcEndpoint = !!vpcEndpointId
+  let vpcId = contextValue(context, CONTEXT_KEYS.vpc)
+
+  //If we know the VPC but not the endpoint, lookup the endpoint
+  if (!vpcEndpointId && vpcId && typeof vpcId === 'string') {
+    vpcEndpointId = await collectClient.getVpcEndpointIdForVpcService(vpcId, service)
+  }
+
+  if (vpcEndpointId && !vpcId) {
+    if (typeof vpcEndpointId == 'string') {
+      const vpcId = await collectClient.getVpcIdForVpcEndpointId(vpcEndpointId)
+      if (vpcId) {
+        vpcKeys[CONTEXT_KEYS.vpc] = vpcId
+      }
+    }
+  }
+
+  if (vpcEndpointId && !hasVpcEndpoint) {
+    vpcKeys[CONTEXT_KEYS.vpcEndpointId] = vpcEndpointId
+  }
+
+  if (
+    vpcEndpointId &&
+    typeof vpcEndpointId === 'string' &&
+    serviceSupportsExtraVpcEndpointData(service)
+  ) {
+    const vpcEndpointAccount = await collectClient.getAccountIdForVpcEndpointId(vpcEndpointId)
+    const vpcEndpointOrgId = await collectClient.getOrgIdForVpcEndpointId(vpcEndpointId)
+    const vpcEndpointOrgStructure =
+      await collectClient.getOrgUnitHierarchyForVpcEndpointId(vpcEndpointId)
+
+    if (vpcEndpointAccount && !contextHasKey(context, CONTEXT_KEYS.vpcEndpointAccount)) {
+      vpcKeys[CONTEXT_KEYS.vpcEndpointAccount] = vpcEndpointAccount
+    }
+    if (vpcEndpointOrgId && !contextHasKey(context, CONTEXT_KEYS.vpcEndpointOrgId)) {
+      vpcKeys[CONTEXT_KEYS.vpcEndpointOrgId] = vpcEndpointOrgId
+    }
+    if (
+      vpcEndpointOrgId &&
+      vpcEndpointOrgStructure &&
+      !contextHasKey(context, CONTEXT_KEYS.vpcEndpointOrgPaths)
+    ) {
+      vpcKeys[CONTEXT_KEYS.vpcEndpointOrgPaths] = makeOrgPaths(
+        vpcEndpointOrgId,
+        vpcEndpointOrgStructure
+      )
+    }
+  }
+
+  return vpcKeys
 }
 
 const awsResourceInfoExcludedActions = new Set([
@@ -181,4 +291,60 @@ const awsResourceInfoExcludedActions = new Set([
 function isAwsResourceInfoExcludedAction(action: string): boolean {
   const lowerCaseAction = action.toLowerCase()
   return lowerCaseAction.startsWith('ebs:') || awsResourceInfoExcludedActions.has(lowerCaseAction)
+}
+
+const servicesThatSupportExtraVpcEndpointData = new Set([
+  'apprunner',
+  'discovery',
+  'athena',
+  'servicediscovery',
+  'applicationinsights',
+  'cloudformation',
+  'comprehendmedical',
+  'compute-optimizer',
+  'datasync',
+  'ebs',
+  'scheduler',
+  'firehose',
+  'medical-imaging',
+  'healthlake',
+  'omics',
+  'iam',
+  'iotfleetwise',
+  'iotwireless',
+  'kms',
+  'lambda',
+  'payment-cryptography',
+  'polly',
+  'acm-pca',
+  'rbin',
+  'rekognition',
+  'servicequotas',
+  's3',
+  'storagegateway',
+  'ssm-contacts',
+  'textract',
+  'transcribe',
+  'transfer'
+])
+
+/**
+ * Check if a service supports extra VPC endpoint data.
+ *
+ * @param service the service to check
+ * @returns true if the service supports extra VPC endpoint data, false otherwise
+ */
+export function serviceSupportsExtraVpcEndpointData(service: string): boolean {
+  return servicesThatSupportExtraVpcEndpointData.has(service.toLowerCase())
+}
+
+/**
+ * Create a string array for an aws:xxOrgPaths context key value.
+ *
+ * @param orgId the organization ID
+ * @param hierarchy the organizational hierarchy
+ * @returns a string array representing the organizational paths
+ */
+function makeOrgPaths(orgId: string, hierarchy: string[]): string[] {
+  return [`${orgId}/${hierarchy.join('/')}/`]
 }

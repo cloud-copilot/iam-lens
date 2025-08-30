@@ -923,6 +923,270 @@ describe('IamCollectClient', () => {
     })
   })
 
+  describe('getAccountIdForVpcEndpointId', () => {
+    it('should return the account ID for a VPC endpoint ID', async () => {
+      // Given a VPC endpoint ID
+      const { store, client } = testStore()
+      const vpcEndpointId = 'vpce-12345678'
+      const accountId = '123456789012'
+      const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+      // And the VPC endpoint exists in the account
+      await store.saveIndex(
+        'vpcs',
+        {
+          vpcs: {},
+          endpoints: {
+            [vpcEndpointId]: {
+              arn: vpcEndpointArn,
+              vpc: 'vpc-12345678'
+            }
+          }
+        },
+        ''
+      )
+
+      // When getting the account ID for the VPC endpoint
+      const result = await client.getAccountIdForVpcEndpointId(vpcEndpointId)
+
+      // Then it should return the account ID
+      expect(result).toEqual(accountId)
+    })
+
+    it('should return undefined if the VPC endpoint ID does not exist', async () => {
+      // Given a VPC endpoint ID that does not exist
+      const { store, client } = testStore()
+      const vpcEndpointId = 'vpce-nonexistent'
+
+      // And the VPC index exists but without the endpoint
+      await store.saveIndex(
+        'vpcs',
+        {
+          vpcs: {},
+          endpoints: {}
+        },
+        ''
+      )
+
+      // When getting the account ID for the VPC endpoint
+      const result = await client.getAccountIdForVpcEndpointId(vpcEndpointId)
+
+      // Then it should return undefined
+      expect(result).toBeUndefined()
+    })
+  })
+
+  describe('getOrgIdForVpcEndpointId', () => {
+    it('should return the organization ID for a VPC endpoint ID', async () => {
+      // Given a VPC endpoint ID in an account that belongs to an organization
+      const { store, client } = testStore()
+      const vpcEndpointId = 'vpce-12345678'
+      const accountId = '123456789012'
+      const orgId = 'o-87654321'
+      const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+      // And the VPC endpoint exists in the account
+      await store.saveIndex(
+        'vpcs',
+        {
+          vpcs: {},
+          endpoints: {
+            [vpcEndpointId]: {
+              arn: vpcEndpointArn,
+              vpc: 'vpc-12345678'
+            }
+          }
+        },
+        ''
+      )
+
+      // And the account is part of an organization
+      await store.saveIndex(
+        'accounts-to-orgs',
+        {
+          [accountId]: orgId
+        },
+        ''
+      )
+
+      // When getting the organization ID for the VPC endpoint
+      const result = await client.getOrgIdForVpcEndpointId(vpcEndpointId)
+
+      // Then it should return the organization ID
+      expect(result).toEqual(orgId)
+    })
+
+    it('should return undefined if the VPC endpoint ID does not exist', async () => {
+      // Given a VPC endpoint ID that does not exist
+      const { store, client } = testStore()
+      const vpcEndpointId = 'vpce-nonexistent'
+
+      // And the VPC index exists but without the endpoint
+      await store.saveIndex(
+        'vpcs',
+        {
+          vpcs: {},
+          endpoints: {}
+        },
+        ''
+      )
+
+      // When getting the organization ID for the VPC endpoint
+      const result = await client.getOrgIdForVpcEndpointId(vpcEndpointId)
+
+      // Then it should return undefined
+      expect(result).toBeUndefined()
+    })
+
+    it('should return undefined if the account is not part of an organization', async () => {
+      // Given a VPC endpoint ID in an account that is not part of an organization
+      const { store, client } = testStore()
+      const vpcEndpointId = 'vpce-12345678'
+      const accountId = '123456789012'
+      const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+      // And the VPC endpoint exists in the account
+      await store.saveIndex(
+        'vpcs',
+        {
+          vpcs: {},
+          endpoints: {
+            [vpcEndpointId]: {
+              arn: vpcEndpointArn,
+              vpc: 'vpc-12345678'
+            }
+          }
+        },
+        ''
+      )
+
+      // And the account is not mapped to any organization
+      await store.saveIndex('accounts-to-orgs', {}, '')
+
+      // When getting the organization ID for the VPC endpoint
+      const result = await client.getOrgIdForVpcEndpointId(vpcEndpointId)
+
+      // Then it should return undefined
+      expect(result).toBeUndefined()
+    })
+  })
+
+  describe('getOrgUnitHierarchyForVpcEndpointId', () => {
+    it('should return the organization unit hierarchy for a VPC endpoint ID', async () => {
+      // Given a VPC endpoint ID in an account that belongs to an organization
+      const { store, client } = testStore()
+      const vpcEndpointId = 'vpce-12345678'
+      const accountId = '123456789012'
+      const orgId = 'o-87654321'
+      const rootOu = 'r-4fkd'
+      const orgUnit1Id = 'ou-4fkd-12345678'
+      const orgUnit2Id = 'ou-4fkd-87654321'
+      const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+      // And the VPC endpoint exists in the account
+      await store.saveIndex(
+        'vpcs',
+        {
+          vpcs: {},
+          endpoints: {
+            [vpcEndpointId]: {
+              arn: vpcEndpointArn,
+              vpc: 'vpc-12345678'
+            }
+          }
+        },
+        ''
+      )
+
+      // And the account is part of an organization
+      await store.saveIndex(
+        'accounts-to-orgs',
+        {
+          [accountId]: orgId
+        },
+        ''
+      )
+
+      // And the account is in an OU
+      await store.saveOrganizationMetadata(orgId, 'accounts', {
+        [accountId]: {
+          ou: orgUnit2Id
+        }
+      })
+
+      // And the org has OUs with hierarchy
+      await store.saveOrganizationMetadata(orgId, 'ous', {
+        [rootOu]: {},
+        [orgUnit1Id]: {
+          parent: rootOu
+        },
+        [orgUnit2Id]: {
+          parent: orgUnit1Id
+        }
+      })
+
+      // When getting the organization unit hierarchy for the VPC endpoint
+      const result = await client.getOrgUnitHierarchyForVpcEndpointId(vpcEndpointId)
+
+      // Then it should return the organization unit hierarchy
+      expect(result).toEqual([rootOu, orgUnit1Id, orgUnit2Id])
+    })
+
+    it('should return undefined if the VPC endpoint ID does not exist', async () => {
+      // Given a VPC endpoint ID that does not exist
+      const { store, client } = testStore()
+      const vpcEndpointId = 'vpce-nonexistent'
+
+      // And the VPC index exists but without the endpoint
+      await store.saveIndex(
+        'vpcs',
+        {
+          vpcs: {},
+          endpoints: {}
+        },
+        ''
+      )
+
+      // When getting the organization unit hierarchy for the VPC endpoint
+      const result = await client.getOrgUnitHierarchyForVpcEndpointId(vpcEndpointId)
+
+      // Then it should return undefined
+      expect(result).toBeUndefined()
+    })
+
+    it('should return undefined if the account is not part of an organization', async () => {
+      // Given a VPC endpoint ID in an account that is not part of an organization
+      const { store, client } = testStore()
+      const vpcEndpointId = 'vpce-12345678'
+      const accountId = '123456789012'
+      const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+      // And the VPC endpoint exists in the account
+      await store.saveIndex(
+        'vpcs',
+        {
+          vpcs: {},
+          endpoints: {
+            [vpcEndpointId]: {
+              arn: vpcEndpointArn,
+              vpc: 'vpc-12345678'
+            }
+          }
+        },
+        ''
+      )
+
+      // And the account is not mapped to any organization
+      await store.saveIndex('accounts-to-orgs', {}, '')
+
+      // When getting the organization unit hierarchy for the VPC endpoint
+      const result = await client.getOrgUnitHierarchyForVpcEndpointId(vpcEndpointId)
+
+      // Then it should return undefined
+      expect(result).toBeUndefined()
+    })
+  })
+
   describe('getManagedPoliciesForUser', () => {
     it('should return an empty array if the user does not exist', async () => {
       // Given a user that does not exist

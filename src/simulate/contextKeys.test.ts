@@ -23,7 +23,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalArn should be set to the principal ARN
       expect(contextKeys['aws:PrincipalArn']).toBe(principalArn)
@@ -37,7 +37,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalArn should not be set
       expect(contextKeys['aws:PrincipalArn']).toBeUndefined()
@@ -54,7 +54,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalAccount should be set to the account ID from the principal ARN
       expect(contextKeys['aws:PrincipalAccount']).toBe('123456789012')
@@ -67,7 +67,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalAccount should not be set
       expect(contextKeys['aws:PrincipalAccount']).toBeUndefined()
@@ -106,7 +106,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalOrgPaths should be set to the org path
       expect(contextKeys['aws:PrincipalOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/${ou2}/`])
@@ -122,7 +122,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalOrgPaths should not be set
       expect(contextKeys['aws:PrincipalOrgPaths']).toBeUndefined()
@@ -136,7 +136,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalOrgPaths should not be set
       expect(contextKeys['aws:PrincipalOrgPaths']).toBeUndefined()
@@ -177,7 +177,7 @@ describe('createContextKeys', () => {
       })
 
       //When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalOrgID should be set to the organization ID
       expect(contextKeys['aws:PrincipalOrgId']).toBe(organizationId)
@@ -195,7 +195,7 @@ describe('createContextKeys', () => {
       const { store, client } = testStore()
 
       //When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalOrgID should not be set
       expect(contextKeys['aws:PrincipalOrgId']).toBeUndefined()
@@ -209,7 +209,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalOrgID should not be set
       expect(contextKeys['aws:PrincipalOrgId']).toBeUndefined()
@@ -233,7 +233,7 @@ describe('createContextKeys', () => {
       })
 
       //When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalTag/Department and aws:PrincipalTag/Project should be set
       expect(contextKeys['aws:PrincipalTag/Department']).toBe('Engineering')
@@ -253,7 +253,7 @@ describe('createContextKeys', () => {
       await store.saveResourceMetadata('123456789012', principalArn, 'tags', {})
 
       //When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       //Then no aws:PrincipalTag/ keys should be set
       const tagKeys = Object.keys(contextKeys).filter((key) => key.startsWith('aws:PrincipalTag/'))
@@ -268,7 +268,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then no aws:PrincipalTag/ keys should be set
       const tagKeys = Object.keys(contextKeys).filter((key) => key.startsWith('aws:PrincipalTag/'))
@@ -285,7 +285,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalIsAWSService should be true
       expect(contextKeys['aws:PrincipalIsAWSService']).toBe('true')
@@ -299,7 +299,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalIsAWSService should not be set
       expect(contextKeys['aws:PrincipalIsAWSService']).toEqual('false')
@@ -315,7 +315,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalServiceName should be set to the service name
       expect(contextKeys['aws:PrincipalServiceName']).toBe('lambda.amazonaws.com')
@@ -328,7 +328,7 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalServiceName should not be set
       expect(contextKeys['aws:PrincipalServiceName']).toBeUndefined()
@@ -344,7 +344,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalType should be 'Account'
       expect(contextKeys['aws:PrincipalType']).toBe('Account')
@@ -358,7 +358,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalType should be 'User'
       expect(contextKeys['aws:PrincipalType']).toBe('User')
@@ -372,7 +372,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalType should be 'AssumedRole'
       expect(contextKeys['aws:PrincipalType']).toBe('AssumedRole')
@@ -386,7 +386,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalType should be 'FederatedUser'
       expect(contextKeys['aws:PrincipalType']).toBe('FederatedUser')
@@ -404,7 +404,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalType should not be set
       expect(contextKeys['aws:PrincipalType']).toBeUndefined()
@@ -420,7 +420,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:userid should be the account ID
       expect(contextKeys['aws:userid']).toBe('123456789012')
@@ -445,7 +445,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:userid should be the user unique ID
       expect(contextKeys['aws:userid']).toBe('AIDAEXAMPLE')
@@ -460,7 +460,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:userid should be '123456789012:Bob'
       expect(contextKeys['aws:userid']).toBe('123456789012:Bob')
@@ -486,7 +486,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:userid should be 'AROAROLEID:MySession'
       expect(contextKeys['aws:userid']).toBe('AROAROLEID:MySession')
@@ -500,7 +500,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:userid should not be set
       expect(contextKeys['aws:userid']).toBeUndefined()
@@ -529,7 +529,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:username should be the IAM user name
       expect(contextKeys['aws:username']).toBe('test-user')
@@ -543,7 +543,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:username should not be set
       expect(contextKeys['aws:username']).toBeUndefined()
@@ -557,7 +557,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:username should not be set
       expect(contextKeys['aws:username']).toBeUndefined()
@@ -574,7 +574,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:ResourceAccount should be set to the account ID
       expect(contextKeys['aws:ResourceAccount']).toBe('123456789012')
@@ -590,7 +590,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:ResourceAccount should not be set
       expect(contextKeys['aws:ResourceAccount']).toBeUndefined()
@@ -630,7 +630,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgPaths should be set to the org path
       expect(contextKeys['aws:ResourceOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/${ou2}/`])
@@ -647,7 +647,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgPaths should not be set
       expect(contextKeys['aws:ResourceOrgPaths']).toBeUndefined()
@@ -686,7 +686,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgPaths should not be set
       expect(contextKeys['aws:ResourceOrgPaths']).toBeUndefined()
@@ -726,7 +726,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgId should be set to the organization ID
       expect(contextKeys['aws:ResourceOrgID']).toBe(orgId)
@@ -743,7 +743,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgID should not be set
       expect(contextKeys['aws:ResourceOrgID']).toBeUndefined()
@@ -782,7 +782,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgID should not be set
       expect(contextKeys['aws:ResourceOrgID']).toBeUndefined()
@@ -807,7 +807,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceTag/Environment and aws:ResourceTag/Owner should be set
       expect(contextKeys['aws:ResourceTag/Environment']).toBe('prod')
@@ -828,7 +828,7 @@ describe('createContextKeys', () => {
       await store.saveResourceMetadata('123456789012', resourceArn, 'tags', {})
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then no aws:ResourceTag/ keys should be set
       const tagKeys = Object.keys(contextKeys).filter((key) => key.startsWith('aws:ResourceTag/'))
@@ -847,7 +847,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:SecureTransport should always be true
       expect(contextKeys['aws:SecureTransport']).toBe('true')
@@ -865,7 +865,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:CurrentTime should be set to the current time in ISO format
       const currentTime = new Date(contextKeys['aws:CurrentTime'] as string)
@@ -881,7 +881,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:EpochTime should be set to the current time in seconds since epoch
       const epochTime = parseInt(contextKeys['aws:EpochTime'] as string, 10)
@@ -899,7 +899,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:SourceAccount should be set to the resource account ID
       expect(contextKeys['aws:SourceAccount']).toBe('123456789012')
@@ -914,7 +914,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:SourceAccount should not be set
       expect(contextKeys['aws:SourceAccount']).toBeUndefined()
@@ -931,7 +931,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:SourceAccount should be set to the resource account ID
       expect(contextKeys['aws:SourceOwner']).toBe('123456789012')
@@ -946,7 +946,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, {})
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
 
       // Then aws:SourceAccount should not be set
       expect(contextKeys['aws:SourceOwner']).toBeUndefined()
@@ -985,7 +985,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgID should be set to the org ID
       expect(contextKeys['aws:SourceOrgID']).toBe(orgId)
@@ -1022,7 +1022,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgID should not be set
       expect(contextKeys['aws:SourceOrgID']).toBeUndefined()
@@ -1038,7 +1038,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgID should not be set
       expect(contextKeys['aws:SourceOrgID']).toBeUndefined()
@@ -1077,7 +1077,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgPaths should be set to the org path
       expect(contextKeys['aws:SourceOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/${ou2}/`])
@@ -1114,7 +1114,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgPaths should not be set
       expect(contextKeys['aws:SourceOrgPaths']).toBeUndefined()
@@ -1130,7 +1130,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, {})
+      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgPaths should not be set
       expect(contextKeys['aws:SourceOrgPaths']).toBeUndefined()
@@ -1149,7 +1149,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys with overrides
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, overrides)
+      const contextKeys = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        overrides
+      )
 
       // Then the override should take precedence
       expect(contextKeys['aws:PrincipalAccount']).toBe('override-account')
@@ -1166,10 +1171,606 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys with overrides
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, overrides)
+      const contextKeys = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        overrides
+      )
 
       // Then the override key should be present
       expect(contextKeys['aws:ExtraKey']).toBe('extra-value')
+    })
+  })
+
+  describe('VPC Endpoint Data', () => {
+    describe('aws:SourceVpc', () => {
+      it('should set aws:SourceVpc when VPC endpoint ID is provided and VPC ID is not', async () => {
+        // Given a simulation request with a VPC endpoint ID in context overrides
+        const vpcEndpointId = 'vpce-12345678'
+        const vpcId = 'vpc-87654321'
+        const accountId = '123456789012'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock the VPC endpoint data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {},
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: vpcId
+              }
+            }
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then aws:SourceVpc should be set to the VPC ID
+        expect(contextKeys['aws:SourceVpc']).toBe(vpcId)
+        expect(contextKeys['aws:SourceVpce']).toBe(vpcEndpointId)
+      })
+
+      it('should not override aws:SourceVpc if already provided in context', async () => {
+        // Given a simulation request with both VPC ID and VPC endpoint ID in context
+        const vpcEndpointId = 'vpce-12345678'
+        const providedVpcId = 'vpc-provided'
+        const lookupVpcId = 'vpc-87654321'
+        const accountId = '123456789012'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock the VPC endpoint data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {},
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: lookupVpcId
+              }
+            }
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpc': providedVpcId,
+          'aws:SourceVpce': vpcEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then aws:SourceVpc should remain the provided value
+        expect(contextKeys['aws:SourceVpc']).toBe(providedVpcId)
+        expect(contextKeys['aws:SourceVpce']).toBe(vpcEndpointId)
+      })
+    })
+
+    describe('aws:SourceVpce', () => {
+      it('should lookup VPC endpoint ID when VPC ID is provided but endpoint ID is not', async () => {
+        // Given a simulation request with a VPC ID but no endpoint ID
+        const vpcId = 'vpc-87654321'
+        const vpcEndpointId = 'vpce-12345678'
+        const service = 's3'
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock the VPC data with an endpoint for the service
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {
+              [vpcId]: {
+                arn: `arn:aws:ec2:us-east-1:123456789012:vpc/${vpcId}`,
+                endpoints: [
+                  {
+                    id: vpcEndpointId,
+                    service: service
+                  },
+                  {
+                    id: 'vpce-99999999',
+                    service: 'lambda'
+                  }
+                ]
+              }
+            },
+            endpoints: {}
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpc': vpcId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          service,
+          contextOverrides
+        )
+
+        // Then aws:SourceVpce should be set to the looked up endpoint ID
+        expect(contextKeys['aws:SourceVpc']).toBe(vpcId)
+        expect(contextKeys['aws:SourceVpce']).toBe(vpcEndpointId)
+      })
+
+      it('should not override aws:SourceVpce if already provided in context', async () => {
+        // Given a simulation request with both VPC ID and VPC endpoint ID already provided
+        const vpcId = 'vpc-87654321'
+        const providedEndpointId = 'vpce-provided'
+        const lookupEndpointId = 'vpce-12345678'
+        const service = 's3'
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock the VPC data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {
+              [vpcId]: {
+                arn: `arn:aws:ec2:us-east-1:123456789012:vpc/${vpcId}`,
+                endpoints: [
+                  {
+                    id: lookupEndpointId,
+                    service: service
+                  }
+                ]
+              }
+            },
+            endpoints: {}
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpc': vpcId,
+          'aws:SourceVpce': providedEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          service,
+          contextOverrides
+        )
+
+        // Then aws:SourceVpce should remain the provided value
+        expect(contextKeys['aws:SourceVpc']).toBe(vpcId)
+        expect(contextKeys['aws:SourceVpce']).toBe(providedEndpointId)
+      })
+    })
+
+    describe('aws:VpceAccount', () => {
+      it('should set aws:VpceAccount for services that support extra VPC endpoint data', async () => {
+        // Given a simulation request for a service that supports extra VPC endpoint data
+        const vpcEndpointId = 'vpce-12345678'
+        const accountId = '123456789012'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject' // s3 supports extra VPC endpoint data
+        }
+
+        // Mock the VPC endpoint data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {},
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: 'vpc-87654321'
+              }
+            }
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then aws:VpceAccount should be set to the account ID from the VPC endpoint ARN
+        expect(contextKeys['aws:VpceAccount']).toBe(accountId)
+      })
+
+      it('should not set aws:VpceAccount for services that do not support extra VPC endpoint data', async () => {
+        // Given a simulation request for a service that does not support extra VPC endpoint data
+        const vpcEndpointId = 'vpce-12345678'
+        const accountId = '123456789012'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 'ec2:DescribeInstances' // ec2 does not support extra VPC endpoint data
+        }
+
+        // Mock the VPC endpoint data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {},
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: 'vpc-87654321'
+              }
+            }
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          'ec2',
+          contextOverrides
+        )
+
+        // Then aws:VpceAccount should not be set
+        expect(contextKeys['aws:VpceAccount']).toBeUndefined()
+      })
+
+      it('should not override aws:VpceAccount if already provided in context', async () => {
+        // Given a simulation request with aws:VpceAccount already in context
+        const vpcEndpointId = 'vpce-12345678'
+        const providedAccount = '999999999999'
+        const lookupAccount = '123456789012'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${lookupAccount}:vpc-endpoint/${vpcEndpointId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock the VPC endpoint data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {},
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: 'vpc-87654321'
+              }
+            }
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId,
+          'aws:VpceAccount': providedAccount
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then aws:VpceAccount should remain the provided value
+        expect(contextKeys['aws:VpceAccount']).toBe(providedAccount)
+      })
+    })
+
+    describe('aws:VpceOrgID', () => {
+      it('should set aws:VpceOrgID when VPC endpoint account is in an organization', async () => {
+        // Given a VPC endpoint in an account that belongs to an organization
+        const vpcEndpointId = 'vpce-12345678'
+        const accountId = '123456789012'
+        const orgId = 'o-87654321'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock the VPC endpoint and organization data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {},
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: 'vpc-87654321'
+              }
+            }
+          },
+          ''
+        )
+        await store.saveIndex(
+          'accounts-to-orgs',
+          {
+            [accountId]: orgId
+          },
+          ''
+        )
+        await store.saveOrganizationMetadata(orgId, 'accounts', {
+          [accountId]: { ou: 'ou-root-1' }
+        })
+        await store.saveOrganizationMetadata(orgId, 'ous', {
+          'r-root': {},
+          'ou-root-1': { parent: 'r-root' }
+        })
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then aws:VpceOrgID should be set to the organization ID
+        expect(contextKeys['aws:VpceOrgID']).toBe(orgId)
+      })
+
+      it('should not set aws:VpceOrgID when VPC endpoint account is not in an organization', async () => {
+        // Given a VPC endpoint in an account that is not in an organization
+        const vpcEndpointId = 'vpce-12345678'
+        const accountId = '123456789012'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock the VPC endpoint data (no organization mapping)
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {},
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: 'vpc-87654321'
+              }
+            }
+          },
+          ''
+        )
+        await store.saveIndex('accounts-to-orgs', {}, '')
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then aws:VpceOrgID should not be set
+        expect(contextKeys['aws:VpceOrgID']).toBeUndefined()
+      })
+    })
+
+    describe('aws:VpceOrgPaths', () => {
+      it('should set aws:VpceOrgPaths when VPC endpoint account has organization unit hierarchy', async () => {
+        // Given a VPC endpoint in an account with organizational unit hierarchy
+        const vpcEndpointId = 'vpce-12345678'
+        const accountId = '123456789012'
+        const orgId = 'o-87654321'
+        const rootOu = 'r-root'
+        const ou1 = 'ou-root-1'
+        const ou2 = 'ou-root-2'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock the VPC endpoint and organization data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {},
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: 'vpc-87654321'
+              }
+            }
+          },
+          ''
+        )
+        await store.saveIndex(
+          'accounts-to-orgs',
+          {
+            [accountId]: orgId
+          },
+          ''
+        )
+        await store.saveOrganizationMetadata(orgId, 'accounts', {
+          [accountId]: { ou: ou2 }
+        })
+        await store.saveOrganizationMetadata(orgId, 'ous', {
+          [rootOu]: {},
+          [ou1]: { parent: rootOu },
+          [ou2]: { parent: ou1 }
+        })
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then aws:VpceOrgPaths should be set to the organization path
+        expect(contextKeys['aws:VpceOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/${ou2}/`])
+      })
+    })
+
+    describe('integration tests', () => {
+      it('should set all VPC endpoint context keys when conditions are met', async () => {
+        // Given a complete VPC endpoint setup
+        const vpcEndpointId = 'vpce-12345678'
+        const vpcId = 'vpc-87654321'
+        const accountId = '123456789012'
+        const orgId = 'o-87654321'
+        const rootOu = 'r-root'
+        const ou1 = 'ou-root-1'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock complete VPC endpoint and organization data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {
+              [vpcId]: {
+                arn: `arn:aws:ec2:us-east-1:${accountId}:vpc/${vpcId}`,
+                endpoints: [
+                  {
+                    id: vpcEndpointId,
+                    service: 's3'
+                  }
+                ]
+              }
+            },
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: vpcId
+              }
+            }
+          },
+          ''
+        )
+        await store.saveIndex(
+          'accounts-to-orgs',
+          {
+            [accountId]: orgId
+          },
+          ''
+        )
+        await store.saveOrganizationMetadata(orgId, 'accounts', {
+          [accountId]: { ou: ou1 }
+        })
+        await store.saveOrganizationMetadata(orgId, 'ous', {
+          [rootOu]: {},
+          [ou1]: { parent: rootOu }
+        })
+
+        const contextOverrides = {
+          'aws:SourceVpc': vpcId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then all VPC endpoint context keys should be set
+        expect(contextKeys['aws:SourceVpc']).toBe(vpcId)
+        expect(contextKeys['aws:SourceVpce']).toBe(vpcEndpointId)
+        expect(contextKeys['aws:VpceAccount']).toBe(accountId)
+        expect(contextKeys['aws:VpceOrgID']).toBe(orgId)
+        expect(contextKeys['aws:VpceOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/`])
+      })
     })
   })
 })

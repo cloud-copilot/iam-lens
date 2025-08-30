@@ -126,7 +126,7 @@ const main = async () => {
         resourceArn: resource,
         resourceAccount: resourceAccount,
         action: action!,
-        customContextKeys: context,
+        customContextKeys: singularizeOneEntryArrays(context),
         simulationMode: 'Strict',
         ignoreMissingPrincipal
       },
@@ -177,6 +177,27 @@ const main = async () => {
 
     console.log(JSON.stringify(results, null, 2))
   }
+}
+
+/**
+ * Take a record of string arrays and convert it to a record of strings or string arrays,
+ * where any array with a single element is converted to a string.
+ *
+ * @param input - The input record of string arrays.
+ * @returns A new record with singularized values.
+ */
+function singularizeOneEntryArrays(
+  input: Record<string, string[]>
+): Record<string, string | string[]> {
+  const output: Record<string, string | string[]> = {}
+  for (const [key, value] of Object.entries(input)) {
+    if (value.length === 1) {
+      output[key] = value[0]
+    } else {
+      output[key] = value
+    }
+  }
+  return output
 }
 
 main()
