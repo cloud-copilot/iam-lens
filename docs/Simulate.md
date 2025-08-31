@@ -206,6 +206,7 @@ When using VPC endpoints in simulations, iam-lens manages VPC-related context ke
 - If `aws:SourceVpce` is set (directly or through `aws:SourceVpc`), [the corresponding VPC endpoint policy is included in the simulation evaluation](#using-vpc-endpoint-policies).
 
 **Additional VPC Endpoint Context Keys:**
+
 For services that support [enhanced VPC endpoint context keys](https://aws.amazon.com/blogs/security/use-scalable-controls-to-help-prevent-access-from-unexpected-networks/) (such as S3), the following additional context keys are automatically set when `aws:SourceVpce` is present:
 
 - **`aws:VpceAccount`** - The account ID that owns the VPC endpoint; e.g., `"123456789012"`
