@@ -207,13 +207,13 @@ When using VPC endpoints in simulations, iam-lens manages VPC-related context ke
 
 **Additional VPC Endpoint Context Keys:**
 
-For services that support [enhanced VPC endpoint context keys](https://aws.amazon.com/blogs/security/use-scalable-controls-to-help-prevent-access-from-unexpected-networks/) (such as S3), the following additional context keys are automatically set when `aws:SourceVpce` is present:
+For services that support [enhanced VPC endpoint context keys](https://aws.amazon.com/blogs/security/use-scalable-controls-to-help-prevent-access-from-unexpected-networks/) (such as S3), these context keys are set when `aws:SourceVpce` is present:
 
 - **`aws:VpceAccount`** - The account ID that owns the VPC endpoint; e.g., `"123456789012"`
 - **`aws:VpceOrgID`** - The organization ID of the VPC endpoint's account (if part of an organization); e.g., `"o-45j328rnf"`
 - **`aws:VpceOrgPaths`** - The organizational unit hierarchy path for the VPC endpoint's account (if part of an organization); e.g., `[ "o-45j328rnf/r-483b9/ou-383f84/ou-28fmnf8/" ]`
 
-**Note:** VPC endpoint data must be present in your iam-collect dataset for these features to work.
+**Note:** This data may not be available in your iam-collect dataset. For example, if you didn't download it or you are testing VPCs outside your accounts.
 
 ### Overriding Default Context Keys
 
