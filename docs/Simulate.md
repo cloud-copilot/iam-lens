@@ -36,6 +36,43 @@ When simulating requests, iam-lens will detect the account for the principal and
 
 You can also include any [Global CLI Options](GlobalCliOptions.md).
 
+## Using VPC Endpoint Policies
+
+When simulating requests through VPC endpoints, iam-lens can automatically include VPC endpoint policies in the evaluation and set relevant context keys. You can specify either the VPC ID or VPC endpoint ID:
+
+**Option 1: Specify VPC ID** (iam-lens will lookup the appropriate endpoint)
+
+```bash
+iam-lens simulate \
+  --principal arn:aws:iam::222222222222:user/Alice \
+  --action s3:GetObject
+  --resource arn:aws:s3:::my-bucket/my-object.txt \
+  --context aws:SourceVpc vpc-myvpcid
+```
+
+This will:
+
+- Look up the VPC endpoint for S3 within the specified VPC
+- Include the VPC endpoint policy in the simulation
+- Set `aws:SourceVpce` to the VPC endpoint ID
+- Set additional VPC endpoint context keys (see [VPC Endpoint Context Keys](#vpc-endpoint-context-keys))
+
+**Option 2: Specify VPC Endpoint ID directly**
+
+```bash
+iam-lens simulate \
+  --principal arn:aws:iam::222222222222:user/Alice \
+  --action s3:GetObject
+  --resource arn:aws:s3:::my-bucket/my-object.txt \
+  --context aws:SourceVpce vpce-myvpcendpointid
+```
+
+This will:
+
+- Include the VPC endpoint policy in the simulation
+- Set `aws:SourceVpc` to the VPC ID that contains the endpoint
+- Set additional VPC endpoint context keys (see [VPC Endpoint Context Keys](#vpc-endpoint-context-keys))
+
 ## Examples
 
 ```bash
@@ -72,39 +109,9 @@ iam-lens supports [all IAM condition operators](https://iam.cloudcopilot.io/reso
 
 ## Context Keys
 
-iam-lens will automatically populate context keys (see below) and allows you to override them with the `--context` argument. Context keys are automatically verified against the [Service Authorization Reference](https://docs.aws.amazon.com/service-authorization/latest/reference/reference_policies_actions-resources-contextkeys.html) and invalid context keys are not included in the simulation.
+iam-lens automatically populates the context keys below when simulating requests. These keys are set based on your principal, resource, VPC, and organization data. Any keys provided via `--context` will override the automatically provided values.
 
-iam-lens automatically populates the context keys below when simulating requests. These keys are set based on your principal, resource, and organization data. Any keys provided via `--context` will override the defaults.
-
-## Using VPC Endpoint Policies
-
-To simulate requests through VPC endpoints you can specify either the VPC id or the VPC endpoint id as part of the context. For example:
-
-```bash
-iam-lens simulate \
-  --principal arn:aws:iam::222222222222:user/Alice \
-  --action s3:GetObject
-  --resource arn:aws:s3:::my-bucket/my-object.txt \
-  --context aws:SourceVpc vpc-myvpcid
-```
-
-Will automatically look up the VPC endpoint for S3 within VPC `vpc-myvpcid` and include the endpoint policy in the simulation. It will also automatically set the context key `aws:SourceVpce` to the VPC endpoint id.
-
-If you know the VPC endpoint id you can specify it directly. For example:
-
-```bash
-iam-lens simulate \
-  --principal arn:aws:iam::222222222222:user/Alice \
-  --action s3:GetObject
-  --resource arn:aws:s3:::my-bucket/my-object.txt \
-  --context aws:SourceVpce vpce-myvpcendpointid
-```
-
-Will lookup the VPC endpoint and include the endpoint policy in the simulation. It will also automatically set the context key for `aws:SourceVpc` to the VPC id that endpoint is in.
-
-### VPC Endpoint Account and Organization Context Keys
-
-If the AWS service supports `aws:VpceAccount`, `aws:VpceOrgID`, and `aws:VpceOrgPaths`. Those keys will automatically be set based on the VPC endpoint's account and organization information.
+Context keys are automatically verified against the [Service Authorization Reference](https://docs.aws.amazon.com/service-authorization/latest/reference/reference_policies_actions-resources-contextkeys.html) and invalid context keys are not included in the simulation.
 
 ### Default Context Keys
 
@@ -184,6 +191,29 @@ The following context keys are set when the principal is an AWS service (e.g., `
 
 - **`aws:ResourceTag/<TagKey>`**
   For each tag on the resource ARN, a context key `aws:ResourceTag/TagKey` with its tag value. **This is only for resources that are stored in your `iam-collect` data**, such as Roles, S3 Buckets, DynamoDB Tables, etc. For resources not stored in `iam-collect`, this key should be set manually.
+
+### VPC Endpoint Context Keys
+
+When using VPC endpoints in simulations, iam-lens manages VPC-related context keys and includes VPC endpoint policies in the evaluation:
+
+**Automatic VPC Context Key Population:**
+
+- If you set `aws:SourceVpce` (VPC endpoint ID), iam-lens sets `aws:SourceVpc` to the ID of the VPC containing that endpoint.
+- If you set `aws:SourceVpc` (VPC ID), iam-lens sets `aws:SourceVpce` to the VPC endpoint ID (if one exists in the VPC) of the service being simulated.
+
+**VPC Endpoint Policy Inclusion:**
+
+- If `aws:SourceVpce` is set (directly or through `aws:SourceVpc`), [the corresponding VPC endpoint policy is included in the simulation evaluation](#using-vpc-endpoint-policies).
+
+**Additional VPC Endpoint Context Keys:**
+
+For services that support [enhanced VPC endpoint context keys](https://aws.amazon.com/blogs/security/use-scalable-controls-to-help-prevent-access-from-unexpected-networks/) (such as S3), these context keys are set when `aws:SourceVpce` is present:
+
+- **`aws:VpceAccount`** - The account ID that owns the VPC endpoint; e.g., `"123456789012"`
+- **`aws:VpceOrgID`** - The organization ID of the VPC endpoint's account (if part of an organization); e.g., `"o-45j328rnf"`
+- **`aws:VpceOrgPaths`** - The organizational unit hierarchy path for the VPC endpoint's account (if part of an organization); e.g., `[ "o-45j328rnf/r-483b9/ou-383f84/ou-28fmnf8/" ]`
+
+**Note:** This data may not be available in your iam-collect dataset. For example, if you didn't download it or you are testing VPCs outside your accounts.
 
 ### Overriding Default Context Keys
 
