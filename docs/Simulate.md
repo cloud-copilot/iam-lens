@@ -109,7 +109,7 @@ iam-lens supports [all IAM condition operators](https://iam.cloudcopilot.io/reso
 
 ## Context Keys
 
-iam-lens automatically populates the context keys below when simulating requests. These keys are set based on your principal, resource, VPC, and organization data. Any keys provided via `--context` will override the automatically provided values
+iam-lens automatically populates the context keys below when simulating requests. These keys are set based on your principal, resource, VPC, and organization data. Any keys provided via `--context` will override the automatically provided values.
 
 Context keys are automatically verified against the [Service Authorization Reference](https://docs.aws.amazon.com/service-authorization/latest/reference/reference_policies_actions-resources-contextkeys.html) and invalid context keys are not included in the simulation.
 
