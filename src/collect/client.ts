@@ -1,5 +1,9 @@
 import { AwsIamStore } from '@cloud-copilot/iam-collect'
+import { actionMatchesPattern } from '@cloud-copilot/iam-expand'
+import { loadPolicy, Policy } from '@cloud-copilot/iam-policy'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
+import BitSet from 'bitset'
+import { gunzipSync, gzipSync } from 'zlib'
 
 //TODO: Import this from iam-simulate
 export interface SimulationOrgPolicies {
@@ -105,6 +109,16 @@ export interface VpcIndex {
   vpcs: Record<string, { arn: string; endpoints: { id: string; service: string }[] }>
 
   endpoints: Record<string, { arn: string; vpc: string }>
+}
+
+type Service = string
+type Action = string
+
+export type IamActionCache = {
+  principals: string[]
+  accounts: Record<string, BitSet>
+  action: Record<Service, Record<Action, BitSet>>
+  notAction: Record<Service, Record<Action, BitSet>>
 }
 
 /**
@@ -1127,5 +1141,158 @@ export class IamCollectClient {
       return undefined
     }
     return hierarchy
+  }
+
+  /**
+   * Get all the policies for a principal that should be used to populate the cache
+   *
+   * @param collectClient The IAM collect client to use for data access
+   * @param accountId The ID of the account
+   * @param principalArn The ARN of the principal
+   * @returns An array of policies for the principal
+   */
+  async getAllowPoliciesForPrincipal(principalArn: string): Promise<Policy[]> {
+    const arnParts = splitArnParts(principalArn)
+    const policies: Policy[] = []
+    if (arnParts.resourceType === 'user') {
+      const managedPolicies = await this.getManagedPoliciesForUser(principalArn)
+      managedPolicies.forEach((mp) => policies.push(loadPolicy(mp.policy)))
+
+      const inlinePolicies = await this.getInlinePoliciesForUser(principalArn)
+      inlinePolicies.forEach((ip) => policies.push(loadPolicy(ip.policy)))
+      const groups = await this.getGroupsForUser(principalArn)
+      for (const group of groups) {
+        const groupManagedPolicies = await this.getManagedPoliciesForGroup(group)
+        const groupInlinePolicies = await this.getInlinePoliciesForGroup(group)
+
+        groupManagedPolicies.forEach((mp) => policies.push(loadPolicy(mp.policy)))
+        groupInlinePolicies.forEach((ip) => policies.push(loadPolicy(ip.policy)))
+      }
+    } else if (arnParts.resourceType === 'role') {
+      const managedPolicies = await this.getManagedPoliciesForRole(principalArn)
+      managedPolicies.forEach((mp) => policies.push(loadPolicy(mp.policy)))
+
+      const inlinePolicies = await this.getInlinePoliciesForRole(principalArn)
+      inlinePolicies.forEach((ip) => policies.push(loadPolicy(ip.policy)))
+    }
+
+    return policies
+  }
+
+  async savePrincipalIndex(principalIndex: any): Promise<void> {
+    const indexName = 'principal-index'
+    const currentData = await this.storageClient.getIndex(indexName, {})
+    const currentLockId = currentData.lockId
+
+    // Stringify and compress the data, then convert to base64 string before saving
+    const jsonString = JSON.stringify(principalIndex)
+    const compressedBuffer = gzipSync(Buffer.from(jsonString, 'utf8'))
+    const base64String = compressedBuffer.toString('base64')
+
+    await this.storageClient.saveIndex(indexName, base64String, currentLockId)
+  }
+
+  async getPrincipalIndex(): Promise<IamActionCache | undefined> {
+    return this.withCache('principal-index', async () => {
+      const rawIndex = await this.storageClient.getIndex<string>(
+        'principal-index',
+        undefined as any
+      )
+      if (!rawIndex.data) {
+        return undefined
+      }
+
+      try {
+        // Convert base64 string back to buffer, then decompress and parse
+        const compressedBuffer = Buffer.from(rawIndex.data, 'base64')
+        const decompressedData = gunzipSync(compressedBuffer)
+        const jsonString = decompressedData.toString('utf8')
+        return JSON.parse(jsonString) as IamActionCache
+      } catch (error) {
+        console.error('Failed to decompress or parse principal index:', error)
+        return undefined
+      }
+    })
+  }
+
+  async principalIndexExists(): Promise<boolean> {
+    const index = await this.getPrincipalIndex()
+    return !!index
+  }
+
+  /**
+   * Get the principals that may have permission to perform a specific action.
+   *
+   * If the data is available it will return a subset of principals that may
+   * have permission to perform the action. If the data is not available, it
+   * will return undefined.
+   *
+   * @param accountId the ID of the account
+   * @param action the action to check
+   * @returns a list of principals that may have permission to perform the action or undefined if the data is not available
+   */
+  async getPrincipalsWithActionAllowed(
+    allFromAccount: string,
+    accountIds: string[],
+    action: string
+  ): Promise<string[] | undefined> {
+    const index = await this.getPrincipalIndex()
+    if (!index) {
+      return undefined
+    }
+
+    const [service, serviceAction] = action.toLowerCase().split(':')
+    const principalBitSets: BitSet[] = []
+    //Global wildcards match
+    if (index.action?.['*']?.['*']) {
+      principalBitSets.push(index.action['*']['*'])
+    }
+
+    // Look through specific services
+    if (index.action[service]) {
+      for (const [actionPattern, bitset] of Object.entries(index.action[service])) {
+        if (actionMatchesPattern(serviceAction, actionPattern)) {
+          principalBitSets.push(bitset)
+        }
+      }
+    }
+
+    // Look through not actions
+    if (index.notAction) {
+      for (const [notActionService, notActions] of Object.entries(index.notAction)) {
+        if (notActionService === service) {
+          for (const [notActionPattern, bitset] of Object.entries(notActions)) {
+            if (!actionMatchesPattern(serviceAction, notActionPattern)) {
+              principalBitSets.push(bitset)
+            }
+          }
+        } else {
+          for (const bitset of Object.values(notActions)) {
+            principalBitSets.push(bitset)
+          }
+        }
+      }
+    }
+
+    const actionBitset = principalBitSets.reduce(
+      (acc, bs) => acc.or(BitSet.fromHexString(bs as any)),
+      new BitSet()
+    )
+
+    const accountBitset = accountIds.reduce((acc, accountId) => {
+      const bs = index.accounts[accountId]
+      if (bs) {
+        return acc.or(BitSet.fromHexString(bs as any))
+      }
+      return acc
+    }, new BitSet())
+
+    let finalBitset = accountBitset.and(actionBitset)
+
+    if (index.accounts[allFromAccount]) {
+      finalBitset = finalBitset.or(BitSet.fromHexString(index.accounts[allFromAccount] as any))
+    }
+
+    return finalBitset.toArray().map((i) => index.principals[i]!)
   }
 }

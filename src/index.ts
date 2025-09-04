@@ -6,6 +6,7 @@ export {
   type CacheProvider
 } from './collect/client.js'
 export { getCollectClient, loadCollectConfigs } from './collect/collect.js'
+export { makePrincipalIndex } from './principalIndex/makePrincipalIndex.js'
 export type { ContextKeys } from './simulate/contextKeys.js'
 export { simulateRequest, type SimulationRequest } from './simulate/simulate.js'
 export {

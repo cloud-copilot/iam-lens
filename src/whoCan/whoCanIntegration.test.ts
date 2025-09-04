@@ -1,4 +1,8 @@
+import { createStorageClient } from '@cloud-copilot/iam-collect'
+import { existsSync, rmSync } from 'fs'
 import { describe, expect, it } from 'vitest'
+import { IamCollectClient } from '../collect/client.js'
+import { makePrincipalIndex } from '../principalIndex/makePrincipalIndex.js'
 import { getTestDatasetConfigs } from '../test-datasets/testClient.js'
 import { ResourceAccessRequest, whoCan, WhoCanAllowed } from './whoCan.js'
 
@@ -209,25 +213,45 @@ function sortWhoCanResults(who: WhoCanAllowed[]) {
   })
 }
 
-describe('whoCan Integration Tests', () => {
-  for (const test of whoCanIntegrationTests) {
-    const { name, comment, request, expected, only, data } = test
-    const func = only ? it.only : it
-    func(name, async () => {
-      //Given a client
-      const configs = getTestDatasetConfigs(data)
-      // const client = getTestDatasetClient(data)
+// These tests all run sequentially because first they run without the principals index
+// and then they run with it.
+describe.sequential('whoCan Integration Tests', () => {
+  for (const withIndex of [false, true]) {
+    for (const test of whoCanIntegrationTests) {
+      const { name, comment, request, expected, only, data } = test
+      const func = only ? it.only : it
+      func(name, async () => {
+        //Given a client
+        const configs = getTestDatasetConfigs(data)
 
-      //When we call whoCan
-      const result = await whoCan(configs, 'aws', request)
+        const path = (configs[0]?.storage as any).path!
+        const indexPath = `${path}/aws/aws/indexes/principal-index.json`
 
-      //Then we expect the result to match the expected output
-      expect(sortWhoCanResults(result.allowed)).toEqual(sortWhoCanResults(expected.who))
-      expect(result.allAccountsChecked).toEqual(!!expected.allAccountsChecked)
-      expect(result.organizationalUnitsNotFound).toEqual(expected.organizationalUnitsNotFound || [])
-      expect(result.accountsNotFound).toEqual(expected.accountsNotFound || [])
-      expect(result.organizationsNotFound).toEqual(expected.organizationsNotFound || [])
-      expect(result.principalsNotFound.sort()).toEqual(expected.principalsNotFound?.sort() || [])
-    })
+        if (!withIndex) {
+          //If withIndex is false, delete the index
+          rmSync(indexPath, { force: true })
+        } else {
+          //If withIndex is true, make sure it is there
+          const exists = existsSync(indexPath)
+          if (!exists) {
+            const client = new IamCollectClient(createStorageClient(configs, 'aws'))
+            await makePrincipalIndex(client)
+          }
+        }
+
+        //When we call whoCan
+        const result = await whoCan(configs, 'aws', request)
+
+        //Then we expect the result to match the expected output
+        expect(sortWhoCanResults(result.allowed)).toEqual(sortWhoCanResults(expected.who))
+        expect(result.allAccountsChecked).toEqual(!!expected.allAccountsChecked)
+        expect(result.organizationalUnitsNotFound).toEqual(
+          expected.organizationalUnitsNotFound || []
+        )
+        expect(result.accountsNotFound).toEqual(expected.accountsNotFound || [])
+        expect(result.organizationsNotFound).toEqual(expected.organizationsNotFound || [])
+        expect(result.principalsNotFound.sort()).toEqual(expected.principalsNotFound?.sort() || [])
+      })
+    }
   }
 })
