@@ -228,7 +228,7 @@ describe.sequential('whoCan Integration Tests', () => {
         const indexPath = `${path}/aws/aws/indexes/principal-index.json`
 
         if (!withIndex) {
-          //If withIndex is false, delete it is
+          //If withIndex is false, delete the index
           rmSync(indexPath, { force: true })
         } else {
           //If withIndex is true, make sure it is there
