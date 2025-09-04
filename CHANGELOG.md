@@ -1,3 +1,10 @@
+## [0.1.38](https://github.com/cloud-copilot/iam-lens/compare/v0.1.37...v0.1.38) (2025-09-04)
+
+
+### Features
+
+* who-can performance improvements ([ed70dec](https://github.com/cloud-copilot/iam-lens/commit/ed70dec7557718abc1fef7c455fd5fcb332042e0))
+
 ## [0.1.37](https://github.com/cloud-copilot/iam-lens/compare/v0.1.36...v0.1.37) (2025-09-01)
 
 ## [0.1.36](https://github.com/cloud-copilot/iam-lens/compare/v0.1.35...v0.1.36) (2025-08-30)
