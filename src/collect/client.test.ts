@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { makePrincipalIndex } from '../principalIndex/makePrincipalIndex.js'
+import { saveGroup, saveManagedPolicy, saveRole, saveUser } from '../utils/testUtils.js'
 import { testStore } from './inMemoryClient.js'
 
 const fullAccessPolicy = {
@@ -231,7 +233,16 @@ describe('IamCollectClient', () => {
       //arn:aws:organizations::aws:policy/service_control_policy/p-j48dn38
       //arn:aws:organizations::aws:policy/service_control_policy/p-tj39dy7
 
-      await store.saveOrganizationPolicyMetadata(orgId, 'scps', 'p-12345678', 'policy', s3Scp)
+      await store.saveOrganizationPolicyMetadata(orgId, 'scps', 'p-12345678', 'policy', {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: 's3:*',
+            Resource: '*'
+          }
+        ]
+      })
 
       // When getting the SCPs for the account
       const scps = await client.getScpHierarchyForAccount(accountId)
@@ -287,7 +298,16 @@ describe('IamCollectClient', () => {
             },
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
-              policy: s3Scp
+              policy: {
+                Version: '2012-10-17',
+                Statement: [
+                  {
+                    Effect: 'Allow',
+                    Action: 's3:*',
+                    Resource: '*'
+                  }
+                ]
+              }
             }
           ]
         }
@@ -446,7 +466,16 @@ describe('IamCollectClient', () => {
         name: 'TestPolicy1'
       })
 
-      await store.saveOrganizationPolicyMetadata(orgId, 'scps', 'p-12345678', 'policy', s3Scp)
+      await store.saveOrganizationPolicyMetadata(orgId, 'scps', 'p-12345678', 'policy', {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: 's3:*',
+            Resource: '*'
+          }
+        ]
+      })
 
       // When getting the SCPs for the account
       const scps = await client.getScpsForAccount(accountId)
@@ -461,7 +490,16 @@ describe('IamCollectClient', () => {
         {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
           name: 'TestPolicy1',
-          policy: s3Scp
+          policy: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: 's3:*',
+                Resource: '*'
+              }
+            ]
+          }
         }
       ])
     })
@@ -2158,6 +2196,731 @@ describe('IamCollectClient', () => {
 
       // Then it should return all principal ARNs
       expect(principals).toEqual([userArn, roleArn])
+    })
+  })
+
+  describe('getPrincipalsWithActionAllowed', () => {
+    it('should return undefined when principal index does not exist', async () => {
+      // Given a store without a principal index
+      const { client } = testStore()
+
+      // When getting principals with action allowed
+      const result = await client.getPrincipalsWithActionAllowed(
+        '123456789012',
+        ['123456789012'],
+        's3:GetObject'
+      )
+
+      // Then it should return undefined
+      expect(result).toBeUndefined()
+    })
+
+    it('should return principals with wildcard actions', async () => {
+      // Given a store with principals and a built index
+      const { store, client } = testStore()
+      const allFromAccountId = '123456789012'
+      const searchAccountId = '111111111111'
+      const userArn = `arn:aws:iam::${searchAccountId}:user/test-user`
+      const roleArn = `arn:aws:iam::${searchAccountId}:role/test-role`
+
+      // Set up user with full access policy (*) in allFromAccount
+      await saveUser(store, {
+        arn: userArn,
+        managedPolicies: [`arn:aws:iam::${searchAccountId}:policy/full-access-policy`]
+      })
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${searchAccountId}:policy/full-access-policy`,
+        policy: fullAccessPolicy
+      })
+
+      // Set up role with no policies in searchAccount (should not have access)
+      await saveRole(store, { arn: roleArn })
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with s3:GetObject action allowed from allFromAccount, searching in searchAccount
+      const result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:GetObject'
+      )
+
+      // Then it should return the user from allFromAccount (not the role from searchAccount)
+      expect(result).toEqual([userArn])
+    })
+
+    it('should return principals with specific service actions', async () => {
+      // Given a store with principals and a built index
+      const { store, client } = testStore()
+      const allFromAccountId = '123456789012'
+      const searchAccountId = '111111111111'
+      const userArn = `arn:aws:iam::${searchAccountId}:user/s3-user`
+      const roleArn = `arn:aws:iam::${searchAccountId}:role/ec2-role`
+
+      // Set up user with S3 access policy in allFromAccount
+      await saveUser(store, {
+        arn: userArn,
+        managedPolicies: [`arn:aws:iam::${searchAccountId}:policy/s3-access-policy`]
+      })
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${searchAccountId}:policy/s3-access-policy`,
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: 's3:GetObject',
+              Resource: 'arn:aws:s3:::example-bucket/*'
+            }
+          ]
+        }
+      })
+
+      // Set up role with EC2 access policy in allFromAccount
+      await saveRole(store, {
+        arn: roleArn,
+        managedPolicies: [`arn:aws:iam::${searchAccountId}:policy/ec2-access-policy`]
+      })
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${searchAccountId}:policy/ec2-access-policy`,
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: 'ec2:*',
+              Resource: '*'
+            }
+          ]
+        }
+      })
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with s3:GetObject action allowed from allFromAccount, searching in searchAccount
+      const s3Result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:GetObject'
+      )
+
+      // Then it should return only the S3 user from allFromAccount
+      expect(s3Result).toEqual([userArn])
+
+      // When getting principals with ec2:DescribeInstances action allowed from allFromAccount, searching in searchAccount
+      const ec2Result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        'ec2:DescribeInstances'
+      )
+
+      // Then it should return only the EC2 role from allFromAccount
+      expect(ec2Result).toEqual([roleArn])
+    })
+
+    it('should return principals with specific action patterns', async () => {
+      // Given a store with principals and policies with specific actions
+      const { store, client } = testStore()
+      const allFromAccountId = '123456789012'
+      const searchAccountId = '111111111111'
+      const userArn = `arn:aws:iam::${searchAccountId}:user/specific-user`
+
+      // Set up user with specific S3 actions in allFromAccount
+      await saveUser(store, {
+        arn: userArn,
+        managedPolicies: [`arn:aws:iam::${searchAccountId}:policy/specific-s3-policy`]
+      })
+
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${searchAccountId}:policy/specific-s3-policy`,
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: ['s3:GetObject', 's3:PutObject'],
+              Resource: '*'
+            }
+          ]
+        }
+      })
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with s3:GetObject action allowed from allFromAccount, searching in searchAccount
+      const getResult = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:GetObject'
+      )
+
+      // Then it should return the user from allFromAccount
+      expect(getResult).toEqual([userArn])
+
+      // When getting principals with s3:PutObject action allowed from allFromAccount, searching in searchAccount
+      const putResult = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:PutObject'
+      )
+
+      // Then it should return the user from allFromAccount
+      expect(putResult).toEqual([userArn])
+
+      // When getting principals with s3:DeleteObject action allowed from allFromAccount, searching in searchAccount
+      const deleteResult = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:DeleteObject'
+      )
+
+      // Then it should return empty array (user doesn't have delete access)
+      expect(deleteResult).toEqual([])
+    })
+
+    it('should handle NotAction statements correctly', async () => {
+      // Given a store with principals that have NotAction policies
+      const { store, client } = testStore()
+      const allFromAccountId = '123456789012'
+      const searchAccountId = '111111111111'
+      const userArn = `arn:aws:iam::${searchAccountId}:user/not-action-user`
+
+      // Set up user with NotAction policy (allow everything except s3:DeleteObject) in allFromAccount
+      const notActionPolicy = {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            NotAction: 's3:DeleteObject',
+            Resource: '*'
+          }
+        ]
+      }
+      await saveUser(store, {
+        arn: userArn,
+        managedPolicies: [`arn:aws:iam::${searchAccountId}:policy/not-action-policy`]
+      })
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${searchAccountId}:policy/not-action-policy`,
+        policy: notActionPolicy
+      })
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with s3:GetObject action allowed from allFromAccount, searching in searchAccount (should be allowed)
+      const getResult = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:GetObject'
+      )
+
+      // Then it should return the user from allFromAccount
+      expect(getResult).toEqual([userArn])
+
+      // When getting principals with ec2:DescribeInstances action allowed from allFromAccount, searching in searchAccount (should be allowed)
+      const ec2Result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        'ec2:DescribeInstances'
+      )
+
+      // Then it should return the user from allFromAccount
+      expect(ec2Result).toEqual([userArn])
+
+      // When getting principals with s3:DeleteObject action allowed from allFromAccount, searching in searchAccount (should NOT be allowed)
+      const deleteResult = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:DeleteObject'
+      )
+
+      // Then it should return empty array
+      expect(deleteResult).toEqual([])
+    })
+
+    it('should handle multiple accounts and return principals from specified accounts', async () => {
+      // Given multiple accounts with principals
+      const { store, client } = testStore()
+      const account1 = '111111111111'
+      const account2 = '222222222222'
+      const account3 = '333333333333'
+
+      const user1Arn = `arn:aws:iam::${account1}:user/user1`
+      const user2Arn = `arn:aws:iam::${account2}:user/user2`
+      const user3Arn = `arn:aws:iam::${account3}:user/user3`
+
+      // Set up users in different accounts with S3 access
+      for (const [accountId, userArn] of [
+        [account1, user1Arn],
+        [account2, user2Arn],
+        [account3, user3Arn]
+      ]) {
+        await saveUser(store, {
+          arn: userArn,
+          managedPolicies: [`arn:aws:iam::${accountId}:policy/s3-policy`]
+        })
+        await saveManagedPolicy(store, {
+          arn: `arn:aws:iam::${accountId}:policy/s3-policy`,
+          policy: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: 's3:ListBucket',
+                Resource: 'arn:aws:s3:::example-bucket'
+              }
+            ]
+          }
+        })
+      }
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with s3:ListBucket action allowed from accounts 1 and 2 only
+      const result = await client.getPrincipalsWithActionAllowed(
+        '999999999999',
+        [account1, account2],
+        's3:ListBucket'
+      )
+
+      // Then it should return users from accounts 1 and 2, but not account 3
+      expect(result).toEqual(expect.arrayContaining([user1Arn, user2Arn]))
+      expect(result).not.toContain(user3Arn)
+    })
+
+    it('should include principals all principals from allFromAccount even if not in accountIds list', async () => {
+      // Given multiple accounts with multiple principals each
+      const { store, client } = testStore()
+      const allFromAccount = '111111111111'
+      const otherAccount = '222222222222'
+      const searchAccount = '333333333333'
+
+      // Multiple principals in allFromAccount (all should be returned)
+      const user1FromAllArn = `arn:aws:iam::${allFromAccount}:user/user1-all`
+      const user2FromAllArn = `arn:aws:iam::${allFromAccount}:user/user2-all`
+      const role1FromAllArn = `arn:aws:iam::${allFromAccount}:role/role1-all`
+      const role2FromAllArn = `arn:aws:iam::${allFromAccount}:role/role2-all`
+
+      // Multiple principals in otherAccount (none should be returned)
+      const user1FromOtherArn = `arn:aws:iam::${otherAccount}:user/user1-other`
+      const user2FromOtherArn = `arn:aws:iam::${otherAccount}:user/user2-other`
+      const role1FromOtherArn = `arn:aws:iam::${otherAccount}:role/role1-other`
+
+      // Multiple principals in searchAccount (only those with S3 access should be returned)
+      const user1FromSearchArn = `arn:aws:iam::${searchAccount}:user/user1-search` // has S3 access
+      const user2FromSearchArn = `arn:aws:iam::${searchAccount}:user/user2-search` // no S3 access
+      const role1FromSearchArn = `arn:aws:iam::${searchAccount}:role/role1-search` // has S3 access
+
+      // Set up all principals in allFromAccount with S3 access
+      const allFromPrincipals = [
+        { arn: user1FromAllArn, type: 'user' },
+        { arn: user2FromAllArn, type: 'user' },
+        { arn: role1FromAllArn, type: 'role' },
+        { arn: role2FromAllArn, type: 'role' }
+      ]
+
+      for (const principal of allFromPrincipals) {
+        if (principal.type === 'user') {
+          await saveUser(store, {
+            arn: principal.arn,
+            managedPolicies: [`arn:aws:iam::${allFromAccount}:policy/s3-policy`]
+          })
+        } else {
+          await saveRole(store, {
+            arn: principal.arn,
+            managedPolicies: [`arn:aws:iam::${allFromAccount}:policy/s3-policy`]
+          })
+        }
+      }
+
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${allFromAccount}:policy/s3-policy`,
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: 's3:PutObject',
+              Resource: 'arn:aws:s3:::test-bucket/*'
+            }
+          ]
+        }
+      })
+
+      // Set up principals in otherAccount with S3 access (should not be returned)
+      const otherAccountPrincipals = [
+        { arn: user1FromOtherArn, type: 'user' },
+        { arn: user2FromOtherArn, type: 'user' },
+        { arn: role1FromOtherArn, type: 'role' }
+      ]
+
+      for (const principal of otherAccountPrincipals) {
+        if (principal.type === 'user') {
+          await saveUser(store, {
+            arn: principal.arn,
+            managedPolicies: [`arn:aws:iam::${otherAccount}:policy/s3-policy`]
+          })
+        } else {
+          await saveRole(store, {
+            arn: principal.arn,
+            managedPolicies: [`arn:aws:iam::${otherAccount}:policy/s3-policy`]
+          })
+        }
+      }
+
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${otherAccount}:policy/s3-policy`,
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: 's3:PutObject',
+              Resource: 'arn:aws:s3:::test-bucket/*'
+            }
+          ]
+        }
+      })
+
+      // Set up principals in searchAccount - some with S3 access, some without
+      await saveUser(store, {
+        arn: user1FromSearchArn,
+        managedPolicies: [`arn:aws:iam::${searchAccount}:policy/s3-policy`]
+      })
+
+      await saveUser(store, {
+        arn: user2FromSearchArn,
+        managedPolicies: [`arn:aws:iam::${searchAccount}:policy/ec2-policy`] // no S3 access
+      })
+
+      await saveRole(store, {
+        arn: role1FromSearchArn,
+        managedPolicies: [`arn:aws:iam::${searchAccount}:policy/s3-policy`]
+      })
+
+      // S3 policy for searchAccount
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${searchAccount}:policy/s3-policy`,
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: 's3:PutObject',
+              Resource: 'arn:aws:s3:::test-bucket/*'
+            }
+          ]
+        }
+      })
+
+      // EC2 policy for searchAccount (no S3 access)
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${searchAccount}:policy/ec2-policy`,
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: 'ec2:*',
+              Resource: '*'
+            }
+          ]
+        }
+      })
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with s3:PutObject action allowed from allFromAccount, searching in searchAccount
+      const result = await client.getPrincipalsWithActionAllowed(
+        allFromAccount,
+        [searchAccount],
+        's3:PutObject'
+      )
+
+      // Then it should return ALL principals from allFromAccount (even though not in search list)
+      expect(result).toEqual(
+        expect.arrayContaining([user1FromAllArn, user2FromAllArn, role1FromAllArn, role2FromAllArn])
+      )
+
+      // And it should return only the principals with S3 access from searchAccount
+      expect(result).toEqual(expect.arrayContaining([user1FromSearchArn, role1FromSearchArn]))
+
+      // But it should NOT return principals without S3 access from searchAccount
+      expect(result).not.toContain(user2FromSearchArn)
+
+      // And it should NOT return any principals from otherAccount
+      expect(result).not.toContain(user1FromOtherArn)
+      expect(result).not.toContain(user2FromOtherArn)
+      expect(result).not.toContain(role1FromOtherArn)
+
+      // Verify the total count is correct (4 from allFromAccount + 2 from searchAccount)
+      expect(result).toHaveLength(6)
+    })
+
+    it('should handle inline policies correctly', async () => {
+      // Given a principal with inline policies
+      const { store, client } = testStore()
+      const allFromAccountId = '123456789012'
+      const searchAccountId = '111111111111'
+      const roleArn = `arn:aws:iam::${searchAccountId}:role/inline-role`
+
+      // Set up role with inline S3 policy in allFromAccount
+      await saveRole(store, {
+        arn: roleArn,
+        inlinePolicies: [
+          {
+            PolicyName: 'InlineS3Policy',
+            PolicyDocument: {
+              Version: '2012-10-17',
+              Statement: [
+                {
+                  Effect: 'Allow',
+                  Action: 's3:GetObject',
+                  Resource: 'arn:aws:s3:::private-files/*'
+                }
+              ]
+            }
+          }
+        ]
+      })
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with s3:GetObject action allowed from allFromAccount, searching in searchAccount
+      const result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:GetObject'
+      )
+
+      // Then it should return the role with inline policy from allFromAccount
+      expect(result).toEqual([roleArn])
+    })
+
+    it('should handle group policies for users', async () => {
+      // Given a user that belongs to a group with policies
+      const { store, client } = testStore()
+      const allFromAccountId = '123456789012'
+      const searchAccountId = '111111111111'
+      const userArn = `arn:aws:iam::${searchAccountId}:user/group-user`
+      const groupArn = `arn:aws:iam::${searchAccountId}:group/s3-group`
+
+      // Set up user in allFromAccount
+      await saveUser(store, {
+        arn: userArn,
+        groups: [groupArn]
+      })
+
+      // Set up group with S3 policy in allFromAccount
+      await saveGroup(store, {
+        arn: groupArn,
+        managedPolicies: [`arn:aws:iam::${searchAccountId}:policy/group-s3-policy`]
+      })
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${searchAccountId}:policy/group-s3-policy`,
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: 's3:GetObject',
+              Resource: 'arn:aws:s3:::company-data/*'
+            }
+          ]
+        }
+      })
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with s3:GetObject action allowed from allFromAccount, searching in searchAccount
+      const result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:GetObject'
+      )
+
+      // Then it should return the user from allFromAccount (who gets access via group membership)
+      expect(result).toEqual([userArn])
+    })
+
+    it('should handle inline policies on groups for users', async () => {
+      // Given a user that belongs to a group with inline policies
+      const { store, client } = testStore()
+      const allFromAccountId = '123456789012'
+      const searchAccountId = '111111111111'
+      const userArn = `arn:aws:iam::${searchAccountId}:user/inline-group-user`
+      const groupArn = `arn:aws:iam::${searchAccountId}:group/inline-group`
+
+      // Set up user in allFromAccount
+      await saveUser(store, {
+        arn: userArn,
+        groups: [groupArn]
+      })
+
+      // Set up group with inline policy in allFromAccount
+      await saveGroup(store, {
+        arn: groupArn,
+        inlinePolicies: [
+          {
+            PolicyName: 'InlineGroupS3Policy',
+            PolicyDocument: {
+              Version: '2012-10-17',
+              Statement: [
+                {
+                  Effect: 'Allow',
+                  Action: ['s3:GetObject', 's3:ListBucket'],
+                  Resource: ['arn:aws:s3:::shared-bucket/*', 'arn:aws:s3:::shared-bucket']
+                }
+              ]
+            }
+          },
+          {
+            PolicyName: 'InlineGroupEC2Policy',
+            PolicyDocument: {
+              Version: '2012-10-17',
+              Statement: [
+                {
+                  Effect: 'Allow',
+                  Action: 'ec2:DescribeInstances',
+                  Resource: '*'
+                }
+              ]
+            }
+          }
+        ]
+      })
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with s3:GetObject action allowed from allFromAccount, searching in searchAccount
+      const s3Result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:GetObject'
+      )
+
+      // Then it should return the user from allFromAccount (who gets access via group's inline policy)
+      expect(s3Result).toEqual([userArn])
+
+      // When getting principals with s3:ListBucket action allowed from allFromAccount, searching in searchAccount
+      const listResult = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:ListBucket'
+      )
+
+      // Then it should return the user from allFromAccount (who gets access via group's inline policy)
+      expect(listResult).toEqual([userArn])
+
+      // When getting principals with ec2:DescribeInstances action allowed from allFromAccount, searching in searchAccount
+      const ec2Result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        'ec2:DescribeInstances'
+      )
+
+      // Then it should return the user from allFromAccount (who gets access via group's inline policy)
+      expect(ec2Result).toEqual([userArn])
+
+      // When getting principals with an action not granted by the inline policies
+      const denyResult = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:DeleteObject'
+      )
+
+      // Then it should return empty array (user doesn't have delete access)
+      expect(denyResult).toEqual([])
+    })
+
+    it('should match Action "*" wildcard against any action from different accounts', async () => {
+      // Given users in searchAccount with wildcard action and no permissions
+      const { store, client } = testStore()
+      const allFromAccountId = '123456789012'
+      const searchAccountId = '111111111111'
+      const userWithWildcardArn = `arn:aws:iam::${searchAccountId}:user/wildcard-user`
+      const userWithoutPermissionsArn = `arn:aws:iam::${searchAccountId}:user/no-permissions-user`
+
+      // Set up user in searchAccount with global wildcard action
+      await saveUser(store, {
+        arn: userWithWildcardArn,
+        managedPolicies: [`arn:aws:iam::${searchAccountId}:policy/global-wildcard-policy`]
+      })
+      await saveManagedPolicy(store, {
+        arn: `arn:aws:iam::${searchAccountId}:policy/global-wildcard-policy`,
+        policy: {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Action: '*',
+              Resource: '*'
+            }
+          ]
+        }
+      })
+
+      // Set up user in searchAccount with no permissions
+      await saveUser(store, {
+        arn: userWithoutPermissionsArn
+        // No policies attached - should have no permissions
+      })
+
+      // Build the principal index
+      await makePrincipalIndex(client)
+
+      // When getting principals with various specific actions from allFromAccount, searching in searchAccount
+      const s3Result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        's3:GetObject'
+      )
+
+      // Then it should return the user with wildcard access from searchAccount
+      expect(s3Result).toEqual([userWithWildcardArn])
+      expect(s3Result).not.toContain(userWithoutPermissionsArn)
+
+      // Test with completely different service actions
+      const ec2Result = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        'ec2:DescribeInstances'
+      )
+
+      // Should still return the wildcard user from searchAccount
+      expect(ec2Result).toEqual([userWithWildcardArn])
+      expect(ec2Result).not.toContain(userWithoutPermissionsArn)
+
+      // Test with IAM actions
+      const iamResult = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        'iam:CreateUser'
+      )
+
+      // Should still return the wildcard user from searchAccount
+      expect(iamResult).toEqual([userWithWildcardArn])
+      expect(iamResult).not.toContain(userWithoutPermissionsArn)
+
+      // Test with completely arbitrary service:action combination
+      const customResult = await client.getPrincipalsWithActionAllowed(
+        allFromAccountId,
+        [searchAccountId],
+        'customservice:SomeRandomAction'
+      )
+
+      // Should still return the wildcard user from searchAccount
+      expect(customResult).toEqual([userWithWildcardArn])
+      expect(customResult).not.toContain(userWithoutPermissionsArn)
     })
   })
 })

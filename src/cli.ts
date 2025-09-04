@@ -10,6 +10,7 @@ import {
 } from '@cloud-copilot/cli'
 import { canWhat } from './canWhat/canWhat.js'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
+import { makePrincipalIndex } from './principalIndex/makePrincipalIndex.js'
 import { resultMatchesExpectation, simulateRequest } from './simulate/simulate.js'
 import { iamLensVersion } from './utils/packageVersion.js'
 import { whoCan } from './whoCan/whoCan.js'
@@ -86,6 +87,10 @@ const main = async () => {
             character: 's'
           })
         }
+      },
+      'index-principals': {
+        description: 'Index all principals',
+        arguments: {}
       }
     },
     {
@@ -176,6 +181,8 @@ const main = async () => {
     })
 
     console.log(JSON.stringify(results, null, 2))
+  } else if (cli.subcommand === 'index-principals') {
+    await makePrincipalIndex(collectClient)
   }
 }
 

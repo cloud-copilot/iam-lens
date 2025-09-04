@@ -46,6 +46,7 @@ export interface WhoCanAllowed {
 }
 
 export interface WhoCanResponse {
+  simulationCount: number
   allowed: WhoCanAllowed[]
   allAccountsChecked: boolean
   accountsNotFound: string[]
@@ -54,12 +55,19 @@ export interface WhoCanResponse {
   principalsNotFound: string[]
 }
 
+function getCpuCount() {
+  if (process.env.NODE_ENV === 'test') {
+    return 2
+  }
+  return numberOfCpus()
+}
+
 export async function whoCan(
   collectConfigs: TopLevelConfig[],
   partition: string,
   request: ResourceAccessRequest
 ): Promise<WhoCanResponse> {
-  const cpus = numberOfCpus()
+  const cpus = getCpuCount()
   const { resource } = request
 
   const workerPath = getWorkerScriptPath('whoCan/WhoCanWorkerThreadWorker.js')
@@ -167,23 +175,42 @@ export async function whoCan(
     async (response) => {}
   )
 
-  for (const account of uniqueAccounts.accounts) {
-    accountQueue.enqueue({
-      properties: {},
-      execute: async () => {
-        const principals = await collectClient.getAllPrincipalsInAccount(account)
-        for (const principal of principals) {
-          await runPrincipalForActions(
-            collectClient,
-            simulateQueue,
-            principal,
-            resource,
-            resourceAccount,
-            actions
-          )
-        }
+  const principalIndexExists = await collectClient.principalIndexExists()
+  if (principalIndexExists) {
+    for (const action of actions) {
+      const indexedPrincipals = await collectClient.getPrincipalsWithActionAllowed(
+        resourceAccount,
+        uniqueAccounts.accounts,
+        action
+      )
+      for (const principal of indexedPrincipals || []) {
+        simulateQueue.enqueue({
+          resource,
+          action,
+          principal,
+          resourceAccount
+        })
       }
-    })
+    }
+  } else {
+    for (const account of uniqueAccounts.accounts) {
+      accountQueue.enqueue({
+        properties: {},
+        execute: async () => {
+          const principals = await collectClient.getAllPrincipalsInAccount(account)
+          for (const principal of principals) {
+            await runPrincipalForActions(
+              collectClient,
+              simulateQueue,
+              principal,
+              resource,
+              resourceAccount,
+              actions
+            )
+          }
+        }
+      })
+    }
   }
 
   const principalsNotFound: string[] = []
@@ -254,6 +281,7 @@ export async function whoCan(
   }
 
   return {
+    simulationCount,
     allowed: whoCanResults,
     allAccountsChecked: accountsToCheck.allAccounts,
     accountsNotFound: uniqueAccounts.accountsNotFound,
