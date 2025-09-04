@@ -1212,7 +1212,6 @@ export class IamCollectClient {
         console.error('Failed to decompress or parse principal index:', error)
         return undefined
       }
-
     })
   }
 
