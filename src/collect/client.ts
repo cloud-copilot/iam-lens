@@ -1213,7 +1213,6 @@ export class IamCollectClient {
         return undefined
       }
 
-      // return materializeCache(rawIndex.data)
     })
   }
 
