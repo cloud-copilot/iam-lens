@@ -234,7 +234,7 @@ describe.sequential('whoCan Integration Tests', () => {
           //If withIndex is true, make sure it is there
           const exists = existsSync(indexPath)
           if (!exists) {
-            const client = new IamCollectClient(createStorageClient(configs, 'aws'))
+            const client = new IamCollectClient(createStorageClient(configs, 'aws', true))
             await makePrincipalIndex(client)
           }
         }
