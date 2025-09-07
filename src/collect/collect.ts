@@ -23,5 +23,5 @@ export function getCollectClient(
   partition: string,
   clientOptions?: IamCollectClientOptions
 ): IamCollectClient {
-  return new IamCollectClient(createStorageClient(configs, partition), clientOptions)
+  return new IamCollectClient(createStorageClient(configs, partition, true), clientOptions)
 }
