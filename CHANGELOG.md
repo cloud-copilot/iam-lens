@@ -1,3 +1,10 @@
+## [0.1.45](https://github.com/cloud-copilot/iam-lens/compare/v0.1.44...v0.1.45) (2025-10-05)
+
+
+### Features
+
+* Document principal-can. Add support for S3 bucket resource policies in the same account. ([f746027](https://github.com/cloud-copilot/iam-lens/commit/f7460271488267232da9eb8d295e0c87cd509a77))
+
 ## [0.1.44](https://github.com/cloud-copilot/iam-lens/compare/v0.1.43...v0.1.44) (2025-10-04)
 
 ## [0.1.43](https://github.com/cloud-copilot/iam-lens/compare/v0.1.42...v0.1.43) (2025-10-04)
