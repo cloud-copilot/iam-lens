@@ -233,6 +233,9 @@ export class Permission {
    * Returns the intersection of this Permission with another.
    * Always returns exactly one Permission. If there is no overlap,
    * returns undefined.
+   *
+   * @param other The other Permission to intersect with.
+   * @returns A new Permission representing the intersection of other and this, or undefined if there is no intersection.
    */
   public intersection(other: Permission): Permission | undefined {
     // 1. Must match effect, service, and action

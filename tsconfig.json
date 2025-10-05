@@ -16,7 +16,8 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "esModuleInterop": false,
-    "forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "exclude": ["tests", "test", "dist", "bin", "**/bin", "**/dist", "node_modules", "cdk.out"]
+  "include": ["src/**/*"],
+  "exclude": ["**/*.test.ts", "src/principalCan/permissionSetTestUtils.ts"]
 }

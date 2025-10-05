@@ -1,4 +1,3 @@
-export { canWhat, type CanWhatInput } from './canWhat/canWhat.js'
 export {
   IamCollectClient,
   InMemoryCacheProvider,
@@ -6,6 +5,7 @@ export {
   type CacheProvider
 } from './collect/client.js'
 export { getCollectClient, loadCollectConfigs } from './collect/collect.js'
+export { principalCan, type PrincipalCanInput } from './principalCan/principalCan.js'
 export { makePrincipalIndex } from './principalIndex/makePrincipalIndex.js'
 export type { ContextKeys } from './simulate/contextKeys.js'
 export { simulateRequest, type SimulationRequest } from './simulate/simulate.js'
