@@ -85,10 +85,349 @@ Support for resource-based policies is being added incrementally. The currently 
 
 There is an [edge case when evaluating implicit denies from permission boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html#access_policies_boundaries-eval-logic). If a resource policy grants access directly to a Role session ARN or a Federated user ARN, it can override the implicit deny from a permission boundary. This behavior is not currently supported in `principal-can`, but `simulate` and `who-can` do incorporate this behavior.
 
-## Principal Not Found
+## How Permissions are Combined
 
-```bash
-Error: Principal must be provided for principal-can command
+Different policy statements may have overlapping or duplicate permissions. For instance, you may have two `Allow` statements for the same action but with different resources.
+
+### Combining Statements
+
+For instance, this:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"]
+}
 ```
 
-Ensure you provide a valid principal ARN using the `--principal` flag.
+and:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::another-bucket/*"]
+}
+```
+
+Would be combined into:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*", "arn:aws:s3:::another-bucket/*"]
+}
+```
+
+### Overlapping Statements
+
+It's possible for one statement to completely include another. For instance:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"]
+}
+```
+
+and
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"]
+}
+```
+
+These statements would be simplified to:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"]
+}
+```
+
+Because the `"Resource": ["*"]` statement already includes all resources, including `arn:aws:s3:::my-bucket/*`.
+
+These transformations ensure the resulting policy accurately expresses the principal's effective permissions with the fewest statements possible.
+
+### Combining Conditions
+
+When combining `Allow` statements with conditions, `principal-can` attempts to merge them when possible. For instance, if you have:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"],
+  "Condition": {
+    "Bool": {
+      "aws:SecureTransport": "true"
+    }
+  }
+}
+```
+
+and
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::another-bucket/*"],
+  "Condition": {
+    "Bool": {
+      "aws:SecureTransport": "true"
+    }
+  }
+}
+```
+
+These would be combined into:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*", "arn:aws:s3:::another-bucket/*"],
+  "Condition": {
+    "Bool": {
+      "aws:SecureTransport": "true"
+    }
+  }
+}
+```
+
+If it's not possible to combine conditions safely, `principal-can` keeps them separate to ensure the resulting policy accurately represents the intended permissions.
+
+In this example, the conditions can't be combined because they apply to different VPC endpoints and resources. For instance, if you have:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"],
+  "Condition": {
+    "StringEquals": {
+      "aws:SourceVpce": "vpce-111111111111"
+    }
+  }
+}
+```
+
+and
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::another-bucket/*"],
+  "Condition": {
+    "StringEquals": {
+      "aws:SourceVpce": "vpce-222222222222"
+    }
+  }
+}
+```
+
+These would be kept separate because the conditions can't be combined:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"],
+  "Condition": {
+    "StringEquals": {
+      "aws:SourceVpce": "vpce-111111111111"
+    }
+  }
+},
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::another-bucket/*"],
+  "Condition": {
+    "StringEquals": {
+      "aws:SourceVpce": "vpce-222222222222"
+    }
+  }
+}
+```
+
+If two conditions differ only by multiple allowed values for the same key (for example, several `aws:SourceVpce` values in an array), `principal-can` will merge them into a single condition with multiple values. However, conditions using different keys or operators are always kept separate.
+
+For instance, if you have:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"],
+  "Condition": {
+    "StringEquals": {
+      "aws:SourceVpce": "vpce-111111111111"
+    }
+  }
+}
+```
+
+and
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"],
+  "Condition": {
+    "StringEquals": {
+      "aws:SourceVpce": "vpce-222222222222"
+    }
+  }
+}
+```
+
+These would be combined into:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"],
+  "Condition": {
+    "StringEquals": {
+      "aws:SourceVpce": ["vpce-111111111111", "vpce-222222222222"]
+    }
+  }
+}
+```
+
+These would be combined into a single statement because the `Action` and `Resource` are the same, and the conditions differ only by multiple allowed values for the same key.
+
+These rules for merging and separating conditions ensure that the resulting policy remains both accurate and minimal, without changing its effective permissions.
+
+### Merging Allow and Deny Statements
+
+If there is no overlap between `Allow` and `Deny` statements, the `Deny` statements are simply dropped. Since `principal-can` is focused on creating a policy of what the principal can do, any explicit denies that do not overlap with allows are irrelevant.
+
+If there is overlap, the `principal-can` attempts to convert them to `Allow` statements.
+
+#### Allow minus a Deny
+
+For instance, if you have:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"]
+}
+```
+
+and
+
+```json
+{
+  "Effect": "Deny",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::special-bucket/*"]
+}
+```
+
+The result would be:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "NotResource": ["arn:aws:s3:::special-bucket/*"]
+}
+```
+
+### Allow with Deny Permissions
+
+If there is a `Deny` statement that adds conditions to an `Allow` statement, `principal-can` will invert the deny conditions and attach them to the `Allow` statement to accurately represent the effective permissions.
+For instance, if you have:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"]
+}
+```
+
+and
+
+```json
+{
+  "Effect": "Deny",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"],
+  "Condition": {
+    "Bool": {
+      "aws:SecureTransport": "false"
+    }
+  }
+}
+```
+
+The result would be:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"],
+  "Condition": {
+    "Bool": {
+      "aws:SecureTransport": "true"
+    }
+  }
+}
+```
+
+### Keeping Deny Statements
+
+In some scenarios, it is not possible to merge a `Deny` statement with the existing `Allow` statements. If that happens the deny statement is kept in the output to accurately represent the effective permissions.
+
+For instance, if you have:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"]
+}
+```
+
+and
+
+```json
+{
+  "Effect": "Deny",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/secret-folder/*"]
+}
+```
+
+It's impossible to create an allow statement that includes only the allowed objects in the bucket so both statements are kept in the output:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/*"]
+},
+{
+  "Effect": "Deny",
+  "Action": ["s3:GetObject"],
+  "Resource": ["arn:aws:s3:::my-bucket/secret-folder/*"]
+}
+```
