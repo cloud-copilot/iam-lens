@@ -1,5 +1,5 @@
 import { expandIamActions, invertIamActions } from '@cloud-copilot/iam-expand'
-import { Policy } from '@cloud-copilot/iam-policy'
+import { Policy, Statement } from '@cloud-copilot/iam-policy'
 import { Permission, PermissionEffect } from './permission.js'
 
 /**
@@ -12,6 +12,12 @@ export class PermissionSet {
 
   constructor(public readonly effect: PermissionEffect) {}
 
+  /**
+   * Add a new permission to the set.  If the new permission overlaps with an existing one,
+   * they will be unioned together to avoid redundancy.
+   *
+   * @param newPermission the permission to add
+   */
   public addPermission(newPermission: Permission): void {
     if (newPermission.effect !== this.effect) {
       throw new Error(
@@ -70,6 +76,13 @@ export class PermissionSet {
     this.permissions[service][action] = newPermissions
   }
 
+  /**
+   * Get the permissions for a specific service and action.
+   *
+   * @param service the service to get permissions for
+   * @param action the action to get permissions for
+   * @returns the permissions that match the service and action
+   */
   public getPermissions(service: string, action: string): Permission[] {
     if (!this.permissions[service] || !this.permissions[service][action]) {
       return []
@@ -77,14 +90,40 @@ export class PermissionSet {
     return this.permissions[service][action]
   }
 
+  /**
+   * Check if the permission set has any permissions for a specific service
+   *
+   * @param service the service to check permissions for
+   * @returns true if the permission set has permissions for the service, false otherwise
+   */
   public hasService(service: string): boolean {
     return !!this.permissions[service]
   }
 
+  /**
+   * Check if the permission set has any permissions for a specific action
+   *
+   * @param service the service the action belongs to
+   * @param action the action to check permissions for
+   * @returns true if the permission set has permissions for the action, false otherwise
+   */
   public hasAction(service: string, action: string): boolean {
     return !!(this.permissions[service] && this.permissions[service][action])
   }
 
+  /**
+   * Check if the permission set is empty (has no permissions)
+   * @returns true if the permission set is empty, false otherwise
+   */
+  public isEmpty(): boolean {
+    return Object.keys(this.permissions).length === 0
+  }
+
+  /**
+   * Get all the permissions in the permission set
+   *
+   * @returns a copy of all the permissions in the permission set
+   */
   public getAllPermissions(): Permission[] {
     const allPermissions: Permission[] = []
     for (const service in this.permissions) {
@@ -99,6 +138,10 @@ export class PermissionSet {
    * Return a new PermissionSet containing the intersection of this set and another.
    * Only permissions that overlap (same effect, service, action, and intersecting resources/conditions)
    * will be included.
+   *
+   * @param other The other PermissionSet to intersect with.
+   * @returns A new PermissionSet containing the intersecting permissions.
+   * @throws Error if the effects of the two PermissionSets do not match.
    */
   public intersection(other: PermissionSet): PermissionSet {
     if (this.effect !== other.effect) {
@@ -130,6 +173,15 @@ export class PermissionSet {
     return result
   }
 
+  /**
+   * Subtract a Deny PermissionSet from this Allow PermissionSet.
+   *
+   * Returns two PermissionSets: one with the remaining Allow permissions,
+   * and one with any Deny permissions that were created as a result of the subtraction.
+   *
+   * @param deny the Deny PermissionSet to subtract
+   * @returns an object containing the resulting Allow and Deny PermissionSets
+   */
   public subtract(deny: PermissionSet): { allow: PermissionSet; deny: PermissionSet } {
     if (this.effect !== 'Allow' || deny.effect !== 'Deny') {
       throw new Error('Can only subtract a Deny PermissionSet from an Allow PermissionSet')
@@ -179,6 +231,30 @@ export class PermissionSet {
     }
 
     return { allow: allowSet, deny: denySet }
+  }
+
+  /**
+   * Add all permissions from another PermissionSet to this one.
+   *
+   * @param others the other PermissionSet (or array of PermissionSets) to add permissions from
+   * @throws Error if the effects of the two PermissionSets do not match
+   */
+  public addAll(others: PermissionSet[] | PermissionSet): void {
+    if (!Array.isArray(others)) {
+      others = [others]
+    }
+
+    for (const other of others) {
+      if (other.effect !== this.effect) {
+        throw new Error('Cannot add PermissionSets with different effects')
+      }
+    }
+
+    for (const other of others) {
+      for (const perm of other.getAllPermissions()) {
+        this.addPermission(perm)
+      }
+    }
   }
 
   /**
@@ -240,40 +316,60 @@ export async function addPoliciesToPermissionSet(
     for (const stmt of policy.statements()) {
       if (effect === 'Allow' && !stmt.isAllow()) {
         continue // skip Deny or any other non-Allow effect
-      } else if (effect === 'Deny' && stmt.isAllow()) {
+      } else if (effect === 'Deny' && !stmt.isDeny()) {
         continue // skip Allow statements if we're building a Deny set
       }
-
-      let statementActions: string[]
-      if (stmt.isActionStatement()) {
-        const allActions = stmt.actions().map((a) => a.value())
-        statementActions = await expandIamActions(allActions, { expandAsterisk: true })
-      } else if (stmt.isNotActionStatement()) {
-        statementActions = await invertIamActions(stmt.notActions().map((a) => a.value()))
-      } else {
-        continue
-      }
-
-      for (const fullAction of statementActions) {
-        const [service, actionName] = fullAction.split(':')
-        if (!service || !actionName) continue
-
-        let resource: string[] | undefined = undefined
-        let notResource: string[] | undefined = undefined
-        if (stmt.isResourceStatement()) {
-          resource = stmt.resources().map((r) => r.value())
-        } else if (stmt.isNotResourceStatement()) {
-          notResource = stmt.notResources().map((r) => r.value())
-        }
-
-        permissionSet.addPermission(
-          new Permission(effect, service, actionName, resource, notResource, stmt.conditionMap())
-        )
-      }
+      await addStatementToPermissionSet(stmt, permissionSet)
     }
   }
 }
 
+/**
+ * Add a single Statement to a PermissionSet, expanding it into one or more Permissions as needed.
+ *
+ * @param statement the IAM policy statement to add
+ * @param permissionSet the PermissionSet to add the statement to
+ * @returns nothing; the PermissionSet is modified in place
+ */
+export async function addStatementToPermissionSet(
+  statement: Statement,
+  permissionSet: PermissionSet
+) {
+  const effect = statement.effect() as PermissionEffect
+  let statementActions: string[]
+  if (statement.isActionStatement()) {
+    const allActions = statement.actions().map((a) => a.value())
+    statementActions = await expandIamActions(allActions, { expandAsterisk: true })
+  } else if (statement.isNotActionStatement()) {
+    statementActions = await invertIamActions(statement.notActions().map((a) => a.value()))
+  } else {
+    return
+  }
+
+  for (const fullAction of statementActions) {
+    const [service, actionName] = fullAction.split(':')
+    if (!service || !actionName) continue
+
+    let resource: string[] | undefined = undefined
+    let notResource: string[] | undefined = undefined
+    if (statement.isResourceStatement()) {
+      resource = statement.resources().map((r) => r.value())
+    } else if (statement.isNotResourceStatement()) {
+      notResource = statement.notResources().map((r) => r.value())
+    }
+
+    permissionSet.addPermission(
+      new Permission(effect, service, actionName, resource, notResource, statement.conditionMap())
+    )
+  }
+}
+
+/**
+ * Create a consistent key for any permission
+ *
+ * @param p the permission to create a key for
+ * @returns a string key that uniquely identifies the permission's resources and conditions
+ */
 function canonicalKey(p: Permission): string {
   // Sort resource arrays so ["B","A"] == ["A","B"]
   const resources = p.resource?.slice().sort() ?? null
@@ -302,6 +398,12 @@ function canonicalKey(p: Permission): string {
   return JSON.stringify({ resources, notResource, canonicalCond })
 }
 
+/**
+ * Convert a PermissionSet into an array of IAM policy statements.
+ *
+ * @param set the PermissionSet to convert
+ * @returns an array of IAM policy statements
+ */
 export function toPolicyStatements(set: PermissionSet): any {
   const buckets = new Map<
     string,
@@ -328,5 +430,6 @@ export function toPolicyStatements(set: PermissionSet): any {
     NotResource: b.notRes,
     Condition: b.cond
   }))
+
   return statements
 }

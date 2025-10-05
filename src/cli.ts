@@ -8,8 +8,8 @@ import {
   stringArgument,
   stringArrayArgument
 } from '@cloud-copilot/cli'
-import { canWhat } from './canWhat/canWhat.js'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
+import { principalCan } from './principalCan/principalCan.js'
 import { makePrincipalIndex } from './principalIndex/makePrincipalIndex.js'
 import { resultMatchesExpectation, simulateRequest } from './simulate/simulate.js'
 import { iamLensVersion } from './utils/packageVersion.js'
@@ -77,7 +77,8 @@ const main = async () => {
         }
       },
       'principal-can': {
-        description: 'ALPHA: Create a consolidated view of all permissions for a principal',
+        description:
+          'Create a consolidated view of all permissions for a principal, see readme for limitations',
         arguments: {
           principal: stringArgument({
             description: 'The principal to check permissions for. Can be a user or role'
@@ -175,8 +176,8 @@ const main = async () => {
       process.exit(1)
     }
 
-    const results = await canWhat(collectClient, {
-      principal: principal!,
+    const results = await principalCan(collectClient, {
+      principal: principal,
       shrinkActionLists
     })
 

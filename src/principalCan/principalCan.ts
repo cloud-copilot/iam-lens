@@ -1,5 +1,6 @@
 import { loadPolicy } from '@cloud-copilot/iam-policy'
 import { shrinkJsonDocument } from '@cloud-copilot/iam-shrink'
+import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient } from '../collect/client.js'
 import { getAllPoliciesForPrincipal } from '../principals.js'
 import {
@@ -8,11 +9,12 @@ import {
   PermissionSet,
   toPolicyStatements
 } from './permissionSet.js'
+import { s3BucketsSameAccount } from './resources/resourceTypes/s3Buckets.js'
 
 /**
  * Input for the can-what command.
  */
-export interface CanWhatInput {
+export interface PrincipalCanInput {
   /**
    * The ARN of the principal to check permissions for.
    */
@@ -31,12 +33,15 @@ export interface CanWhatInput {
  * @param input the input containing the principal and options.
  * @returns A promise that resolves to the permissions the principal can perform, or void if the implementation is incomplete.
  */
-export async function canWhat(collectClient: IamCollectClient, input: CanWhatInput) {
+export async function principalCan(collectClient: IamCollectClient, input: PrincipalCanInput) {
   const { principal } = input
 
   if (!principal) {
     throw new Error('Principal must be provided for can-what command')
   }
+
+  const principalArnParts = splitArnParts(principal)
+  const principalAccountId = principalArnParts.accountId!
 
   const principalPolicies = await getAllPoliciesForPrincipal(collectClient, principal)
 
@@ -52,6 +57,20 @@ export async function canWhat(collectClient: IamCollectClient, input: CanWhatInp
 
   let finalPermissions = allowedPermissions
 
+  /*********** Start Buckets *************/
+  const resourceDenyPermissions = new PermissionSet('Deny')
+
+  const { allows: bucketAllows, denies: bucketDenies } = await s3BucketsSameAccount(
+    collectClient,
+    principal
+  )
+
+  finalPermissions.addAll(bucketAllows)
+  resourceDenyPermissions.addAll(bucketDenies)
+
+  /*********** End Buckets *************/
+
+  // TODO: There is a slight wrinkle where same account resource policies can override implicit denies from Permission Boundaries.
   if (principalPolicies.permissionBoundary) {
     const boundaryPolicy = loadPolicy(principalPolicies.permissionBoundary.policy)
     const boundaryPermissions = await buildPermissionSetFromPolicies('Allow', [boundaryPolicy])
@@ -81,6 +100,9 @@ export async function canWhat(collectClient: IamCollectClient, input: CanWhatInp
   for (const rcpAllow of rcpAllowsByLevel) {
     finalPermissions = finalPermissions.intersection(rcpAllow)
   }
+
+  //Put together all the denies
+  principalAccountDenyPermissions.addAll(resourceDenyPermissions)
 
   const permissionsAfterDeny = finalPermissions.subtract(principalAccountDenyPermissions)
   finalPermissions = permissionsAfterDeny.allow
