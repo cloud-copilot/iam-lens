@@ -362,7 +362,6 @@ const s3BucketsSameAccountTests: {
   },
   {
     name: 'bucket policy with principal condition key should be included when matching',
-    only: true,
     principal: 'arn:aws:iam::100000000001:user/Alice',
     buckets: [
       {
