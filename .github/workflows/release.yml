@@ -12,6 +12,8 @@ jobs:
     permissions:
       contents: write
       issues: write
+      pull-requests: write
+      id-token: write
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -24,10 +26,13 @@ jobs:
       - name: Run semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          START_VERSION=$(jq -r '.version' package.json)
+          npm install -g npm@latest
           npm ci
           npm run format-check
           npm run build
           npm run test
           npx semantic-release
+          AFTER_VERSION=$(jq -r '.version' package.json)
+          [ "$START_VERSION" != "$AFTER_VERSION" ] && npm publish || true
