@@ -1386,12 +1386,12 @@ const intersectionTests: {
     otherPermission: {
       effect: 'Allow',
       action: 's3:GetObject',
-      resource: ['aws:arn:s3:::mybucket/file1']
+      resource: ['arn:aws:s3:::mybucket/file1']
     },
     intersection: {
       effect: 'Allow',
       action: 's3:GetObject',
-      resource: ['aws:arn:s3:::mybucket/file1'],
+      resource: ['arn:aws:s3:::mybucket/file1'],
       conditions: {
         stringequals: { 'aws:username': ['alice'] }
       }
