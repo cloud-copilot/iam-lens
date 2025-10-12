@@ -34,7 +34,9 @@ export const knownContextKeys: readonly string[] = [
   'aws:SourceAccount',
   'aws:SourceOrgID',
   'aws:SourceOrgPaths',
-  'aws:SourceOwner'
+  'aws:SourceOwner',
+
+  'kms:CallerAccount'
 ]
 
 export const CONTEXT_KEYS = {
@@ -116,6 +118,10 @@ export async function createContextKeys(
     }
 
     result['aws:PrincipalIsAWSService'] = 'false'
+
+    if (service.toLowerCase() == 'kms') {
+      result['kms:CallerAccount'] = principalAccountId
+    }
 
     if (simulationRequest.principal.endsWith(':root')) {
       result['aws:PrincipalType'] = 'Account'

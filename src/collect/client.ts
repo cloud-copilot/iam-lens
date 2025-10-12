@@ -1302,13 +1302,20 @@ export class IamCollectClient {
     resourceType: string,
     region: string | undefined
   ): Promise<string[]> {
-    if (service !== 's3' || resourceType !== 'bucket') {
-      throw new Error(`listResources is only supported for S3 buckets`)
+    if (service === 's3' && resourceType === 'bucket') {
+      const resources = await this.storageClient.findResourceMetadata<ResourceMetadata>(accountId, {
+        account: accountId,
+        service,
+        region
+      })
+
+      return resources.map((r) => r.arn)
     }
 
     const resources = await this.storageClient.findResourceMetadata<ResourceMetadata>(accountId, {
       account: accountId,
       service,
+      resourceType,
       region
     })
 

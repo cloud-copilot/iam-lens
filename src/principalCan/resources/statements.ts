@@ -28,19 +28,20 @@ export async function statementAppliesToPrincipal(
   const resourcePolicy = makePrincipalOnlyPolicyFromStatement(statement)
   const simulationRequest: SimulationRequest = {
     principal: principalArn,
-    action: 's3:ListBucket',
+    action: 'kms:DescribeKey',
     resourceAccount: principalAccount,
     resourceArn: undefined,
     customContextKeys: {},
     simulationMode: 'Strict'
   }
 
-  const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+  // We use KMS, so we get kms:CallerAccount context key support
+  const contextKeys = await createContextKeys(client, simulationRequest, 'kms', {})
 
   const request: Simulation['request'] = {
-    action: 's3:ListBucket',
+    action: 'kms:DescribeKey',
     resource: {
-      resource: 'arn:aws:s3:::example-bucket',
+      resource: 'arn:aws:kms:us-east-1:123456789012:key/abcd1234-ab12-cd34-ef23-456789abcdef',
       accountId: principalAccount
     },
     principal: principalArn,
@@ -77,7 +78,8 @@ const principalKeys = new Set(
     'aws:PrincipalType',
     'aws:userid',
     'aws:username',
-    'aws:PrincipalIsAWSService'
+    'aws:PrincipalIsAWSService',
+    'kms:CallerAccount'
   ].map((k) => k.toLowerCase())
 )
 

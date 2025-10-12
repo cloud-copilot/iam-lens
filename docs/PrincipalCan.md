@@ -78,12 +78,76 @@ Support for resource-based policies is being added incrementally. The currently 
 | Resource Type | Same Account | Cross Account |
 | ------------- | :-----------: | :-----------: |
 | S3 Bucket Policies | ✅ | ❌ |
+| KMS Key Policies | ✅ | ❌ |
 
 ## Limitations
 
 ### Permission Boundaries
 
 There is an [edge case when evaluating implicit denies from permission boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html#access_policies_boundaries-eval-logic). If a resource policy grants access directly to a Role session ARN or a Federated user ARN, it can override the implicit deny from a permission boundary. This behavior is not currently supported in `principal-can`, but `simulate` and `who-can` do incorporate this behavior.
+
+## KMS Specific Behavior
+
+KMS keys use a different permission model than most AWS services. Regardless of what’s in a principal’s identity policies, access must also be explicitly allowed by the KMS key policy. Access can be granted in two ways:
+
+1. Directly to the principal, such as `arn:aws:iam::111222333444:role/MyRole` or `arn:aws:sts::111222333444:assumed-role/MyRole/MySession`.
+2. To the principal’s AWS account, such as `arn:aws:iam::111222333444:root`. In this case, the principal must also have permissions in their own identity policies.
+
+Because of this, `principal-can` lists only specific KMS keys that the principal can access, and it will not show wildcard permissions such as `"Resource": "*"`. For non key–scoped KMS actions (e.g., `CreateKey`, `ListKeys`, `ListAliases`), `"Resource": "*"` is expected.
+
+If a key grants access directly to the principal, those permissions are included. If access is granted only to the account, the permissions appear only if the principal’s identity policies also allow the action.
+
+### Grants
+
+KMS grants provide a third way to authorize use of a key, independent of IAM policies or key policies. A grant can allow a principal to use a key even if their identity policy does not.
+
+Currently, `iam-lens` does **not** enumerate or evaluate KMS grants. If your organization uses grants extensively, use the AWS CLI or console to inspect active grants on a key and validate effective permissions.
+
+### Multi-Region Keys
+
+KMS Multi-Region Keys (MRKs) are evaluated per-replica ARN. Access to a primary key does not automatically grant access to its replicas. Each key in a multi-region pair has its own resource policy and permissions, and `iam-lens` treats them as distinct resources when evaluating access.
+
+### `kms:ViaService` Condition Key
+
+To prevent noisy output, `principal-can` does not include any permissions in key policies that have the `kms:ViaService` condition key.
+
+A common pattern in KMS key policies is to use the `kms:ViaService` condition key to allow a key to be used only when accessed through a specific service. To leverage that permission, the principal must also have access to that service.
+
+For example, this key policy grants **indirect** access to the KMS key **only if the principal is using DynamoDB and has the required DynamoDB permissions**:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Allow access through Amazon DynamoDB for all principals in the account that are authorized to use Amazon DynamoDB",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "*"
+      },
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:CreateGrant",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:CallerAccount": "111122223333"
+        },
+        "StringLike": {
+          "kms:ViaService": "dynamodb.*.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
+```
+
+To prevent noisy output, `principal-can` does not include any permissions in key policies that have the `kms:ViaService` condition key.
 
 ## How Permissions are Combined
 

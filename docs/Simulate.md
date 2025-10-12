@@ -159,6 +159,9 @@ Context keys are automatically verified against the [Service Authorization Refer
 - **`aws:username`** _(only for IAM users)_
   The IAM username portion of the principal ARN (e.g. `Alice`).
 
+- **`kms:CallerAccount`** _ (only for `kms` actions)_
+  The AWS account ID of the principal making the request. This is the same as `aws:PrincipalAccount`.
+
 #### Service Principal Context
 
 The following context keys are set when the principal is an AWS service (e.g., `lambda.amazonaws.com`, `ec2.amazonaws.com`):

@@ -527,6 +527,23 @@ const permissionIncludesTests: {
     },
     // intersection of notResource => ['arn:aws:s3:::config/*']
     included: true
+  },
+  {
+    name: 'narrower resource with conditions on broader resource',
+    permission: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['*'],
+      conditions: {
+        StringEquals: { 'aws:username': ['alice'] }
+      }
+    },
+    otherPermission: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['aws:arn:s3:::mybucket/file1']
+    },
+    included: false
   }
 ]
 
@@ -1355,6 +1372,30 @@ const intersectionTests: {
       notResource: ['arn:aws:s3:::bucket1/file2']
     },
     intersection: false
+  },
+  {
+    name: 'intersection of narrower resource with conditions on broader resource',
+    permission: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['*'],
+      conditions: {
+        StringEquals: { 'aws:username': ['alice'] }
+      }
+    },
+    otherPermission: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['aws:arn:s3:::mybucket/file1']
+    },
+    intersection: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['aws:arn:s3:::mybucket/file1'],
+      conditions: {
+        stringequals: { 'aws:username': ['alice'] }
+      }
+    }
   }
 ]
 
