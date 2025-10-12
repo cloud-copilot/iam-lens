@@ -119,7 +119,7 @@ export async function createContextKeys(
 
     result['aws:PrincipalIsAWSService'] = 'false'
 
-    if (service.toLowerCase() == 'kms') {
+    if (service.toLowerCase() === 'kms') {
       result['kms:CallerAccount'] = principalAccountId
     }
 
