@@ -1,3 +1,10 @@
+## [0.1.50](https://github.com/cloud-copilot/iam-lens/compare/v0.1.49...v0.1.50) (2025-10-13)
+
+
+### Features
+
+* `principal-can` evaluate same account KMS key policies ([4a56373](https://github.com/cloud-copilot/iam-lens/commit/4a56373bb0c2fef9789aec517731d16b838074a0))
+
 ## [0.1.49](https://github.com/cloud-copilot/iam-lens/compare/v0.1.48...v0.1.49) (2025-10-11)
 
 ## [0.1.48](https://github.com/cloud-copilot/iam-lens/compare/v0.1.47...v0.1.48) (2025-10-11)
