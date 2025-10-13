@@ -1,4 +1,4 @@
-# `principal-can` - Analyze all permissions for a principal
+# `principal-can` - Get a consolidated policy of all permissions for a principal
 
 ```bash
 iam-lens principal-can --principal <arn> [--shrink-action-lists]
