@@ -373,10 +373,10 @@ export class Permission {
     if (thisResource !== undefined && otherResource !== undefined) {
       // Keep any R1 that matches something in R2, and any R2 that matches something in R1
       const part1 = thisResource.filter((r1) =>
-        otherResource.some((r2) => wildcardToRegex(r1).test(r2))
+        otherResource.some((r2) => wildcardToRegex(r2).test(r1))
       )
       const part2 = otherResource.filter((r2) =>
-        thisResource.some((r1) => wildcardToRegex(r2).test(r1))
+        thisResource.some((r1) => wildcardToRegex(r1).test(r2))
       )
       const intersectR = Array.from(new Set([...part1, ...part2]))
       if (intersectR.length === 0) {

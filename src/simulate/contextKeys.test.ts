@@ -1137,6 +1137,38 @@ describe('createContextKeys', () => {
     })
   })
 
+  describe('kms:CallerAccount', () => {
+    it('should set kms:CallerAccount for KMS actions', async () => {
+      // Given a simulation request with a KMS action
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        principal: 'arn:aws:iam::123456789012:user/test-user',
+        action: 'kms:Encrypt'
+      }
+
+      // When creating context keys
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 'kms', {})
+
+      // Then kms:CallerAccount should be set to the principal's account ID
+      expect(contextKeys['kms:CallerAccount']).toBe('123456789012')
+    })
+
+    it('should not set kms:CallerAccount for non-KMS actions', async () => {
+      // Given a simulation request with a non-KMS action
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        principal: 'arn:aws:iam::123456789012:user/test-user',
+        action: 's3:GetObject'
+      }
+
+      // When creating context keys
+      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+
+      // Then kms:CallerAccount should not be set
+      expect(contextKeys['kms:CallerAccount']).toBeUndefined()
+    })
+  })
+
   describe('overrides', () => {
     it('should apply overrides to context keys', async () => {
       // Given a simulation request and an override for a context key

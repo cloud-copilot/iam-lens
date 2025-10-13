@@ -50,7 +50,31 @@ export function expectPermissionSetToMatch(
       expect(actualPerm.action).toBe(serviceAction)
       expect(actualPerm.resource).toEqual(expectedPerm.resource)
       expect(actualPerm.notResource).toEqual(expectedPerm.notResource)
-      expect(actualPerm.conditions).toEqual(expectedPerm.conditions)
+      expect(lowerCaseConditionKeys(actualPerm.conditions)).toEqual(
+        lowerCaseConditionKeys(expectedPerm.conditions)
+      )
     }
   }
+}
+
+/**
+ * Convert condition operators and keys to lower case to ensure consistent comparisons.
+ *
+ * @param conditions the conditions to convert
+ * @returns the conditions with lower-cased operators and keys
+ */
+function lowerCaseConditionKeys(
+  conditions: PermissionConditions | undefined
+): PermissionConditions | undefined {
+  if (!conditions) {
+    return undefined
+  }
+  const lowerCased: PermissionConditions = {}
+  for (const [key, value] of Object.entries(conditions)) {
+    lowerCased[key.toLowerCase()] = {}
+    for (const [conditionKey, conditionValue] of Object.entries(value)) {
+      lowerCased[key.toLowerCase()][conditionKey.toLowerCase()] = conditionValue
+    }
+  }
+  return lowerCased
 }

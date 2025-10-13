@@ -9,6 +9,10 @@ import {
   PermissionSet,
   toPolicyStatements
 } from './permissionSet.js'
+import {
+  allKmsKeysAllActionsPermissionSets,
+  kmsKeysSameAccount
+} from './resources/resourceTypes/kmsKeys.js'
 import { s3BucketsSameAccount } from './resources/resourceTypes/s3Buckets.js'
 
 /**
@@ -41,7 +45,6 @@ export async function principalCan(collectClient: IamCollectClient, input: Princ
   }
 
   const principalArnParts = splitArnParts(principal)
-  const principalAccountId = principalArnParts.accountId!
 
   const principalPolicies = await getAllPoliciesForPrincipal(collectClient, principal)
 
@@ -57,9 +60,37 @@ export async function principalCan(collectClient: IamCollectClient, input: Princ
 
   let finalPermissions = allowedPermissions
 
-  /*********** Start Buckets *************/
   const resourceDenyPermissions = new PermissionSet('Deny')
 
+  /*********** Start KMS Keys *************/
+  const { keyAllows: allKeysAllow, keyDenies: allKeysDeny } =
+    await allKmsKeysAllActionsPermissionSets()
+
+  const identityKeyPermissions = allKeysAllow.intersection(allowedPermissions)
+
+  // Remove all the KMS permissions from the identityAllows, add them back later
+  finalPermissions = finalPermissions.subtract(allKeysDeny).allow
+
+  // Get all the KMS permission for the same account
+  const {
+    accountAllows: keyAccountAllows,
+    principalAllows: keyPrincipalAllows,
+    denies: keyDenies
+  } = await kmsKeysSameAccount(collectClient, principal)
+
+  // Add in the principal allows
+  finalPermissions.addAll(keyPrincipalAllows)
+
+  // Add the account allows intersected with the identity allows
+  for (const keyAcctAllow of keyAccountAllows) {
+    finalPermissions.addAll(keyAcctAllow.intersection(identityKeyPermissions))
+  }
+
+  // Add the denies for later
+  resourceDenyPermissions.addAll(keyDenies)
+  /*********** End KMS Keys *************/
+
+  /*********** Start Buckets *************/
   const { allows: bucketAllows, denies: bucketDenies } = await s3BucketsSameAccount(
     collectClient,
     principal
@@ -67,7 +98,6 @@ export async function principalCan(collectClient: IamCollectClient, input: Princ
 
   finalPermissions.addAll(bucketAllows)
   resourceDenyPermissions.addAll(bucketDenies)
-
   /*********** End Buckets *************/
 
   // TODO: There is a slight wrinkle where same account resource policies can override implicit denies from Permission Boundaries.
