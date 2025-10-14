@@ -13,6 +13,7 @@ Get visibility into the IAM permissions in your AWS organizations and accounts. 
 5. [Commands](#commands)
    - [simulate - Simulate a request](docs/Simulate.md)
    - [who-can - Find who can perform an action on a resource](docs/WhoCan.md)
+   - [principal-can - Get a consolidated policy of all permissions for a principal](docs/PrincipalCan.md)
    - [Global CLI Options](docs/GlobalCliOptions.md)
 6. [Contributing & Support](#contributing--support)
 7. [Acknowledgements](#acknowledgements)
@@ -162,6 +163,31 @@ iam-lens who-can \
 ```
 
 [Full who-can documentation](docs/WhoCan.md)
+
+### `principal-can` - Get a consolidated policy of all permissions for a principal
+
+```bash
+iam-lens principal-can --principal <arn> [--shrink-action-lists]
+```
+
+Creates a consolidated policy document showing all permissions that a principal can perform based on their identity policies, permission boundaries, SCPs, RCPs, and resource policies. The output is a synthesized IAM policy representing the effective permissions after all policy evaluations.
+
+[Full principal-can documentation](docs/PrincipalCan.md)
+
+**Examples:**
+
+```bash
+# Get all permissions for a user or role
+iam-lens principal-can \
+  --principal arn:aws:iam::123456789012:user/Alice
+
+# Get permissions for a role with shrunk action lists
+iam-lens principal-can \
+  --principal arn:aws:iam::123456789012:role/MyRole \
+  --shrink-action-lists
+```
+
+[Full principal-can documentation](docs/PrincipalCan.md)
 
 ## Contributing & Support
 
