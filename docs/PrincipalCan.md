@@ -75,16 +75,47 @@ This command currently supports the following policy types:
 - Permission Boundaries
 
 Support for resource-based policies is being added incrementally. The currently supported types are:
-| Resource Type | Same Account | Cross Account |
-| ------------- | :-----------: | :-----------: |
-| S3 Bucket Policies | ✅ | ❌ |
-| KMS Key Policies | ✅ | ❌ |
+
+| Resource Type           | Same Account | Cross Account |
+| ----------------------- | :----------: | :-----------: |
+| S3 Bucket Policies      |      ✅      |      ❌       |
+| KMS Key Policies        |      ✅      |      ❌       |
+| IAM Role Trust Policies |      ✅      |      ❌       |
 
 ## Limitations
 
 ### Permission Boundaries
 
 There is an [edge case when evaluating implicit denies from permission boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html#access_policies_boundaries-eval-logic). If a resource policy grants access directly to a Role session ARN or a Federated user ARN, it can override the implicit deny from a permission boundary. This behavior is not currently supported in `principal-can`, but `simulate` and `who-can` do incorporate this behavior.
+
+## IAM Role Trust Policies (`sts:AssumeRole`)
+
+Assuming roles uses a specific permission model. Regardless of what’s in a principal’s identity policies, permission must be explicitly allowed by the role's trust policy. Access can be granted in two ways:
+
+1. Directly to the principal, such as `arn:aws:iam::111222333444:role/MyRole` or `arn:aws:sts::111222333444:assumed-role/MyRole/MySession`.
+2. To the principal’s AWS account, such as `arn:aws:iam::111222333444:root`. In this case, the principal must also have permissions in their own identity policies.
+
+Because of this, `principal-can` lists only specific roles that the principal can assume, and it will not show wildcard permissions such as `"Resource": "*"`. For wildcard only role actions (e.g., `iam:ListRoles`), `"Resource": "*"` is expected.
+
+If a role grants access directly to the principal, those assume role permissions are included. If access is granted only to the account, the permissions appear only if the principal’s identity policies also allow assuming the role.
+
+- `principal-can` also includes the **permission-only** STS actions that can be included in a trust policy:
+  - `sts:SetContext`
+  - `sts:SetSourceIdentity`
+  - `sts:TagSession`
+
+- Only `sts:AssumeRole` is considered for role trust evaluation. `sts:AssumeRoleWithSAML` and `sts:AssumeRoleWithWebIdentity` are **not** returned, because IAM users and roles do not call those APIs directly; they are used by federation flows (SAML and OIDC identity providers), not by IAM principals. Support for these may be added in the future.
+
+### Trust policies do **not** grant other role actions
+
+Trust policies are used to determine who can assume a role (plus the permission-only session actions reported alongside it). Other permissions are determined by the regular identity policies, permission boundaries, and SCPs.
+
+- **IAM management actions on the role are unaffected by the trust policy.**
+  Examples: `iam:GetRole`, `iam:UpdateRole`, `iam:AttachRolePolicy`, `iam:PutRolePolicy`, `iam:DeleteRole`, `iam:PassRole`.
+  These require corresponding **identity-based** permissions on the caller. Whether the role can be assumed (via the trust policy) does not affect management rights over the role itself.
+
+- **`iam:PassRole` is separate from assuming the role.**
+  A caller needs `iam:PassRole` on the role resource in their **own** identity policies to pass it to a service. The target role’s trust policy does not affect `iam:PassRole`.
 
 ## KMS Specific Behavior
 
@@ -445,6 +476,124 @@ and
 The result would be:
 
 ```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"],
+  "Condition": {
+    "Bool": {
+      "aws:SecureTransport": "true"
+    }
+  }
+}
+```
+
+#### Deny Statements with Multiple Conditions
+
+When a `Deny` statement includes multiple conditions, the logic is a little confusing. It means the request is denied if **all** of the conditions are true, inversely this means the request is allowed if **any** of the conditions are false.
+
+Take this policy for example:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": ["*"]
+    },
+    {
+      "Effect": "Deny",
+      "Action": ["s3:GetObject"],
+      "Resource": ["*"],
+      "Condition": {
+        "IpAddress": {
+          "aws:SourceIp": "192.0.2.0/32"
+        },
+        "Bool": {
+          "aws:SecureTransport": "false"
+        }
+      }
+    }
+  ]
+}
+```
+
+This table shows the possible outcomes:
+
+| `aws:SourceIp`          | `aws:SecureTransport` | Result     |
+| ----------------------- | --------------------- | ---------- |
+| `192.0.2.0` (match)     | `false` (match)       | ❌ Denied  |
+| `192.0.2.0` (match)     | `true` (no match)     | ✅ Allowed |
+| `172.16.0.0` (no match) | `false` (match)       | ✅ Allowed |
+| `172.16.0.0` (no match) | `true` (no match)     | ✅ Allowed |
+
+`principal-can` creates separate `Allow` statements for each condition to accurately represent the resulting permissions. This approach ensures that each conditional deny is properly accounted for in the synthesized policy.
+
+So to start the policy above in a positive way, you can say the principal is allowed to `s3:GetObject` if either:
+
+- The request does not come from the `192.0.2.0/32` IP OR
+- The request uses secure transport (HTTPS)
+
+To represent this using only allow statements you can write:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"],
+  "Condition": {
+    "NotIpAddress": {
+      "aws:SourceIp": "192.0.2.0/32"
+    }
+  }
+},
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"],
+  "Condition": {
+    "Bool": {
+      "aws:SecureTransport": "true"
+    }
+  }
+}
+```
+
+So this is exactly what `principal-can` does. It inverts each condition in the `Deny` statement and creates separate `Allow` statements for each condition.
+
+For example, given this `Deny` statement with two different conditions:
+
+```json
+{
+  "Effect": "Deny",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"],
+  "Condition": {
+    "IpAddress": {
+      "aws:SourceIp": "192.0.2.0/32"
+    },
+    "Bool": {
+      "aws:SecureTransport": "false"
+    }
+  }
+}
+```
+
+`principal-can` will create two separate `Allow` statements, one for each condition inverted appropriately:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject"],
+  "Resource": ["*"],
+  "Condition": {
+    "NotIpAddress": {
+      "aws:SourceIp": "192.0.2.0/32"
+    }
+  }
+},
 {
   "Effect": "Allow",
   "Action": ["s3:GetObject"],

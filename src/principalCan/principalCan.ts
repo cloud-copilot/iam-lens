@@ -10,6 +10,10 @@ import {
   toPolicyStatements
 } from './permissionSet.js'
 import {
+  allIamRolesAssumeRolePermissionSets,
+  iamRolesSameAccount
+} from './resources/resourceTypes/iamRoles.js'
+import {
   allKmsKeysAllActionsPermissionSets,
   kmsKeysSameAccount
 } from './resources/resourceTypes/kmsKeys.js'
@@ -89,6 +93,34 @@ export async function principalCan(collectClient: IamCollectClient, input: Princ
   // Add the denies for later
   resourceDenyPermissions.addAll(keyDenies)
   /*********** End KMS Keys *************/
+
+  /*********** Start Role Trust Policies *************/
+  const { roleAllows: allRolesAllow, roleDenies: allRolesDeny } =
+    await allIamRolesAssumeRolePermissionSets()
+
+  const identityAssumeRolePermissions = allRolesAllow.intersection(allowedPermissions)
+
+  // Remove all the IAM role permissions from the identityAllows, add them back later
+  finalPermissions = finalPermissions.subtract(allRolesDeny).allow
+
+  // Get all the KMS permission for the same account
+  const {
+    accountAllows: roleAccountAllows,
+    principalAllows: rolePrincipalAllows,
+    denies: roleDenies
+  } = await iamRolesSameAccount(collectClient, principal)
+
+  // Add in the principal allows
+  finalPermissions.addAll(rolePrincipalAllows)
+
+  // Add the account allows intersected with the identity allows
+  for (const roleAcctAllow of roleAccountAllows) {
+    finalPermissions.addAll(roleAcctAllow.intersection(identityAssumeRolePermissions))
+  }
+
+  // Add the denies for later
+  resourceDenyPermissions.addAll(roleDenies)
+  /*********** End Role Trust Policies *************/
 
   /*********** Start Buckets *************/
   const { allows: bucketAllows, denies: bucketDenies } = await s3BucketsSameAccount(

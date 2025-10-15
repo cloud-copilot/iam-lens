@@ -531,6 +531,27 @@ const subtractTests: {
     denyPermissions: [{ action: 'ec2:StartInstances', effect: 'Deny', resource: ['*'] }],
     expectedAllow: [{ action: 's3:ListBucket', effect: 'Allow', resource: ['*'] }],
     expectedDeny: []
+  },
+  {
+    name: 'Subtract a wildcard deny with permissions',
+    allowPermissions: [{ action: 's3:ListBucket', effect: 'Allow', resource: ['*'] }],
+    denyPermissions: [
+      {
+        action: 's3:ListBucket',
+        effect: 'Deny',
+        resource: ['*'],
+        conditions: { StringEquals: { 'aws:RequestTag/Project': ['Test'] } }
+      }
+    ],
+    expectedAllow: [
+      {
+        action: 's3:ListBucket',
+        effect: 'Allow',
+        resource: ['*'],
+        conditions: { StringNotEquals: { 'aws:RequestTag/Project': ['Test'] } }
+      }
+    ],
+    expectedDeny: []
   }
 ]
 

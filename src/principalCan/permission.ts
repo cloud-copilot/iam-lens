@@ -449,8 +449,36 @@ export class Permission {
         }
       }
     }
+
+    // When Deny has multiple conditions, we need to create separate Allow permissions
+    // for each inverted condition, since IAM can't express NOT(A AND B AND C) in one block
+    const denyConditions = other.conditions || {}
+    const hasMultipleConditions =
+      Object.keys(denyConditions).length > 1 ||
+      Object.values(denyConditions).some((keyMap) => Object.keys(keyMap).length > 1)
+
+    if (hasMultipleConditions) {
+      // Special case: If deny resource is a proper subset of allow resource, keep both statements separate
+      // because it's impossible to merge them cleanly
+      if (this.resource && other.resource) {
+        const isDenySubsetOfAllow = other.resource.every((denyRes) =>
+          this.resource!.some(
+            (allowRes) => allowRes !== denyRes && wildcardToRegex(allowRes).test(denyRes)
+          )
+        )
+
+        if (isDenySubsetOfAllow) {
+          // Keep both the original allow and deny statements
+          return [this, other]
+        }
+      }
+
+      return this.subtractWithMultipleConditions(other)
+    }
+
+    // Handle simpler cases with single/no conditions using the existing logic
     // 1. Invert Deny conditions
-    const inverted = invertConditions(other.conditions || {})
+    const inverted = invertConditions(denyConditions)
 
     // 2. Merge conditions: original Allow ∧ inverted Deny
     const allowConds = normalizeConditionKeys(this.conditions || {})
@@ -543,6 +571,96 @@ export class Permission {
 
     // This should never happen
     throw new Error('Permission.subtract: This should never happen—invalid state.')
+  }
+
+  /**
+   * Handle subtraction when the Deny permission has multiple conditions.
+   * Creates separate Allow permissions for each inverted condition.
+   */
+  private subtractWithMultipleConditions(other: Permission): Permission[] {
+    const allowResource = this.resource
+    const allowNotResource = this.notResource
+    const denyResource = other.resource
+    const denyNotResource = other.notResource
+
+    const eff = this.effect
+    const svc = this.service
+    const act = this.action
+
+    // Determine resulting resource/notResource based on Allow vs Deny patterns
+    let resultResource: string[] | undefined
+    let resultNotResource: string[] | undefined
+
+    // Case: Allow.resource & Deny.notResource --> The Deny excludes everything EXCEPT notResource
+    // So the intersection is the items from Deny.notResource that match Allow.resource patterns
+    if (allowResource !== undefined && denyNotResource !== undefined) {
+      resultResource = denyNotResource.filter((dnr) =>
+        allowResource.some((ar) => wildcardToRegex(ar).test(dnr))
+      )
+      if (resultResource.length === 0) return []
+    }
+    // Case: Allow.notResource & Deny.resource --> resultNotResource = ANR ∪ DR
+    else if (allowNotResource !== undefined && denyResource !== undefined) {
+      // Check if every Deny resource is already excluded by allowNotResource
+      const denyCovered = denyResource.every((dr) =>
+        allowNotResource.some((anr) => wildcardToRegex(anr).test(dr))
+      )
+      if (denyCovered) {
+        resultNotResource = allowNotResource
+      } else {
+        resultNotResource = Array.from(new Set([...allowNotResource, ...denyResource]))
+      }
+    }
+    // Case: Allow.resource & Deny.resource --> keep allow resource, conditions handle exclusion
+    else if (allowResource !== undefined && denyResource !== undefined) {
+      resultResource = allowResource
+    }
+    // Case: Allow.notResource & Deny.notResource --> keep allow notResource, conditions handle exclusion
+    else if (allowNotResource !== undefined && denyNotResource !== undefined) {
+      resultNotResource = allowNotResource
+    }
+
+    // Create separate Allow permissions for each condition key-value pair in Deny
+    const results: Permission[] = []
+    const allowConds = normalizeConditionKeys(this.conditions || {})
+
+    for (const [operator, keyMap] of Object.entries(other.conditions || {})) {
+      for (const [contextKey, values] of Object.entries(keyMap)) {
+        // Invert this specific condition
+        const singleCondition = { [operator]: { [contextKey]: values } }
+        const invertedCondition = invertConditions(singleCondition)
+
+        // Merge with the original Allow conditions
+        const mergedConds: PermissionConditions = { ...allowConds }
+        for (const [invertedOp, invertedKeyMap] of Object.entries(invertedCondition)) {
+          if (mergedConds[invertedOp]) {
+            // Merge keys under the same operator
+            for (const [invertedKey, invertedVals] of Object.entries(invertedKeyMap)) {
+              if (mergedConds[invertedOp][invertedKey]) {
+                // Union the values
+                mergedConds[invertedOp][invertedKey] = Array.from(
+                  new Set([...mergedConds[invertedOp][invertedKey], ...invertedVals])
+                )
+              } else {
+                mergedConds[invertedOp][invertedKey] = Array.from(invertedVals)
+              }
+            }
+          } else {
+            mergedConds[invertedOp] = { ...invertedKeyMap }
+          }
+        }
+
+        // Apply complementary condition logic
+        const finalMergedConds = mergeComplementaryConditions(mergedConds)
+
+        const finalConds = Object.keys(finalMergedConds).length ? finalMergedConds : undefined
+
+        // Create a new Allow permission with this specific inverted condition
+        results.push(new Permission(eff, svc, act, resultResource, resultNotResource, finalConds))
+      }
+    }
+
+    return results
   }
 }
 
