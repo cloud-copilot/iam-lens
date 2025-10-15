@@ -63,7 +63,7 @@ export function expectPermissionSetToMatch(
  * @param conditions the conditions to convert
  * @returns the conditions with lower-cased operators and keys
  */
-function lowerCaseConditionKeys(
+export function lowerCaseConditionKeys(
   conditions: PermissionConditions | undefined
 ): PermissionConditions | undefined {
   if (!conditions) {

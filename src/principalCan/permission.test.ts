@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { invertConditions, Permission, PermissionConditions } from './permission.js'
+import { lowerCaseConditionKeys } from './permissionSetTestUtils.js'
 
 interface TestPermission {
   effect: 'Allow' | 'Deny'
@@ -1751,7 +1752,332 @@ const subtractTests: {
         notResource: ['arn:aws:s3:::bucket/data/*', 'arn:aws:s3:::bucket/logs/*']
       }
     ]
+  },
+  {
+    name: 'Allow * and Deny * with conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['*'],
+      conditions: {
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-abc123']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:PrincipalOrgId': ['o-abc123']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Subtract deny with multiple conditions',
+    allow: { effect: 'Allow', action: 'backup:GetBackupVaultAccessPolicy', resource: ['*'] },
+    deny: {
+      effect: 'Deny',
+      action: 'backup:GetBackupVaultAccessPolicy',
+      resource: ['*'],
+      conditions: {
+        StringLike: { 'aws:PrincipalArn': ['arn:aws:iam::*:root'] },
+        Null: { 'aws:AssumedRoot': ['true'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'backup:GetBackupVaultAccessPolicy',
+        resource: ['*'],
+        conditions: {
+          StringNotLike: { 'aws:PrincipalArn': ['arn:aws:iam::*:root'] }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'backup:GetBackupVaultAccessPolicy',
+        resource: ['*'],
+        conditions: {
+          Null: { 'aws:AssumedRoot': ['false'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Deny with multiple conditions creates multiple allow statements with inverted conditions',
+    allow: {
+      effect: 'Allow',
+      action: 'sts:AssumeRole',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'sts:AssumeRole',
+      notResource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+      conditions: {
+        Null: {
+          'sts:ExternalId': ['true']
+        },
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-uch56v3mmz']
+        },
+        BoolIfExists: {
+          'aws:PrincipalIsAWSService': ['false']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+        conditions: {
+          Null: {
+            'sts:externalid': ['false']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+        conditions: {
+          StringEquals: {
+            'aws:principalorgid': ['o-uch56v3mmz']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+        conditions: {
+          BoolIfExists: {
+            'aws:principalisawsservice': ['true']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Multiple allows with conditions multiplied by deny with multiple conditions',
+    allow: {
+      effect: 'Allow',
+      action: 'sts:AssumeRole',
+      resource: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:RequestedRegion': ['us-east-1']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'sts:AssumeRole',
+      notResource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+      conditions: {
+        Null: {
+          'sts:ExternalId': ['true']
+        },
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-uch56v3mmz']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+        conditions: {
+          StringEquals: {
+            'aws:requestedregion': ['us-east-1']
+          },
+          Null: {
+            'sts:externalid': ['false']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+        conditions: {
+          StringEquals: {
+            'aws:requestedregion': ['us-east-1'],
+            'aws:principalorgid': ['o-uch56v3mmz']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Deny with multiple conditions on a subset of an allow keeps both in tact',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::mybucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::mybucket/sensitive/*'],
+      conditions: {
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-abc123']
+        },
+        IpAddress: {
+          'aws:SourceIp': ['10.0.0.0/8']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::mybucket/*']
+      },
+      {
+        effect: 'Deny',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::mybucket/sensitive/*'],
+        conditions: {
+          StringNotEquals: {
+            'aws:PrincipalOrgId': ['o-abc123']
+          },
+          IpAddress: {
+            'aws:SourceIp': ['10.0.0.0/8']
+          }
+        }
+      }
+    ]
   }
+  // {
+  //   name: 'Two allows each with different conditions multiplied by deny with two conditions',
+  //   allow: {
+  //     effect: 'Allow',
+  //     action: 'dynamodb:GetItem',
+  //     resource: ['*'],
+  //     conditions: {
+  //       StringEquals: {
+  //         'aws:RequestedRegion': ['us-west-2']
+  //       }
+  //     }
+  //   },
+  //   deny: {
+  //     effect: 'Deny',
+  //     action: 'dynamodb:GetItem',
+  //     resource: ['arn:aws:dynamodb:*:*:table/SensitiveTable'],
+  //     conditions: {
+  //       Null: {
+  //         'dynamodb:LeadingKeys': ['true']
+  //       },
+  //       Bool: {
+  //         'aws:SecureTransport': ['false']
+  //       }
+  //     }
+  //   },
+  //   expected: [
+  //     {
+  //       effect: 'Allow',
+  //       action: 'dynamodb:GetItem',
+  //       resource: ['*'],
+  //       notResource: ['arn:aws:dynamodb:*:*:table/SensitiveTable'],
+  //       conditions: {
+  //         StringEquals: {
+  //           'aws:requestedregion': ['us-west-2']
+  //         },
+  //         Null: {
+  //           'dynamodb:leadingkeys': ['false']
+  //         }
+  //       }
+  //     },
+  //     {
+  //       effect: 'Allow',
+  //       action: 'dynamodb:GetItem',
+  //       resource: ['*'],
+  //       notResource: ['arn:aws:dynamodb:*:*:table/SensitiveTable'],
+  //       conditions: {
+  //         StringEquals: {
+  //           'aws:requestedregion': ['us-west-2']
+  //         },
+  //         Bool: {
+  //           'aws:securetransport': ['true']
+  //         }
+  //       }
+  //     }
+  //   ]
+  // },
+  // {
+  //   name: 'Deny with three conditions creates three separate allows',
+  //   allow: {
+  //     effect: 'Allow',
+  //     action: 'kms:Decrypt',
+  //     resource: ['*']
+  //   },
+  //   deny: {
+  //     effect: 'Deny',
+  //     action: 'kms:Decrypt',
+  //     resource: ['arn:aws:kms:*:*:key/*'],
+  //     conditions: {
+  //       StringNotLike: {
+  //         'kms:EncryptionContext:Department': ['Engineering']
+  //       },
+  //       DateLessThan: {
+  //         'aws:CurrentTime': ['2025-12-31T23:59:59Z']
+  //       },
+  //       BoolIfExists: {
+  //         'aws:MultiFactorAuthPresent': ['false']
+  //       }
+  //     }
+  //   },
+  //   expected: [
+  //     {
+  //       effect: 'Allow',
+  //       action: 'kms:Decrypt',
+  //       resource: ['*'],
+  //       notResource: ['arn:aws:kms:*:*:key/*'],
+  //       conditions: {
+  //         StringLike: {
+  //           'kms:encryptioncontext:department': ['Engineering']
+  //         }
+  //       }
+  //     },
+  //     {
+  //       effect: 'Allow',
+  //       action: 'kms:Decrypt',
+  //       resource: ['*'],
+  //       notResource: ['arn:aws:kms:*:*:key/*'],
+  //       conditions: {
+  //         DateGreaterThanEquals: {
+  //           'aws:currenttime': ['2025-12-31T23:59:59Z']
+  //         }
+  //       }
+  //     },
+  //     {
+  //       effect: 'Allow',
+  //       action: 'kms:Decrypt',
+  //       resource: ['*'],
+  //       notResource: ['arn:aws:kms:*:*:key/*'],
+  //       conditions: {
+  //         BoolIfExists: {
+  //           'aws:multifactorauthpresent': ['true']
+  //         }
+  //       }
+  //     }
+  //   ]
+  // }
 ]
 
 describe('Permission#subtract', () => {
@@ -1797,7 +2123,9 @@ describe('Permission#subtract', () => {
         expect(actualResult.action).toBe(expectedAction)
         expect(actualResult.resource).toEqual(expectedResult.resource)
         expect(actualResult.notResource).toEqual(expectedResult.notResource)
-        expect(actualResult.conditions).toEqual(expectedResult.conditions)
+        expect(lowerCaseConditionKeys(actualResult.conditions)).toEqual(
+          lowerCaseConditionKeys(expectedResult.conditions)
+        )
       }
     })
   }
