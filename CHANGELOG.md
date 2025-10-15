@@ -1,3 +1,15 @@
+## [0.1.52](https://github.com/cloud-copilot/iam-lens/compare/v0.1.51...v0.1.52) (2025-10-15)
+
+
+### Bug Fixes
+
+* Properly separate Deny statements with multiple conditions into multiple Allow statements ([ad3b269](https://github.com/cloud-copilot/iam-lens/commit/ad3b26972c49d1e4dbed220137cda4503eb92ef0))
+
+
+### Features
+
+* `principal-can`to incorporate trust policies in the same account. ([b47c298](https://github.com/cloud-copilot/iam-lens/commit/b47c298b799a654350ed5301266a69553e91d3f6))
+
 ## [0.1.51](https://github.com/cloud-copilot/iam-lens/compare/v0.1.50...v0.1.51) (2025-10-14)
 
 ## [0.1.50](https://github.com/cloud-copilot/iam-lens/compare/v0.1.49...v0.1.50) (2025-10-13)
