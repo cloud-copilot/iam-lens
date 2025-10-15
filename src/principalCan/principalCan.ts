@@ -100,7 +100,7 @@ export async function principalCan(collectClient: IamCollectClient, input: Princ
 
   const identityAssumeRolePermissions = allRolesAllow.intersection(allowedPermissions)
 
-  // Remove all the KMS permissions from the identityAllows, add them back later
+  // Remove all the IAM role permissions from the identityAllows, add them back later
   finalPermissions = finalPermissions.subtract(allRolesDeny).allow
 
   // Get all the KMS permission for the same account
