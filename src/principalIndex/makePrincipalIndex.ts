@@ -46,7 +46,6 @@ export async function makePrincipalIndex(collectClient: IamCollectClient) {
 
   delete principalIndex.notAction['*']
 
-  // await collectClient.savePrincipalIndex(principalIndex)
   await collectClient.savePrincipalIndex('principals', {
     principals: principalIndex.principals,
     prefix: principalIndex.prefix
