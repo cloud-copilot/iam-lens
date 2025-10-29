@@ -1241,10 +1241,10 @@ export class IamCollectClient {
    * have permission to perform the action. If the data is not available, it
    * will return undefined.
    *
-   * @param allFromAccount an account to get all principals from
-   * @param accountIds the list of account IDs to check
-   * @param action the action to check
-   * @returns a list of principals that may have permission to perform the action or undefined if the data is not available
+   * @param allFromAccount The account ID from which to include all principals in the result, regardless of the action filter. All principals from this account will be returned, even if they do not have the specified action allowed.
+   * @param accountIds The list of account IDs to check for principals that may have permission to perform the specified action. Only principals from these accounts that may have the action allowed will be included.
+   * @param action The action to check.
+   * @returns A list of principals that may have permission to perform the action, or undefined if the data is not available.
    */
   async getPrincipalsWithActionAllowed(
     allFromAccount: string,
