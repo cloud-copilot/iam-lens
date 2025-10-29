@@ -1,3 +1,10 @@
+## [0.1.55](https://github.com/cloud-copilot/iam-lens/compare/v0.1.54...v0.1.55) (2025-10-29)
+
+
+### Features
+
+* Smaller principal indexes ([412de8f](https://github.com/cloud-copilot/iam-lens/commit/412de8f44bb9063ceaae9539a40987240306e681))
+
 ## [0.1.54](https://github.com/cloud-copilot/iam-lens/compare/v0.1.53...v0.1.54) (2025-10-25)
 
 ## [0.1.53](https://github.com/cloud-copilot/iam-lens/compare/v0.1.52...v0.1.53) (2025-10-18)
