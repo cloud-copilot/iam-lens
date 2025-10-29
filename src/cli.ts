@@ -8,6 +8,7 @@ import {
   stringArgument,
   stringArrayArgument
 } from '@cloud-copilot/cli'
+import { NoCacheProvider } from './collect/client.js'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
 import { principalCan } from './principalCan/principalCan.js'
 import { makePrincipalIndex } from './principalIndex/makePrincipalIndex.js'
@@ -183,7 +184,10 @@ const main = async () => {
 
     console.log(JSON.stringify(results, null, 2))
   } else if (cli.subcommand === 'index-principals') {
-    await makePrincipalIndex(collectClient)
+    const indexClient = getCollectClient(collectConfigs, cli.args.partition, {
+      cacheProvider: new NoCacheProvider()
+    })
+    await makePrincipalIndex(indexClient)
   }
 }
 

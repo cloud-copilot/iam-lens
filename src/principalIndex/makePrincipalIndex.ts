@@ -1,9 +1,16 @@
 import { Policy, Action as PolicyAction } from '@cloud-copilot/iam-policy'
 import BitSet from 'bitset'
 import { IamActionCache, IamCollectClient } from '../collect/client.js'
+import { compressPrincipalString, encodeBitSet } from '../utils/bitset.js'
 
+/**
+ * Make a principal index for all principals in the collect client
+ *
+ * @param collectClient the collect client to use
+ */
 export async function makePrincipalIndex(collectClient: IamCollectClient) {
   const principalIndex: IamActionCache = {
+    prefix: 'arn:aws:iam::',
     principals: [],
     accounts: {},
     action: {},
@@ -16,32 +23,48 @@ export async function makePrincipalIndex(collectClient: IamCollectClient) {
   for (const accountId of allAccounts) {
     const accountBitSet = new BitSet()
     const principals = await collectClient.getAllPrincipalsInAccount(accountId)
+    const accountStart = globalIndex
     for (const principalArn of principals) {
-      principalIndex.principals.push(principalArn)
+      principalIndex.principals.push(compressPrincipalString(principalArn))
       accountBitSet.set(globalIndex, 1)
       const allowPolicies = await collectClient.getAllowPoliciesForPrincipal(principalArn)
       addPoliciesToCache(allowPolicies, principalIndex, globalIndex)
-
       globalIndex++
     }
-    principalIndex.accounts[accountId] = accountBitSet.toString(16) as any
+    const accountEnd = globalIndex - 1
+
+    principalIndex.accounts[accountId] = [accountStart, accountEnd]
   }
 
-  for (const [service, actions] of Object.entries(principalIndex.action)) {
-    for (const [action, bitset] of Object.entries(actions)) {
-      principalIndex.action[service][action] = bitset.toString(16) as any
-    }
-  }
-  for (const [service, notActions] of Object.entries(principalIndex.notAction)) {
-    for (const [action, bitset] of Object.entries(notActions)) {
-      principalIndex.notAction[service][action] = bitset.toString(16) as any
+  for (const type of ['action', 'notAction'] as const) {
+    for (const [service, actions] of Object.entries(principalIndex[type])) {
+      for (const [action, bitset] of Object.entries(actions)) {
+        actions[action] = encodeBitSet(bitset) as any
+      }
     }
   }
 
   delete principalIndex.notAction['*']
 
-  await collectClient.savePrincipalIndex(principalIndex)
+  await collectClient.savePrincipalIndex('principals', {
+    principals: principalIndex.principals,
+    prefix: principalIndex.prefix
+  })
+  await collectClient.savePrincipalIndex('accounts', principalIndex.accounts)
+  await collectClient.savePrincipalIndex('not-actions', principalIndex.notAction)
+  for (const [service, serviceIndex] of Object.entries(principalIndex.action)) {
+    const serviceKey = service === '*' ? 'wildcard' : service
+    await collectClient.savePrincipalIndex(`actions-${serviceKey}`, serviceIndex)
+  }
 }
+
+/**
+ * Add policies to the existing cache
+ *
+ * @param policies the policies to add
+ * @param existingCache the existing cache
+ * @param principalIndex the index of the principal to add
+ */
 
 function addPoliciesToCache(
   policies: Policy[],

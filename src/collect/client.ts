@@ -4,6 +4,7 @@ import { loadPolicy, Policy } from '@cloud-copilot/iam-policy'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 import BitSet from 'bitset'
 import { gunzipSync, gzipSync } from 'zlib'
+import { decodeBitSet, decompressPrincipalString } from '../utils/bitset.js'
 
 //TODO: Import this from iam-simulate
 export interface SimulationOrgPolicies {
@@ -114,9 +115,15 @@ export interface VpcIndex {
 type Service = string
 type Action = string
 
+export type ServiceIamActionCache = {
+  action?: Record<Action, BitSet>
+  notAction?: Record<Action, BitSet>
+}
+
 export type IamActionCache = {
+  prefix: string
   principals: string[]
-  accounts: Record<string, BitSet>
+  accounts: Record<string, number[]>
   action: Record<Service, Record<Action, BitSet>>
   notAction: Record<Service, Record<Action, BitSet>>
 }
@@ -1179,8 +1186,8 @@ export class IamCollectClient {
     return policies
   }
 
-  async savePrincipalIndex(principalIndex: any): Promise<void> {
-    const indexName = 'principal-index'
+  async savePrincipalIndex(type: string, principalIndex: any): Promise<void> {
+    const indexName = `principal-index-${type}`
     const currentData = await this.storageClient.getIndex(indexName, {})
     const currentLockId = currentData.lockId
 
@@ -1192,12 +1199,19 @@ export class IamCollectClient {
     await this.storageClient.saveIndex(indexName, base64String, currentLockId)
   }
 
-  async getPrincipalIndex(): Promise<IamActionCache | undefined> {
-    return this.withCache('principal-index', async () => {
-      const rawIndex = await this.storageClient.getIndex<string>(
-        'principal-index',
-        undefined as any
-      )
+  async getPrincipalIndex(
+    type: string
+  ): Promise<
+    | Partial<IamActionCache>
+    | IamActionCache['accounts']
+    | IamActionCache['principals']
+    | IamActionCache['action'][string]
+    | IamActionCache['notAction']
+    | undefined
+  > {
+    const key = `principal-index-${type}`
+    return this.withCache(key, async () => {
+      const rawIndex = await this.storageClient.getIndex<string>(key, undefined as any)
       if (!rawIndex.data) {
         return undefined
       }
@@ -1216,7 +1230,7 @@ export class IamCollectClient {
   }
 
   async principalIndexExists(): Promise<boolean> {
-    const index = await this.getPrincipalIndex()
+    const index = await this.getPrincipalIndex('principals')
     return !!index
   }
 
@@ -1227,39 +1241,54 @@ export class IamCollectClient {
    * have permission to perform the action. If the data is not available, it
    * will return undefined.
    *
-   * @param accountId the ID of the account
-   * @param action the action to check
-   * @returns a list of principals that may have permission to perform the action or undefined if the data is not available
+   * @param allFromAccount The account ID from which to include all principals in the result, regardless of the action filter. All principals from this account will be returned, even if they do not have the specified action allowed.
+   * @param accountIds The list of account IDs to check for principals that may have permission to perform the specified action. Only principals from these accounts that may have the action allowed will be included.
+   * @param action The action to check.
+   * @returns A list of principals that may have permission to perform the action, or undefined if the data is not available.
    */
   async getPrincipalsWithActionAllowed(
     allFromAccount: string,
     accountIds: string[],
     action: string
   ): Promise<string[] | undefined> {
-    const index = await this.getPrincipalIndex()
-    if (!index) {
+    const principals = (await this.getPrincipalIndex('principals')) as
+      | Pick<IamActionCache, 'principals' | 'prefix'>
+      | undefined
+    if (!principals) {
       return undefined
     }
+    const principalBitSets: any[] = []
+
+    const wildcardIndex = (await this.getPrincipalIndex(
+      'actions-wildcard'
+    )) as IamActionCache['action'][string]
 
     const [service, serviceAction] = action.toLowerCase().split(':')
-    const principalBitSets: BitSet[] = []
+
     //Global wildcards match
-    if (index.action?.['*']?.['*']) {
-      principalBitSets.push(index.action['*']['*'])
+    if (wildcardIndex?.['*']) {
+      principalBitSets.push(wildcardIndex['*'])
     }
 
-    // Look through specific services
-    if (index.action[service]) {
-      for (const [actionPattern, bitset] of Object.entries(index.action[service])) {
+    const serviceIndex = (await this.getPrincipalIndex(`actions-${service}`)) as
+      | IamActionCache['action'][string]
+      | undefined
+
+    // Look through service actions
+    if (serviceIndex) {
+      for (const [actionPattern, bitset] of Object.entries(serviceIndex)) {
         if (actionMatchesPattern(serviceAction, actionPattern)) {
           principalBitSets.push(bitset)
         }
       }
     }
 
-    // Look through not actions
-    if (index.notAction) {
-      for (const [notActionService, notActions] of Object.entries(index.notAction)) {
+    const notActionIndex = (await this.getPrincipalIndex(`not-actions`)) as
+      | IamActionCache['notAction']
+      | undefined
+
+    if (notActionIndex) {
+      for (const [notActionService, notActions] of Object.entries(notActionIndex)) {
         if (notActionService === service) {
           for (const [notActionPattern, bitset] of Object.entries(notActions)) {
             if (!actionMatchesPattern(serviceAction, notActionPattern)) {
@@ -1275,25 +1304,35 @@ export class IamCollectClient {
     }
 
     const actionBitset = principalBitSets.reduce(
-      (acc, bs) => acc.or(BitSet.fromHexString(bs as any)),
+      (acc, bs) => acc.or(decodeBitSet(bs)),
       new BitSet()
     )
 
+    const accountsIndex = (await this.getPrincipalIndex('accounts')) as
+      | IamActionCache['accounts']
+      | undefined
+
+    if (!accountsIndex) {
+      throw new Error('Accounts index not found in principal index')
+    }
+
     const accountBitset = accountIds.reduce((acc, accountId) => {
-      const bs = index.accounts[accountId]
+      const bs = accountsIndex[accountId]
       if (bs) {
-        return acc.or(BitSet.fromHexString(bs as any))
+        return acc.or(decodeBitSet(bs))
       }
       return acc
     }, new BitSet())
 
     let finalBitset = accountBitset.and(actionBitset)
 
-    if (index.accounts[allFromAccount]) {
-      finalBitset = finalBitset.or(BitSet.fromHexString(index.accounts[allFromAccount] as any))
+    if (accountsIndex[allFromAccount]) {
+      finalBitset = finalBitset.or(decodeBitSet(accountsIndex[allFromAccount]))
     }
 
-    return finalBitset.toArray().map((i) => index.principals[i]!)
+    return finalBitset
+      .toArray()
+      .map((i) => decompressPrincipalString(principals.principals[i]!, principals.prefix))
   }
 
   async listResources(

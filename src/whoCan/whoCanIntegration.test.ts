@@ -225,14 +225,35 @@ describe.sequential('whoCan Integration Tests', () => {
         const configs = getTestDatasetConfigs(data)
 
         const path = (configs[0]?.storage as any).path!
-        const indexPath = `${path}/aws/aws/indexes/principal-index.json`
+        const indexesDir = `${path}/aws/aws/indexes`
 
         if (!withIndex) {
-          //If withIndex is false, delete the index
-          rmSync(indexPath, { force: true })
+          //If withIndex is false, delete all principal index files matching the pattern
+          const fs = await import('fs')
+          const path = await import('path')
+
+          const filesToDelete: string[] = []
+
+          // Check if indexes directory exists
+          if (fs.existsSync(indexesDir)) {
+            const files = fs.readdirSync(indexesDir)
+
+            // Find all files matching the pattern: principal-index-*.json
+            for (const file of files) {
+              if (file.startsWith('principal-index-') && file.endsWith('.json')) {
+                filesToDelete.push(path.join(indexesDir, file))
+              }
+            }
+          }
+
+          // Delete all found files
+          for (const file of filesToDelete) {
+            rmSync(file, { force: true })
+          }
         } else {
           //If withIndex is true, make sure it is there
-          const exists = existsSync(indexPath)
+          const originalIndexPath = `${indexesDir}/principal-index-principals.json`
+          const exists = existsSync(originalIndexPath)
           if (!exists) {
             const client = new IamCollectClient(createStorageClient(configs, 'aws', true))
             await makePrincipalIndex(client)
