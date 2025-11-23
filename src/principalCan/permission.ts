@@ -528,11 +528,23 @@ export class Permission {
       if (other.conditions && Object.keys(other.conditions).length > 0) {
         return [new Permission(eff, svc, act, allowResource, undefined, conds)]
       }
-      const remaining = allowResource.filter((a) =>
+      // If allow is a superset of deny.notResource, we should convert to the notResource list
+      const modifiedAllows = allowResource
+        .map((a) => {
+          const subPatterns = denyNotResource.filter((dnr) => wildcardToRegex(a).test(dnr))
+          if (subPatterns.length > 0) {
+            return subPatterns
+          }
+          return [a]
+        })
+        .flat()
+
+      //If a notResource pattern includes a resource pattern, remove the resource pattern
+      const remainingAllows = modifiedAllows.filter((a) =>
         denyNotResource.some((dnr) => wildcardToRegex(dnr).test(a))
       )
-      if (remaining.length === 0) return []
-      return [new Permission(eff, svc, act, remaining, undefined, conds)]
+      if (remainingAllows.length === 0) return []
+      return [new Permission(eff, svc, act, remainingAllows, undefined, conds)]
     }
 
     // Case: Allow.notResource & Deny.resource
