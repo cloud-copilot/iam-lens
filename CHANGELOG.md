@@ -1,3 +1,10 @@
+## [0.1.63](https://github.com/cloud-copilot/iam-lens/compare/v0.1.62...v0.1.63) (2025-11-23)
+
+
+### Bug Fixes
+
+* Fix error in handling Allow Resource wildcard and Deny NotResource subset ([a48eb3f](https://github.com/cloud-copilot/iam-lens/commit/a48eb3f13834d2a6368d8be0e4d38e6b031e5a30))
+
 ## [0.1.62](https://github.com/cloud-copilot/iam-lens/compare/v0.1.61...v0.1.62) (2025-11-23)
 
 
