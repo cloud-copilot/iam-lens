@@ -1,3 +1,10 @@
+## [0.1.62](https://github.com/cloud-copilot/iam-lens/compare/v0.1.61...v0.1.62) (2025-11-23)
+
+
+### Features
+
+* Add support and automatic population for aws:SourceVpcArn ([461745a](https://github.com/cloud-copilot/iam-lens/commit/461745a1642b91e80eab1afb97ecd865cfcdaf99))
+
 ## [0.1.61](https://github.com/cloud-copilot/iam-lens/compare/v0.1.60...v0.1.61) (2025-11-22)
 
 ## [0.1.60](https://github.com/cloud-copilot/iam-lens/compare/v0.1.59...v0.1.60) (2025-11-21)
