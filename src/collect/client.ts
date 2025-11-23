@@ -1068,17 +1068,24 @@ export class IamCollectClient {
   /**
    * Gets the VPC endpoint ID for a given VPC ID and service name.
    *
-   * @param vpcId the ID of the VPC
+   * @param vpcIdOrArn the ID or ARN of the VPC
    * @param service the service name of the VPC endpoint (e.g., s3, ec2, etc.)
    * @returns the VPC endpoint ID, or undefined if not found
    */
-  async getVpcEndpointIdForVpcService(vpcId: string, service: string): Promise<string | undefined> {
+  async getVpcEndpointIdForVpcService(
+    vpcIdOrArn: string,
+    service: string
+  ): Promise<string | undefined> {
     const index = await this.getIndex<VpcIndex>('vpcs', {
       endpoints: {},
       vpcs: {}
     })
+    if (vpcIdOrArn.startsWith('arn:')) {
+      const arnParts = splitArnParts(vpcIdOrArn)
+      vpcIdOrArn = arnParts.resourcePath!
+    }
 
-    const vpc = index.data.vpcs[vpcId]
+    const vpc = index.data.vpcs[vpcIdOrArn]
     if (!vpc) {
       return undefined
     }
@@ -1098,6 +1105,24 @@ export class IamCollectClient {
       vpcs: {}
     })
     return index.data.endpoints[vpcEndpointId]?.vpc
+  }
+
+  /**
+   * Lookup the VPC ARN for a given VPC endpoint ID.
+   *
+   * @param vpcEndpointId the ID of the VPC endpoint
+   * @returns the VPC ARN, or undefined if not found
+   */
+  async getVpcArnForVpcEndpointId(vpcEndpointId: string): Promise<string | undefined> {
+    const vpcId = await this.getVpcIdForVpcEndpointId(vpcEndpointId)
+    if (!vpcId) {
+      return undefined
+    }
+    const index = await this.getIndex<VpcIndex>('vpcs', {
+      endpoints: {},
+      vpcs: {}
+    })
+    return index.data.vpcs[vpcId]?.arn
   }
 
   /**

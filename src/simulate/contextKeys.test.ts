@@ -4,6 +4,7 @@ import { createContextKeys } from './contextKeys.js'
 import { SimulationRequest } from './simulate.js'
 
 const defaultSimulationRequest: SimulationRequest = {
+  simulationMode: 'Strict',
   principal: 'arn:aws:iam::123456789012:user/test-user',
   resourceArn: 'arn:aws:s3:::test-bucket',
   resourceAccount: '123456789012',
@@ -1556,6 +1557,178 @@ describe('createContextKeys', () => {
       })
     })
 
+    describe('aws:SourceVpcArn', () => {
+      it('should set aws:SourceVpcArn for services that support extra VPC endpoint data', async () => {
+        // Given a simulation request for a service that supports extra VPC endpoint data
+        const vpcEndpointId = 'vpce-12345678'
+        const accountId = '123456789012'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+        const vpcId = 'vpc-87654321'
+        const vpcArn = `arn:aws:ec2:us-east-1:${accountId}:vpc/${vpcId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject' // s3 supports extra VPC endpoint data
+        }
+
+        // Mock the VPC endpoint data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {
+              [vpcId]: {
+                arn: vpcArn,
+                endpoints: [
+                  {
+                    id: vpcEndpointId,
+                    service: 's3'
+                  }
+                ]
+              }
+            },
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: vpcId
+              }
+            }
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then aws:SourceVpcArn should be set to the VPC ARN
+        expect(contextKeys['aws:SourceVpcArn']).toBe(vpcArn)
+      })
+
+      it('should not set aws:SourceVpcArn for services that do not support extra VPC endpoint data', async () => {
+        // Given a simulation request for a service that does not support extra VPC endpoint data
+        const vpcEndpointId = 'vpce-12345678'
+        const accountId = '123456789012'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+        const vpcId = 'vpc-87654321'
+        const vpcArn = `arn:aws:ec2:us-east-1:${accountId}:vpc/${vpcId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 'ec2:DescribeInstances' // ec2 does not support extra VPC endpoint data
+        }
+
+        // Mock the VPC endpoint data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {
+              [vpcId]: {
+                arn: vpcArn,
+                endpoints: [
+                  {
+                    id: vpcEndpointId,
+                    service: 's3'
+                  }
+                ]
+              }
+            },
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: vpcId
+              }
+            }
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          'ec2',
+          contextOverrides
+        )
+
+        // Then aws:SourceVpcArn should not be set
+        expect(contextKeys['aws:SourceVpcArn']).toBeUndefined()
+      })
+
+      it('should not override aws:SourceVpcArn if already provided in context', async () => {
+        // Given a simulation request with aws:SourceVpcArn already in context
+        const vpcEndpointId = 'vpce-12345678'
+        const lookupAccount = '123456789012'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${lookupAccount}:vpc-endpoint/${vpcEndpointId}`
+        const vpcId = 'vpc-87654321'
+        const vpcArn = `arn:aws:ec2:us-east-1:${lookupAccount}:vpc/${vpcId}`
+        const providedVpcArn = `arn:aws:ec2:us-east-1:999999999999:vpc/vpc-provided`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock the VPC endpoint data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {
+              [vpcId]: {
+                arn: vpcArn,
+                endpoints: [
+                  {
+                    id: vpcEndpointId,
+                    service: 's3'
+                  }
+                ]
+              }
+            },
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: vpcId
+              }
+            }
+          },
+          ''
+        )
+
+        const contextOverrides = {
+          'aws:SourceVpce': vpcEndpointId,
+          'aws:SourceVpcArn': providedVpcArn
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then aws:SourceVpcArn should remain the provided value
+        expect(contextKeys['aws:SourceVpcArn']).toBe(providedVpcArn)
+      })
+    })
+
     describe('aws:VpceOrgID', () => {
       it('should set aws:VpceOrgID when VPC endpoint account is in an organization', async () => {
         // Given a VPC endpoint in an account that belongs to an organization
@@ -1728,7 +1901,7 @@ describe('createContextKeys', () => {
     })
 
     describe('integration tests', () => {
-      it('should set all VPC endpoint context keys when conditions are met', async () => {
+      it('should set all VPC endpoint context keys when aws:SourceVpc is set', async () => {
         // Given a complete VPC endpoint setup
         const vpcEndpointId = 'vpce-12345678'
         const vpcId = 'vpc-87654321'
@@ -1737,6 +1910,7 @@ describe('createContextKeys', () => {
         const rootOu = 'r-root'
         const ou1 = 'ou-root-1'
         const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+        const vpcArn = `arn:aws:ec2:us-east-1:${accountId}:vpc/${vpcId}`
 
         const simulationRequest: SimulationRequest = {
           ...defaultSimulationRequest,
@@ -1751,7 +1925,7 @@ describe('createContextKeys', () => {
           {
             vpcs: {
               [vpcId]: {
-                arn: `arn:aws:ec2:us-east-1:${accountId}:vpc/${vpcId}`,
+                arn: vpcArn,
                 endpoints: [
                   {
                     id: vpcEndpointId,
@@ -1802,6 +1976,85 @@ describe('createContextKeys', () => {
         expect(contextKeys['aws:VpceAccount']).toBe(accountId)
         expect(contextKeys['aws:VpceOrgID']).toBe(orgId)
         expect(contextKeys['aws:VpceOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/`])
+        expect(contextKeys['aws:SourceVpcArn']).toBe(vpcArn)
+      })
+
+      it('should set all VPC endpoint context keys when aws:SourceVpcArn is set', async () => {
+        // Given a complete VPC endpoint setup
+        const vpcEndpointId = 'vpce-12345678'
+        const vpcId = 'vpc-87654321'
+        const accountId = '123456789012'
+        const orgId = 'o-87654321'
+        const rootOu = 'r-root'
+        const ou1 = 'ou-root-1'
+        const vpcEndpointArn = `arn:aws:ec2:us-east-1:${accountId}:vpc-endpoint/${vpcEndpointId}`
+        const vpcArn = `arn:aws:ec2:us-east-1:${accountId}:vpc/${vpcId}`
+
+        const simulationRequest: SimulationRequest = {
+          ...defaultSimulationRequest,
+          principal: 'arn:aws:iam::123456789012:user/test-user',
+          action: 's3:GetObject'
+        }
+
+        // Mock complete VPC endpoint and organization data
+        const { store, client } = testStore()
+        await store.saveIndex(
+          'vpcs',
+          {
+            vpcs: {
+              [vpcId]: {
+                arn: vpcArn,
+                endpoints: [
+                  {
+                    id: vpcEndpointId,
+                    service: 's3'
+                  }
+                ]
+              }
+            },
+            endpoints: {
+              [vpcEndpointId]: {
+                arn: vpcEndpointArn,
+                vpc: vpcId
+              }
+            }
+          },
+          ''
+        )
+        await store.saveIndex(
+          'accounts-to-orgs',
+          {
+            [accountId]: orgId
+          },
+          ''
+        )
+        await store.saveOrganizationMetadata(orgId, 'accounts', {
+          [accountId]: { ou: ou1 }
+        })
+        await store.saveOrganizationMetadata(orgId, 'ous', {
+          [rootOu]: {},
+          [ou1]: { parent: rootOu }
+        })
+
+        const contextOverrides = {
+          'aws:SourceVpcArn': vpcArn
+        }
+
+        // When creating context keys
+        const contextKeys = await createContextKeys(
+          client,
+          simulationRequest,
+          's3',
+          contextOverrides
+        )
+
+        // Then all VPC endpoint context keys should be set
+        expect(contextKeys['aws:SourceVpc']).toBe(vpcId)
+        expect(contextKeys['aws:SourceVpce']).toBe(vpcEndpointId)
+        expect(contextKeys['aws:VpceAccount']).toBe(accountId)
+        expect(contextKeys['aws:VpceOrgID']).toBe(orgId)
+        expect(contextKeys['aws:VpceOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/`])
+        expect(contextKeys['aws:SourceVpcArn']).toBe(vpcArn)
       })
     })
   })
