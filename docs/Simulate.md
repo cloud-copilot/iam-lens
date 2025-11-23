@@ -202,7 +202,7 @@ When using VPC endpoints in simulations, iam-lens manages VPC-related context ke
 **Automatic VPC Context Key Population:**
 
 - If you set `aws:SourceVpce` (VPC endpoint ID), iam-lens sets `aws:SourceVpc` to the ID of the VPC containing that endpoint.
-- If you set `aws:SourceVpc` (VPC ID), iam-lens sets `aws:SourceVpce` to the VPC endpoint ID (if one exists in the VPC) of the service being simulated.
+- If you set `aws:SourceVpc` (VPC ID) or `aws:SourceVpcArn` (VPC ARN), iam-lens sets `aws:SourceVpce` to the VPC endpoint ID (if one exists in the VPC) of the service being simulated.
 
 **VPC Endpoint Policy Inclusion:**
 
@@ -210,9 +210,10 @@ When using VPC endpoints in simulations, iam-lens manages VPC-related context ke
 
 **Additional VPC Endpoint Context Keys:**
 
-For services that support [enhanced VPC endpoint context keys](https://aws.amazon.com/blogs/security/use-scalable-controls-to-help-prevent-access-from-unexpected-networks/) (such as S3), these context keys are set when `aws:SourceVpce` is present:
+For services that support [enhanced VPC endpoint context keys](https://aws.amazon.com/blogs/security/use-scalable-controls-to-help-prevent-access-from-unexpected-networks/) and the [aws:SourceVpcArn condition](https://aws.amazon.com/about-aws/whats-new/2025/11/aws-sourcevpcarn-condition-key-region-control/) (such as S3), these context keys are set when `aws:SourceVpce` is present:
 
 - **`aws:VpceAccount`** - The account ID that owns the VPC endpoint; e.g., `"123456789012"`
+- **`aws:SourceVpcArn`** - The ARN of the VPC containing the VPC endpoint; e.g., `"arn:aws:ec2:us-west-2:123456789012:vpc/vpc-0abcd1234efgh5678"`
 - **`aws:VpceOrgID`** - The organization ID of the VPC endpoint's account (if part of an organization); e.g., `"o-45j328rnf"`
 - **`aws:VpceOrgPaths`** - The organizational unit hierarchy path for the VPC endpoint's account (if part of an organization); e.g., `[ "o-45j328rnf/r-483b9/ou-383f84/ou-28fmnf8/" ]`
 

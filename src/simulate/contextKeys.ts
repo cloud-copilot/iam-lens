@@ -45,7 +45,8 @@ export const CONTEXT_KEYS = {
   vpcEndpointId: 'aws:SourceVpce',
   vpcEndpointAccount: 'aws:VpceAccount',
   vpcEndpointOrgId: 'aws:VpceOrgID',
-  vpcEndpointOrgPaths: 'aws:VpceOrgPaths'
+  vpcEndpointOrgPaths: 'aws:VpceOrgPaths',
+  vpcArn: 'aws:SourceVpcArn'
 }
 
 /**
@@ -217,10 +218,16 @@ export async function getVpcKeys(
   let vpcEndpointId = contextValue(context, CONTEXT_KEYS.vpcEndpointId)
   const hasVpcEndpoint = !!vpcEndpointId
   let vpcId = contextValue(context, CONTEXT_KEYS.vpc)
+  let vpcArn = contextValue(context, CONTEXT_KEYS.vpcArn)
 
-  //If we know the VPC but not the endpoint, lookup the endpoint
+  //If we know the VPC ID but not the endpoint, lookup the endpoint
   if (!vpcEndpointId && vpcId && typeof vpcId === 'string') {
     vpcEndpointId = await collectClient.getVpcEndpointIdForVpcService(vpcId, service)
+  }
+
+  //If we know the VPC ARN but not the endpoint, lookup the endpoint
+  if (!vpcEndpointId && vpcArn && typeof vpcArn === 'string') {
+    vpcEndpointId = await collectClient.getVpcEndpointIdForVpcService(vpcArn, service)
   }
 
   if (vpcEndpointId && !vpcId) {
@@ -245,12 +252,16 @@ export async function getVpcKeys(
     const vpcEndpointOrgId = await collectClient.getOrgIdForVpcEndpointId(vpcEndpointId)
     const vpcEndpointOrgStructure =
       await collectClient.getOrgUnitHierarchyForVpcEndpointId(vpcEndpointId)
+    const vpcArn = await collectClient.getVpcArnForVpcEndpointId(vpcEndpointId)
 
     if (vpcEndpointAccount && !contextHasKey(context, CONTEXT_KEYS.vpcEndpointAccount)) {
       vpcKeys[CONTEXT_KEYS.vpcEndpointAccount] = vpcEndpointAccount
     }
     if (vpcEndpointOrgId && !contextHasKey(context, CONTEXT_KEYS.vpcEndpointOrgId)) {
       vpcKeys[CONTEXT_KEYS.vpcEndpointOrgId] = vpcEndpointOrgId
+    }
+    if (vpcArn && !contextHasKey(context, CONTEXT_KEYS.vpcArn)) {
+      vpcKeys[CONTEXT_KEYS.vpcArn] = vpcArn
     }
     if (
       vpcEndpointOrgId &&
@@ -308,6 +319,10 @@ const servicesThatSupportExtraVpcEndpointData = new Set([
   'cloudformation',
   'comprehendmedical',
   'compute-optimizer',
+  'ecr',
+  'ecs',
+  'kinesisanalytics',
+  'route53',
   'datasync',
   'ebs',
   'scheduler',

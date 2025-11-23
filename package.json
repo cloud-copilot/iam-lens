@@ -112,11 +112,11 @@
   "dependencies": {
     "@cloud-copilot/cli": "^0.2.5",
     "@cloud-copilot/iam-collect": "^0.1.155",
-    "@cloud-copilot/iam-data": ">=0.15.0 <1.0.0",
+    "@cloud-copilot/iam-data": ">=0.15.202511222 <1.0.0",
     "@cloud-copilot/iam-expand": "^0.11.29",
     "@cloud-copilot/iam-policy": "^0.1.50",
     "@cloud-copilot/iam-shrink": "^0.1.21",
-    "@cloud-copilot/iam-simulate": "^0.1.75",
+    "@cloud-copilot/iam-simulate": "^0.1.89",
     "@cloud-copilot/iam-utils": "^0.1.7",
     "@cloud-copilot/job": "^0.1.0",
     "@cloud-copilot/log": "^0.1.0",
