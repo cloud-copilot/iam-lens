@@ -1496,6 +1496,26 @@ const subtractTests: {
     ]
   },
   {
+    name: 'intersection of resource wildcard and notResource smaller wildcard',
+    allow: {
+      effect: 'Allow',
+      action: 's3:ListBucket',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:ListBucket',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:ListBucket',
+        resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*']
+      }
+    ]
+  },
+  {
     name: 'NotResource & Deny.resource subtraction',
     allow: {
       effect: 'Allow',
