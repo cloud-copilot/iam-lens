@@ -1610,7 +1610,7 @@ describe('createContextKeys', () => {
           contextOverrides
         )
 
-        // Then aws:SourceVpcArn should be set to the account ID from the VPC endpoint ARN
+        // Then aws:SourceVpcArn should be set to the VPC ARN
         expect(contextKeys['aws:SourceVpcArn']).toBe(vpcArn)
       })
 
