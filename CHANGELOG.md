@@ -1,3 +1,10 @@
+## [0.1.64](https://github.com/cloud-copilot/iam-lens/compare/v0.1.63...v0.1.64) (2025-11-24)
+
+
+### Bug Fixes
+
+* Add permission boundary deny statements to principal-can ([a780070](https://github.com/cloud-copilot/iam-lens/commit/a780070203571e1a017eb3de37c7637743764b64))
+
 ## [0.1.63](https://github.com/cloud-copilot/iam-lens/compare/v0.1.62...v0.1.63) (2025-11-23)
 
 
