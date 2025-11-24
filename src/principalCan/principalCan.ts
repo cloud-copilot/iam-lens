@@ -136,6 +136,8 @@ export async function principalCan(collectClient: IamCollectClient, input: Princ
   if (principalPolicies.permissionBoundary) {
     const boundaryPolicy = loadPolicy(principalPolicies.permissionBoundary.policy)
     const boundaryPermissions = await buildPermissionSetFromPolicies('Allow', [boundaryPolicy])
+    const boundaryDenies = await buildPermissionSetFromPolicies('Deny', [boundaryPolicy])
+    identityDenyPermissions.addAll(boundaryDenies)
     finalPermissions = allowedPermissions.intersection(boundaryPermissions)
   }
 
