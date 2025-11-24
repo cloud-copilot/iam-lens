@@ -138,7 +138,7 @@ export async function principalCan(collectClient: IamCollectClient, input: Princ
     const boundaryPermissions = await buildPermissionSetFromPolicies('Allow', [boundaryPolicy])
     const boundaryDenies = await buildPermissionSetFromPolicies('Deny', [boundaryPolicy])
     identityDenyPermissions.addAll(boundaryDenies)
-    finalPermissions = allowedPermissions.intersection(boundaryPermissions)
+    finalPermissions = finalPermissions.intersection(boundaryPermissions)
   }
 
   const scpAllowsByLevel: PermissionSet[] = []
