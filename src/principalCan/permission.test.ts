@@ -1516,6 +1516,544 @@ const subtractTests: {
     ]
   },
   {
+    name: 'intersection of resource wildcard and notResource smaller wildcard with conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:ListBucket',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:ListBucket',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:ListBucket',
+        resource: ['*']
+      },
+      {
+        effect: 'Deny',
+        action: 's3:ListBucket',
+        notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource NOT in NotResource (no overlap) with identical conditions - full deny',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*', 'arn:aws:s3:::test-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: []
+  },
+  {
+    name: 'Resource NOT in NotResource (no overlap) with different conditions - allow unchanged with deny passthrough',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*', 'arn:aws:s3:::test-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] },
+          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource NOT in NotResource (no overlap) with allow conditions superset of deny - partial deny',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          stringequals: {
+            'aws:sourcevpc': ['vpc-87654321']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource NOT in NotResource (no overlap) with deny conditions superset of allow - full deny',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+        }
+      }
+    },
+    expected: []
+  },
+  {
+    name: 'Resource NOT in NotResource (no overlap) with no conditions on allow - allow with inverted deny conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource includes NotResource patterns (allow superset) with identical conditions - allow narrows to excluded resources',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource includes NotResource patterns (allow superset) with different conditions - allow unchanged with deny passthrough',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+        }
+      },
+      {
+        effect: 'Deny',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource includes NotResource patterns (allow superset) with allow conditions superset of deny - split allow',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::*'],
+        conditions: {
+          StringEquals: {
+            'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+          }
+        }
+      },
+      {
+        effect: 'Deny',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource IN NotResource (no overlap, deny doesnt apply) with identical conditions - allow unchanged',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::dev-bucket/*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource IN NotResource (no overlap, deny doesnt apply) with different conditions - allow unchanged',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::dev-bucket/*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource partially IN NotResource (partial overlap) with identical conditions - keep only excluded resources',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource partially IN NotResource (partial overlap) with different conditions - modify one resource allow, include deny as is',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::stage-*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] },
+          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource NOT in NotResource (full overlap) with allow having multiple conditions and deny having single matching condition - full deny',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678'],
+          'aws:PrincipalOrgId': ['o-abc123']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: []
+  },
+  {
+    name: 'Resource NOT in NotResource (no overlap) with allow having no conditions and deny having multiple including it - allow with inverted additional conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678'],
+          'aws:PrincipalOrgId': ['o-abc123']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          StringNotEquals: {
+            'aws:SourceVpc': ['vpc-12345678'],
+            'aws:PrincipalOrgId': ['o-abc123']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource NOT in NotResource (no overlap) with allow having single (conflicting) condition and deny having multiple including it - deny all',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678'],
+          'aws:PrincipalOrgId': ['o-abc123']
+        }
+      }
+    },
+    expected: []
+  },
+  {
+    name: 'Resource NOT in NotResource (full overlap) with no conditions on deny - full deny',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*']
+    },
+    expected: []
+  },
+  {
+    name: 'Resource IN NotResource (no overlap) with conditions on deny - allow unchanged',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::dev-bucket/*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Resource includes NotResource patterns (allow superset) with no conditions on either - allow narrows to excluded resources',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*']
+      }
+    ]
+  },
+  {
     name: 'NotResource & Deny.resource subtraction',
     allow: {
       effect: 'Allow',
@@ -2128,6 +2666,7 @@ describe('Permission#subtract', () => {
 
       //When we subtract the deny from the allow
       const result = allowPermission.subtract(denyPermission)
+      console.log(JSON.stringify(result, null, 2))
 
       //Then the number of the resulting permissions should match the expected
       expect(result.length).toEqual(test.expected.length)
