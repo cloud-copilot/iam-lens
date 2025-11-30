@@ -2666,7 +2666,6 @@ describe('Permission#subtract', () => {
 
       //When we subtract the deny from the allow
       const result = allowPermission.subtract(denyPermission)
-      console.log(JSON.stringify(result, null, 2))
 
       //Then the number of the resulting permissions should match the expected
       expect(result.length).toEqual(test.expected.length)
