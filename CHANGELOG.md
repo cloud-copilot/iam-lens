@@ -1,3 +1,10 @@
+## [0.1.66](https://github.com/cloud-copilot/iam-lens/compare/v0.1.65...v0.1.66) (2025-11-30)
+
+
+### Bug Fixes
+
+* Fix principal-cans handling of Allow statements with Resource being combined with Deny statements that have NotResource ([70d8e53](https://github.com/cloud-copilot/iam-lens/commit/70d8e53903c6be7bd023d8bab91f3608e1cfe019))
+
 ## [0.1.65](https://github.com/cloud-copilot/iam-lens/compare/v0.1.64...v0.1.65) (2025-11-30)
 
 ## [0.1.64](https://github.com/cloud-copilot/iam-lens/compare/v0.1.63...v0.1.64) (2025-11-24)
