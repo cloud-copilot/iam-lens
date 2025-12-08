@@ -6,7 +6,9 @@ import {
   actionsForWhoCan,
   findResourceTypeForArn,
   ResourceAccessRequest,
-  uniqueAccountsToCheck
+  sortWhoCanResults,
+  uniqueAccountsToCheck,
+  WhoCanResponse
 } from './whoCan.js'
 
 const findResourceTypeForArnTests: {
@@ -613,5 +615,318 @@ describe('uniqueAccountsToCheck', () => {
     // Then it should return the organization as not found
     expect(result.accounts).toEqual([])
     expect(result.organizationsNotFound).toEqual(['o-missing'])
+  })
+})
+
+describe('sortWhoCanResults', () => {
+  it('should sort allowed results by principal, then service, then action', () => {
+    // Given a WhoCanResponse with unsorted allowed results
+    const response: WhoCanResponse = {
+      simulationCount: 6,
+      allowed: [
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleC',
+          service: 's3',
+          action: 'GetObject',
+          level: 'object'
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 's3',
+          action: 'PutObject',
+          level: 'object'
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 's3',
+          action: 'GetObject',
+          level: 'object'
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleB',
+          service: 'dynamodb',
+          action: 'GetItem',
+          level: 'table'
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 'dynamodb',
+          action: 'PutItem',
+          level: 'table'
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 'dynamodb',
+          action: 'GetItem',
+          level: 'table'
+        }
+      ],
+      allAccountsChecked: true,
+      accountsNotFound: [],
+      organizationsNotFound: [],
+      organizationalUnitsNotFound: [],
+      principalsNotFound: []
+    }
+
+    // When we sort the results
+    sortWhoCanResults(response)
+
+    // Then the results should be sorted by principal, then service, then action
+    expect(response.allowed).toEqual([
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 'dynamodb',
+        action: 'GetItem',
+        level: 'table'
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 'dynamodb',
+        action: 'PutItem',
+        level: 'table'
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 's3',
+        action: 'GetObject',
+        level: 'object'
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 's3',
+        action: 'PutObject',
+        level: 'object'
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleB',
+        service: 'dynamodb',
+        action: 'GetItem',
+        level: 'table'
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleC',
+        service: 's3',
+        action: 'GetObject',
+        level: 'object'
+      }
+    ])
+  })
+
+  it('should sort not found arrays alphabetically', () => {
+    // Given a WhoCanResponse with unsorted not found arrays
+    const response: WhoCanResponse = {
+      simulationCount: 0,
+      allowed: [],
+      allAccountsChecked: false,
+      accountsNotFound: ['333333333333', '111111111111', '222222222222'],
+      organizationsNotFound: ['o-zzz', 'o-aaa', 'o-mmm'],
+      organizationalUnitsNotFound: ['ou-xxx', 'ou-bbb', 'ou-qqq'],
+      principalsNotFound: [
+        'arn:aws:iam::123456789012:role/RoleZ',
+        'arn:aws:iam::123456789012:role/RoleA',
+        'arn:aws:iam::123456789012:role/RoleM'
+      ]
+    }
+
+    // When we sort the results
+    sortWhoCanResults(response)
+
+    // Then all not found arrays should be sorted alphabetically
+    expect(response.accountsNotFound).toEqual(['111111111111', '222222222222', '333333333333'])
+    expect(response.organizationsNotFound).toEqual(['o-aaa', 'o-mmm', 'o-zzz'])
+    expect(response.organizationalUnitsNotFound).toEqual(['ou-bbb', 'ou-qqq', 'ou-xxx'])
+    expect(response.principalsNotFound).toEqual([
+      'arn:aws:iam::123456789012:role/RoleA',
+      'arn:aws:iam::123456789012:role/RoleM',
+      'arn:aws:iam::123456789012:role/RoleZ'
+    ])
+  })
+
+  it('should handle empty arrays', () => {
+    // Given a WhoCanResponse with empty arrays
+    const response: WhoCanResponse = {
+      simulationCount: 0,
+      allowed: [],
+      allAccountsChecked: true,
+      accountsNotFound: [],
+      organizationsNotFound: [],
+      organizationalUnitsNotFound: [],
+      principalsNotFound: []
+    }
+
+    // When we sort the results
+    sortWhoCanResults(response)
+
+    // Then all arrays should remain empty
+    expect(response.allowed).toEqual([])
+    expect(response.accountsNotFound).toEqual([])
+    expect(response.organizationsNotFound).toEqual([])
+    expect(response.organizationalUnitsNotFound).toEqual([])
+    expect(response.principalsNotFound).toEqual([])
+  })
+
+  it('should handle allowed results with identical principals but different services', () => {
+    // Given allowed results with same principal but different services
+    const response: WhoCanResponse = {
+      simulationCount: 3,
+      allowed: [
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 's3',
+          action: 'GetObject',
+          level: 'object'
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 'ec2',
+          action: 'DescribeInstances',
+          level: 'instance'
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 'dynamodb',
+          action: 'Query',
+          level: 'table'
+        }
+      ],
+      allAccountsChecked: true,
+      accountsNotFound: [],
+      organizationsNotFound: [],
+      organizationalUnitsNotFound: [],
+      principalsNotFound: []
+    }
+
+    // When we sort the results
+    sortWhoCanResults(response)
+
+    // Then results should be sorted by service
+    expect(response.allowed).toEqual([
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 'dynamodb',
+        action: 'Query',
+        level: 'table'
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 'ec2',
+        action: 'DescribeInstances',
+        level: 'instance'
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 's3',
+        action: 'GetObject',
+        level: 'object'
+      }
+    ])
+  })
+
+  it('should handle allowed results with identical principals and services but different actions', () => {
+    // Given allowed results with same principal and service but different actions
+    const response: WhoCanResponse = {
+      simulationCount: 3,
+      allowed: [
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 's3',
+          action: 'PutObject',
+          level: 'object'
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 's3',
+          action: 'DeleteObject',
+          level: 'object'
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 's3',
+          action: 'GetObject',
+          level: 'object'
+        }
+      ],
+      allAccountsChecked: true,
+      accountsNotFound: [],
+      organizationsNotFound: [],
+      organizationalUnitsNotFound: [],
+      principalsNotFound: []
+    }
+
+    // When we sort the results
+    sortWhoCanResults(response)
+
+    // Then results should be sorted by action
+    expect(response.allowed).toEqual([
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 's3',
+        action: 'DeleteObject',
+        level: 'object'
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 's3',
+        action: 'GetObject',
+        level: 'object'
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 's3',
+        action: 'PutObject',
+        level: 'object'
+      }
+    ])
+  })
+
+  it('should preserve conditions and other properties during sorting', () => {
+    // Given allowed results with conditions and other properties
+    const response: WhoCanResponse = {
+      simulationCount: 2,
+      allowed: [
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleB',
+          service: 's3',
+          action: 'GetObject',
+          level: 'object',
+          conditions: { StringEquals: { 's3:prefix': 'test/' } },
+          dependsOnSessionName: true
+        },
+        {
+          principal: 'arn:aws:iam::123456789012:role/RoleA',
+          service: 's3',
+          action: 'PutObject',
+          level: 'object',
+          conditions: { IpAddress: { 'aws:SourceIp': '192.168.1.0/24' } }
+        }
+      ],
+      allAccountsChecked: true,
+      accountsNotFound: [],
+      organizationsNotFound: [],
+      organizationalUnitsNotFound: [],
+      principalsNotFound: []
+    }
+
+    // When we sort the results
+    sortWhoCanResults(response)
+
+    // Then results should be sorted and properties preserved
+    expect(response.allowed).toEqual([
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleA',
+        service: 's3',
+        action: 'PutObject',
+        level: 'object',
+        conditions: { IpAddress: { 'aws:SourceIp': '192.168.1.0/24' } }
+      },
+      {
+        principal: 'arn:aws:iam::123456789012:role/RoleB',
+        service: 's3',
+        action: 'GetObject',
+        level: 'object',
+        conditions: { StringEquals: { 's3:prefix': 'test/' } },
+        dependsOnSessionName: true
+      }
+    ])
   })
 })

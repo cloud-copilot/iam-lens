@@ -584,7 +584,7 @@ async function allResourceTypesByArnLength(service: string): Promise<ResourceTyp
  *
  * @param whoCanResponse the WhoCanResponse to sort
  */
-function sortWhoCanResults(whoCanResponse: WhoCanResponse) {
+export function sortWhoCanResults(whoCanResponse: WhoCanResponse) {
   whoCanResponse.allowed.sort((a, b) => {
     if (a.principal < b.principal) return -1
     if (a.principal > b.principal) return 1
