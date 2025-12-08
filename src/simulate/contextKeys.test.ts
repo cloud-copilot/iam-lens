@@ -24,7 +24,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then aws:PrincipalArn should be set to the principal ARN
       expect(contextKeys['aws:PrincipalArn']).toBe(principalArn)
@@ -38,7 +43,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then aws:PrincipalArn should not be set
       expect(contextKeys['aws:PrincipalArn']).toBeUndefined()
@@ -55,7 +65,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then aws:PrincipalAccount should be set to the account ID from the principal ARN
       expect(contextKeys['aws:PrincipalAccount']).toBe('123456789012')
@@ -68,7 +83,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then aws:PrincipalAccount should not be set
       expect(contextKeys['aws:PrincipalAccount']).toBeUndefined()
@@ -107,7 +127,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalOrgPaths should be set to the org path
       expect(contextKeys['aws:PrincipalOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/${ou2}/`])
@@ -123,7 +143,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:PrincipalOrgPaths should not be set
       expect(contextKeys['aws:PrincipalOrgPaths']).toBeUndefined()
@@ -137,7 +157,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:PrincipalOrgPaths should not be set
       expect(contextKeys['aws:PrincipalOrgPaths']).toBeUndefined()
@@ -178,7 +203,7 @@ describe('createContextKeys', () => {
       })
 
       //When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalOrgID should be set to the organization ID
       expect(contextKeys['aws:PrincipalOrgId']).toBe(organizationId)
@@ -196,7 +221,7 @@ describe('createContextKeys', () => {
       const { store, client } = testStore()
 
       //When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalOrgID should not be set
       expect(contextKeys['aws:PrincipalOrgId']).toBeUndefined()
@@ -210,7 +235,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then aws:PrincipalOrgID should not be set
       expect(contextKeys['aws:PrincipalOrgId']).toBeUndefined()
@@ -234,7 +264,7 @@ describe('createContextKeys', () => {
       })
 
       //When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       //Then aws:PrincipalTag/Department and aws:PrincipalTag/Project should be set
       expect(contextKeys['aws:PrincipalTag/Department']).toBe('Engineering')
@@ -254,7 +284,7 @@ describe('createContextKeys', () => {
       await store.saveResourceMetadata('123456789012', principalArn, 'tags', {})
 
       //When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       //Then no aws:PrincipalTag/ keys should be set
       const tagKeys = Object.keys(contextKeys).filter((key) => key.startsWith('aws:PrincipalTag/'))
@@ -269,7 +299,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then no aws:PrincipalTag/ keys should be set
       const tagKeys = Object.keys(contextKeys).filter((key) => key.startsWith('aws:PrincipalTag/'))
@@ -286,7 +321,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then aws:PrincipalIsAWSService should be true
       expect(contextKeys['aws:PrincipalIsAWSService']).toBe('true')
@@ -300,7 +340,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then aws:PrincipalIsAWSService should not be set
       expect(contextKeys['aws:PrincipalIsAWSService']).toEqual('false')
@@ -316,7 +361,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then aws:PrincipalServiceName should be set to the service name
       expect(contextKeys['aws:PrincipalServiceName']).toBe('lambda.amazonaws.com')
@@ -329,7 +379,12 @@ describe('createContextKeys', () => {
       }
 
       //When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       //Then aws:PrincipalServiceName should not be set
       expect(contextKeys['aws:PrincipalServiceName']).toBeUndefined()
@@ -345,7 +400,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:PrincipalType should be 'Account'
       expect(contextKeys['aws:PrincipalType']).toBe('Account')
@@ -359,7 +419,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:PrincipalType should be 'User'
       expect(contextKeys['aws:PrincipalType']).toBe('User')
@@ -373,7 +438,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:PrincipalType should be 'AssumedRole'
       expect(contextKeys['aws:PrincipalType']).toBe('AssumedRole')
@@ -387,7 +457,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:PrincipalType should be 'FederatedUser'
       expect(contextKeys['aws:PrincipalType']).toBe('FederatedUser')
@@ -405,7 +480,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:PrincipalType should not be set
       expect(contextKeys['aws:PrincipalType']).toBeUndefined()
@@ -421,7 +501,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:userid should be the account ID
       expect(contextKeys['aws:userid']).toBe('123456789012')
@@ -446,7 +531,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:userid should be the user unique ID
       expect(contextKeys['aws:userid']).toBe('AIDAEXAMPLE')
@@ -461,7 +546,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:userid should be '123456789012:Bob'
       expect(contextKeys['aws:userid']).toBe('123456789012:Bob')
@@ -487,7 +577,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:userid should be 'AROAROLEID:MySession'
       expect(contextKeys['aws:userid']).toBe('AROAROLEID:MySession')
@@ -501,7 +591,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:userid should not be set
       expect(contextKeys['aws:userid']).toBeUndefined()
@@ -530,7 +625,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:username should be the IAM user name
       expect(contextKeys['aws:username']).toBe('test-user')
@@ -544,7 +639,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:username should not be set
       expect(contextKeys['aws:username']).toBeUndefined()
@@ -558,7 +658,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:username should not be set
       expect(contextKeys['aws:username']).toBeUndefined()
@@ -575,7 +680,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:ResourceAccount should be set to the account ID
       expect(contextKeys['aws:ResourceAccount']).toBe('123456789012')
@@ -591,7 +701,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:ResourceAccount should not be set
       expect(contextKeys['aws:ResourceAccount']).toBeUndefined()
@@ -631,7 +746,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgPaths should be set to the org path
       expect(contextKeys['aws:ResourceOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/${ou2}/`])
@@ -648,7 +763,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgPaths should not be set
       expect(contextKeys['aws:ResourceOrgPaths']).toBeUndefined()
@@ -687,7 +802,12 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:ResourceOrgPaths should not be set
       expect(contextKeys['aws:ResourceOrgPaths']).toBeUndefined()
@@ -727,7 +847,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgId should be set to the organization ID
       expect(contextKeys['aws:ResourceOrgID']).toBe(orgId)
@@ -744,7 +864,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceOrgID should not be set
       expect(contextKeys['aws:ResourceOrgID']).toBeUndefined()
@@ -783,7 +903,12 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:ResourceOrgID should not be set
       expect(contextKeys['aws:ResourceOrgID']).toBeUndefined()
@@ -808,7 +933,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:ResourceTag/Environment and aws:ResourceTag/Owner should be set
       expect(contextKeys['aws:ResourceTag/Environment']).toBe('prod')
@@ -829,11 +954,135 @@ describe('createContextKeys', () => {
       await store.saveResourceMetadata('123456789012', resourceArn, 'tags', {})
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then no aws:ResourceTag/ keys should be set
       const tagKeys = Object.keys(contextKeys).filter((key) => key.startsWith('aws:ResourceTag/'))
       expect(tagKeys.length).toBe(0)
+    })
+  })
+
+  describe('s3:BucketTag/tag-key', () => {
+    it('should set s3:BucketTag/tag-key for each tag on an S3 bucket', async () => {
+      // Given a simulation request with an S3 bucket ARN that has tags
+      const bucketArn = 'arn:aws:s3:::test-bucket'
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        resourceArn: bucketArn,
+        resourceAccount: '123456789012'
+      }
+
+      // Mock the collect client to return tags for the bucket
+      const { store, client } = testStore()
+      await store.saveResourceMetadata('123456789012', bucketArn, 'tags', {
+        Environment: 'production',
+        Owner: 'data-team'
+      })
+
+      // When creating context keys
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
+
+      // Then s3:BucketTag/Environment and s3:BucketTag/Owner should be set
+      expect(contextKeys['s3:BucketTag/Environment']).toBe('production')
+      expect(contextKeys['s3:BucketTag/Owner']).toBe('data-team')
+    })
+
+    it('should set s3:BucketTag/tag-key for each tag on an S3 object ARN', async () => {
+      // Given a simulation request with an S3 object ARN that has tags on the bucket
+      const bucketArn = 'arn:aws:s3:::test-bucket'
+      const objectArn = `${bucketArn}/path/to/object.txt`
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        resourceArn: objectArn,
+        resourceAccount: '123456789012'
+      }
+
+      // Mock the collect client to return tags for the object (which are bucket tags)
+      const { store, client } = testStore()
+      await store.saveResourceMetadata('123456789012', objectArn, 'tags', {
+        Project: 'analytics',
+        CostCenter: '12345'
+      })
+
+      // When creating context keys
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
+
+      // Then s3:BucketTag/Project and s3:BucketTag/CostCenter should be set
+      expect(contextKeys['s3:BucketTag/Project']).toBe('analytics')
+      expect(contextKeys['s3:BucketTag/CostCenter']).toBe('12345')
+    })
+
+    it('should not set any key starting with s3:BucketTag/ if the bucket has no tags', async () => {
+      // Given a simulation request with an S3 bucket ARN that has no tags
+      const bucketArn = 'arn:aws:s3:::test-bucket'
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        resourceArn: bucketArn,
+        resourceAccount: '123456789012'
+      }
+
+      // Mock the collect client to return no tags for the bucket
+      const { store, client } = testStore()
+      await store.saveResourceMetadata('123456789012', bucketArn, 'tags', {})
+
+      // When creating context keys
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
+
+      // Then no s3:BucketTag/ keys should be set
+      const tagKeys = Object.keys(contextKeys).filter((key) => key.startsWith('s3:BucketTag/'))
+      expect(tagKeys.length).toBe(0)
+    })
+
+    it('should not set s3:BucketTag/tag-key for non-S3 resources', async () => {
+      // Given a simulation request with a non-S3 resource ARN
+      const resourceArn = 'arn:aws:dynamodb:us-east-1:123456789012:table/my-table'
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        resourceArn,
+        resourceAccount: '123456789012'
+      }
+
+      // Mock the collect client to return tags for the resource
+      const { store, client } = testStore()
+      await store.saveResourceMetadata('123456789012', resourceArn, 'tags', {
+        Environment: 'test',
+        Owner: 'app-team'
+      })
+
+      // When creating context keys
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 'dynamodb', {})
+
+      // Then no s3:BucketTag/ keys should be set (but aws:ResourceTag/ should be set)
+      const s3TagKeys = Object.keys(contextKeys).filter((key) => key.startsWith('s3:BucketTag/'))
+      expect(s3TagKeys.length).toBe(0)
+      expect(contextKeys['aws:ResourceTag/Environment']).toBe('test')
+      expect(contextKeys['aws:ResourceTag/Owner']).toBe('app-team')
+    })
+
+    it('should set both aws:ResourceTag/ and s3:BucketTag/ for S3 buckets', async () => {
+      // Given a simulation request with an S3 bucket ARN
+      const bucketArn = 'arn:aws:s3:::test-bucket'
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        resourceArn: bucketArn,
+        resourceAccount: '123456789012'
+      }
+
+      // Mock the collect client to return tags for the bucket
+      const { store, client } = testStore()
+      await store.saveResourceMetadata('123456789012', bucketArn, 'tags', {
+        Team: 'platform',
+        Compliance: 'required'
+      })
+
+      // When creating context keys
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
+
+      // Then both aws:ResourceTag/ and s3:BucketTag/ should be set with the same values
+      expect(contextKeys['aws:ResourceTag/Team']).toBe('platform')
+      expect(contextKeys['aws:ResourceTag/Compliance']).toBe('required')
+      expect(contextKeys['s3:BucketTag/Team']).toBe('platform')
+      expect(contextKeys['s3:BucketTag/Compliance']).toBe('required')
     })
   })
 
@@ -848,7 +1097,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:SecureTransport should always be true
       expect(contextKeys['aws:SecureTransport']).toBe('true')
@@ -866,7 +1120,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:CurrentTime should be set to the current time in ISO format
       const currentTime = new Date(contextKeys['aws:CurrentTime'] as string)
@@ -882,7 +1141,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:EpochTime should be set to the current time in seconds since epoch
       const epochTime = parseInt(contextKeys['aws:EpochTime'] as string, 10)
@@ -900,7 +1164,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:SourceAccount should be set to the resource account ID
       expect(contextKeys['aws:SourceAccount']).toBe('123456789012')
@@ -915,7 +1184,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:SourceAccount should not be set
       expect(contextKeys['aws:SourceAccount']).toBeUndefined()
@@ -932,7 +1206,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:SourceAccount should be set to the resource account ID
       expect(contextKeys['aws:SourceOwner']).toBe('123456789012')
@@ -947,7 +1226,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then aws:SourceAccount should not be set
       expect(contextKeys['aws:SourceOwner']).toBeUndefined()
@@ -986,7 +1270,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgID should be set to the org ID
       expect(contextKeys['aws:SourceOrgID']).toBe(orgId)
@@ -1023,7 +1307,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgID should not be set
       expect(contextKeys['aws:SourceOrgID']).toBeUndefined()
@@ -1039,7 +1323,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgID should not be set
       expect(contextKeys['aws:SourceOrgID']).toBeUndefined()
@@ -1078,7 +1362,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgPaths should be set to the org path
       expect(contextKeys['aws:SourceOrgPaths']).toEqual([`${orgId}/${rootOu}/${ou1}/${ou2}/`])
@@ -1115,7 +1399,7 @@ describe('createContextKeys', () => {
       })
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgPaths should not be set
       expect(contextKeys['aws:SourceOrgPaths']).toBeUndefined()
@@ -1131,7 +1415,7 @@ describe('createContextKeys', () => {
       const { client } = testStore()
 
       // When creating context keys
-      const contextKeys = await createContextKeys(client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(client, simulationRequest, 's3', {})
 
       // Then aws:SourceOrgPaths should not be set
       expect(contextKeys['aws:SourceOrgPaths']).toBeUndefined()
@@ -1148,7 +1432,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 'kms', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        'kms',
+        {}
+      )
 
       // Then kms:CallerAccount should be set to the principal's account ID
       expect(contextKeys['kms:CallerAccount']).toBe('123456789012')
@@ -1163,7 +1452,12 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys
-      const contextKeys = await createContextKeys(testStore().client, simulationRequest, 's3', {})
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
 
       // Then kms:CallerAccount should not be set
       expect(contextKeys['kms:CallerAccount']).toBeUndefined()
@@ -1182,7 +1476,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys with overrides
-      const contextKeys = await createContextKeys(
+      const { contextKeys } = await createContextKeys(
         testStore().client,
         simulationRequest,
         's3',
@@ -1204,7 +1498,7 @@ describe('createContextKeys', () => {
       }
 
       // When creating context keys with overrides
-      const contextKeys = await createContextKeys(
+      const { contextKeys } = await createContextKeys(
         testStore().client,
         simulationRequest,
         's3',
@@ -1252,7 +1546,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -1300,7 +1594,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -1356,7 +1650,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           service,
@@ -1408,7 +1702,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           service,
@@ -1455,7 +1749,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -1499,7 +1793,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           'ec2',
@@ -1545,7 +1839,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -1603,7 +1897,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -1659,7 +1953,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           'ec2',
@@ -1717,7 +2011,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -1778,7 +2072,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -1823,7 +2117,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -1888,7 +2182,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -1963,7 +2257,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',
@@ -2041,7 +2335,7 @@ describe('createContextKeys', () => {
         }
 
         // When creating context keys
-        const contextKeys = await createContextKeys(
+        const { contextKeys } = await createContextKeys(
           client,
           simulationRequest,
           's3',

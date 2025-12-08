@@ -1,13 +1,14 @@
 import { EvaluationResult } from '@cloud-copilot/iam-simulate'
 import { describe, expect, it } from 'vitest'
 import { testStore } from '../collect/inMemoryClient.js'
-import { resultMatchesExpectation, simulateRequest } from './simulate.js'
+import { resultMatchesExpectation, simulateRequest, SimulationRequest } from './simulate.js'
 
 describe('simulateRequest', () => {
   it('should throw an error if the resource account id cannot be determined', async () => {
     const { client } = testStore()
     // Given a request with an unknown resource ARN
-    const req = {
+    const req: SimulationRequest = {
+      simulationMode: 'Strict',
       principal: 'arn:aws:iam::123456789012:user/test-user',
       resourceArn: 'arn:aws:s3:::unknown-bucket',
       resourceAccount: undefined,
@@ -24,7 +25,8 @@ describe('simulateRequest', () => {
   it('should throw an error if the action service cannot be found', async () => {
     const { client } = testStore()
     // Given a request with an unknown action service
-    const req = {
+    const req: SimulationRequest = {
+      simulationMode: 'Strict',
       principal: 'arn:aws:iam::123456789012:user/test-user',
       resourceArn: 'arn:aws:iam::123456789012:test-bucket',
       resourceAccount: '123456789012',
@@ -41,7 +43,8 @@ describe('simulateRequest', () => {
 
   it('should throw an error if the action details cannot be found', async () => {
     const { client } = testStore()
-    const req = {
+    const req: SimulationRequest = {
+      simulationMode: 'Strict',
       principal: 'arn:aws:iam::123456789012:user/test-user',
       resourceArn: 'arn:aws:iam::123456789012:test-bucket',
       resourceAccount: '123456789012',

@@ -5,7 +5,7 @@ import {
   Simulation,
   SimulationMode
 } from '@cloud-copilot/iam-simulate'
-import { isIamRoleArn, splitArnParts } from '@cloud-copilot/iam-utils'
+import { isIamRoleArn, isS3BucketOrObjectArn, splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient, SimulationOrgPolicies } from '../collect/client.js'
 import {
   getAllPoliciesForPrincipal,
@@ -18,6 +18,7 @@ import {
   getRcpsForResource,
   getResourcePolicyForResource
 } from '../resources.js'
+import { S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'
 import {
   CONTEXT_KEYS,
@@ -66,6 +67,11 @@ export interface SimulationRequest {
    * Whether to ignore missing principal errors.
    */
   ignoreMissingPrincipal?: boolean
+
+  /**
+   * Override for S3 ABAC settings for the simulation.
+   */
+  s3AbacOverride?: S3AbacOverride
 }
 
 /**
@@ -136,14 +142,14 @@ export async function simulateRequest(
     )
   }
 
-  const context = await createContextKeys(
+  const { contextKeys, resourceTagsAreKnown } = await createContextKeys(
     collectClient,
     simulationRequest,
     service,
     simulationRequest.customContextKeys
   )
 
-  const vpcEndpointId = contextValue(context, CONTEXT_KEYS.vpcEndpointId)
+  const vpcEndpointId = contextValue(contextKeys, CONTEXT_KEYS.vpcEndpointId)
   let vpcEndpointPolicy: { name: string; policy: any } | undefined = undefined
   if (vpcEndpointId && typeof vpcEndpointId === 'string') {
     const vpcEndpointArn = await collectClient.getVpcEndpointArnForVpcEndpointId(vpcEndpointId)
@@ -166,7 +172,7 @@ export async function simulateRequest(
       accountId: simulationRequest.resourceAccount
     },
     principal: simulationRequest.principal,
-    contextVariables: context
+    contextVariables: contextKeys
   }
 
   const simulation: Simulation = {
@@ -182,6 +188,22 @@ export async function simulateRequest(
     resourcePolicy: useResourcePolicy ? resourcePolicy : undefined,
     permissionBoundaryPolicies: preparePermissionBoundary(principalPolicies),
     vpcEndpointPolicies: vpcEndpointPolicy ? [vpcEndpointPolicy] : undefined
+  }
+
+  const s3BucketOrObjectRequest =
+    simulationRequest.resourceArn && isS3BucketOrObjectArn(simulationRequest.resourceArn)
+  if (s3BucketOrObjectRequest) {
+    const bucketAbacEnabled = await evaluateAbacForBucket(
+      simulationRequest.s3AbacOverride,
+      collectClient,
+      simulationRequest.resourceAccount!,
+      simulationRequest.resourceArn!
+    )
+    simulation.additionalSettings = {
+      s3: {
+        bucketAbacEnabled
+      }
+    }
   }
 
   // Assemble the strict context keys for the simulation
@@ -203,8 +225,17 @@ export async function simulateRequest(
   for (const key of Object.keys(simulationRequest.customContextKeys)) {
     strictContextKeys.push(key)
   }
-  // Add any tag keys
-  for (const key of Object.keys(context)) {
+
+  //If we know the tag keys, just make all tag keys strict
+  if (resourceTagsAreKnown) {
+    strictContextKeys.push('/^aws:ResourceTag\/.*/')
+    if (s3BucketOrObjectRequest) {
+      strictContextKeys.push('/^s3:BucketTag\/.*/')
+    }
+  }
+
+  // There also may be other tag context keys, so add those too
+  for (const key of Object.keys(contextKeys)) {
     if (key.toLowerCase().includes('tag/')) {
       strictContextKeys.push(key)
     }
@@ -338,4 +369,29 @@ export function resultMatchesExpectation(
     return result.includes('Denied')
   }
   return expected === result
+}
+
+/**
+ * Evaluates whether ABAC (Attribute-Based Access Control) is enabled for a given S3 bucket or object.
+ * The evaluation can be overridden by the `s3AbacOverride` parameter.
+ *
+ * @param s3AbacOverride the override setting for S3 ABAC ('Enabled', 'Disabled', or undefined)
+ * @param collectClient the IAM collect client to use for data access
+ * @param bucketAccountId the account ID the bucket belongs to
+ * @param bucketOrObjectArn the ARN of the bucket or bucket object
+ * @returns whether ABAC should be used to evaluate access for the bucket or object
+ */
+async function evaluateAbacForBucket(
+  s3AbacOverride: S3AbacOverride | undefined,
+  collectClient: IamCollectClient,
+  bucketAccountId: string,
+  bucketOrObjectArn: string
+): Promise<boolean> {
+  if (s3AbacOverride === 'enabled') {
+    return true
+  }
+  if (s3AbacOverride === 'disabled') {
+    return false
+  }
+  return collectClient.getAbacEnabledForBucket(bucketAccountId, bucketOrObjectArn)
 }

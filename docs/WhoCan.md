@@ -15,6 +15,7 @@ This works by starting with the resource policy (if any) and looking for all pri
 | `--resource <arn>`           | The ARN of the resource to check permissions for. Ignore for wildcard-only actions such as `iam:ListRoles`.                                                                                                            |
 | `--resource-account <id>`    | The account ID of the resource, only required if it cannot be determined from the resource ARN. Required for wildcard actions such as `ec2:DescribeInstances`.                                                         |
 | `--actions <service:action>` | One or more actions to check such as `s3:GetObject`. Specify as many actions as you want. If omitted it will analyze all valid actions for the resource. If no `--resource` is specified then actions must be entered. |
+| `--s3-abac-override`         | Override the S3 ABAC setting for S3 buckets. Defaults to the bucket setting stored in your iam-collect data. Valid values are `enabled` or `disabled`.                                                                 |
 
 You can also include any [Global CLI Options](docs/GlobalCliOptions.md).
 

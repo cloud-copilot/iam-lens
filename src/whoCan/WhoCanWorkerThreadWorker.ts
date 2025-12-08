@@ -2,6 +2,7 @@
 import { TopLevelConfig } from '@cloud-copilot/iam-collect'
 import { parentPort, workerData } from 'worker_threads'
 import { getCollectClient } from '../collect/collect.js'
+import { S3AbacOverride } from '../utils/s3Abac.js'
 import { PullBasedJobRunner } from '../workers/JobRunner.js'
 import { SharedArrayBufferWorkerCache } from '../workers/SharedArrayBufferWorkerCache.js'
 import { executeWhoCan, WhoCanWorkItem } from './WhoCanWorker.js'
@@ -12,10 +13,11 @@ if (!parentPort) {
 }
 
 // Get config from the main thread
-const { concurrency, collectConfigs, partition } = workerData as {
+const { concurrency, collectConfigs, partition, s3AbacOverride } = workerData as {
   concurrency: number
   collectConfigs: TopLevelConfig[]
   partition: string
+  s3AbacOverride: S3AbacOverride | undefined
 }
 
 const taskPromises: Record<number, (val: any) => void> = {}
@@ -53,7 +55,9 @@ const jobRunner = new PullBasedJobRunner<
     return {
       properties: {},
       execute: async (context) => {
-        return executeWhoCan(taskDetails, collectClient)
+        return executeWhoCan(taskDetails, collectClient, {
+          s3AbacOverride
+        })
       }
     }
   },

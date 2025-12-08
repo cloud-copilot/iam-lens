@@ -1,0 +1,6 @@
+{
+  "name": "finance-bucket-w-abac",
+  "region": "us-west-2",
+  "arn": "arn:aws:s3:::finance-bucket-w-abac",
+  "abacEnabled": true
+}

@@ -543,7 +543,8 @@ export class IamCollectClient {
   }
 
   /**
-   * Gets the account ID for a given S3 bucket name.
+   * Get the account ID for a given S3 bucket name.
+   *
    * @param bucketName The name of the bucket.
    * @returns The account ID for the bucket, or undefined if not found.
    */
@@ -557,14 +558,33 @@ export class IamCollectClient {
   }
 
   /**
+   * Check if ABAC is enabled for a specific S3 bucket
+   *
+   * @param bucketOrObjectArn The ARN of the bucket or object
+   * @returns The account ID for the bucket, or undefined if not found
+   */
+
+  async getAbacEnabledForBucket(accountId: string, bucketOrObjectArn: string): Promise<boolean> {
+    if (bucketOrObjectArn.includes('/')) {
+      bucketOrObjectArn = bucketOrObjectArn.split('/').at(0)!
+    }
+    const bucketMetadata = await this.storageClient.getResourceMetadata<
+      { abacEnabled?: boolean },
+      {}
+    >(accountId, bucketOrObjectArn, 'metadata', {})
+
+    return !!bucketMetadata.abacEnabled
+  }
+
+  /**
    * Gets the account ID for a given API Gateway ARN.
    * @param apiArn The ARN of the API Gateway.
    * @returns The account ID for the API Gateway, or undefined if not found.
    */
   async getAccountIdForRestApi(apiArn: string): Promise<string | undefined> {
     const index = await this.getIndex<Record<string, string>>('apigateways-to-accounts', {})
-    const bucketToAccountMap = index.data
-    return bucketToAccountMap[apiArn]
+    const gatewayToAccountMap = index.data
+    return gatewayToAccountMap[apiArn]
   }
 
   /**
@@ -895,14 +915,22 @@ export class IamCollectClient {
   async getTagsForResource(
     resourceArn: string,
     accountId: string
-  ): Promise<Record<string, string>> {
+  ): Promise<{ present: boolean; tags: Record<string, string> }> {
     const cacheKey = `tagsForResource:${accountId}:${resourceArn}`
     return this.withCache(cacheKey, async () => {
-      const tags = await this.storageClient.getResourceMetadata<
+      const presentPromise = this.storageClient.getResourceMetadata(
+        accountId,
+        resourceArn,
+        'metadata'
+      )
+
+      const tagsPromise = this.storageClient.getResourceMetadata<
         Record<string, string>,
         Record<string, string>
       >(accountId, resourceArn, 'tags')
-      return tags || {}
+
+      const [present, tags] = await Promise.all([presentPromise, tagsPromise])
+      return { present: !!present, tags: tags || {} }
     })
   }
 

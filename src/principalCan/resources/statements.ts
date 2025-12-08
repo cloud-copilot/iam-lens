@@ -36,7 +36,12 @@ export async function statementAppliesToPrincipal(
   }
 
   // We use KMS, so we get kms:CallerAccount context key support
-  const contextKeys = await createContextKeys(client, simulationRequest, 'kms', {})
+  const { contextKeys, resourceTagsAreKnown } = await createContextKeys(
+    client,
+    simulationRequest,
+    'kms',
+    {}
+  )
 
   const request: Simulation['request'] = {
     action: 'kms:DescribeKey',

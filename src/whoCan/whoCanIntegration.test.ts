@@ -9,6 +9,7 @@ import { ResourceAccessRequest, whoCan, WhoCanAllowed } from './whoCan.js'
 const whoCanIntegrationTests: {
   only?: true
   name: string
+  description?: string
   comment?: string
 
   data: string
@@ -79,6 +80,12 @@ const whoCanIntegrationTests: {
         {
           action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3',
+          level: 'list'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:role/S3AbacRole',
           service: 's3',
           level: 'list'
         },
@@ -200,9 +207,109 @@ const whoCanIntegrationTests: {
         }
       ]
     }
+  },
+  {
+    name: 'ListBucket with tags and ABAC',
+    description:
+      'This checks against a bucket with tags that has ABAC enabled so the ABAC role should have access',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::finance-bucket-w-abac',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3AbacRole',
+          service: 's3'
+        },
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3'
+        }
+      ]
+    }
+  },
+  {
+    name: 'ListBucket with tags and ABAC but no matching users',
+    description:
+      'This checks against a bucket with tags that has ABAC enabled but with different tags, so the ABAC role should not have access',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::sales-bucket-w-abac',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3'
+        }
+      ]
+    }
+  },
+  {
+    name: 'ListBucket with tags and ABAC, override s3Abac to disabled',
+    description:
+      'This checks against a bucket with tags that has ABAC enabled but the override is set to disabled, so the ABAC role should not have access',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::finance-bucket-w-abac',
+      actions: ['s3:ListBucket'],
+      s3AbacOverride: 'disabled'
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3'
+        }
+      ]
+    }
+  },
+  {
+    name: 'ListBucket with tags and no ABAC, override s3Abac to enabled',
+    description:
+      'This checks against a bucket with tags that has ABAC disabled, but override is set to enabled, so the ABAC role should have access',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::finance-bucket',
+      actions: ['s3:ListBucket'],
+      s3AbacOverride: 'enabled'
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3AbacRole',
+          service: 's3'
+        },
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3'
+        }
+      ]
+    }
   }
 ]
 
+/**
+ * Sort who can results for comparison in tests
+ *
+ * @param who Array of WhoCanAllowed objects to sort
+ * @returns Sorted array of WhoCanAllowed objects
+ */
 function sortWhoCanResults(who: WhoCanAllowed[]) {
   return who.sort((a, b) => {
     if (a.principal < b.principal) return -1
@@ -218,9 +325,10 @@ function sortWhoCanResults(who: WhoCanAllowed[]) {
 describe.sequential('whoCan Integration Tests', () => {
   for (const withIndex of [false, true]) {
     for (const test of whoCanIntegrationTests) {
-      const { name, comment, request, expected, only, data } = test
+      const { name, request, expected, only, data } = test
       const func = only ? it.only : it
-      func(name, async () => {
+      const testName = `${name} (withIndex: ${withIndex})`
+      func(testName, async () => {
         //Given a client
         const configs = getTestDatasetConfigs(data)
 

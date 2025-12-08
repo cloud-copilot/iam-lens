@@ -56,6 +56,12 @@ const main = async () => {
             description:
               'Ignore if the principal does not exist. Useful for simulating actions from principals that may not exist or are outside your data set',
             character: 'i'
+          }),
+          s3AbacOverride: enumArgument({
+            description:
+              'Override the S3 ABAC setting for S3 buckets. Defaults to the bucket setting stored in your iam-collect data',
+            validValues: ['enabled', 'disabled'],
+            defaultValue: undefined
           })
         }
       },
@@ -74,6 +80,12 @@ const main = async () => {
             description:
               'The actions to check permissions for; must be a valid IAM service and action such as `s3:GetObject`',
             defaultValue: []
+          }),
+          s3AbacOverride: enumArgument({
+            description:
+              'Override the S3 ABAC setting for S3 buckets. Defaults to the bucket setting stored in your iam-collect data',
+            validValues: ['enabled', 'disabled'],
+            defaultValue: undefined
           })
         }
       },
@@ -135,7 +147,8 @@ const main = async () => {
         action: action!,
         customContextKeys: singularizeOneEntryArrays(context),
         simulationMode: 'Strict',
-        ignoreMissingPrincipal
+        ignoreMissingPrincipal,
+        s3AbacOverride: cli.args.s3AbacOverride
       },
       collectClient
     )
@@ -166,7 +179,8 @@ const main = async () => {
     const results = await whoCan(collectConfigs, cli.args.partition, {
       resource: cli.args.resource!,
       actions: cli.args.actions!,
-      resourceAccount: cli.args.resourceAccount
+      resourceAccount: cli.args.resourceAccount,
+      s3AbacOverride: cli.args.s3AbacOverride
     })
 
     console.log(JSON.stringify(results, null, 2))

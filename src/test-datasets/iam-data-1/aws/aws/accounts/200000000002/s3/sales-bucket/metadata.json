@@ -1,0 +1,5 @@
+{
+  "name": "sales-bucket",
+  "region": "us-west-2",
+  "arn": "arn:aws:s3:::sales-bucket"
+}

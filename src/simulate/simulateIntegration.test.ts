@@ -348,3 +348,250 @@ describe('simulatePrincipalDoesNotExist', () => {
     expect(result.errors).toBeUndefined()
   })
 })
+
+describe('s3 ABAC', () => {
+  it('strict mode should not allow ABAC access when ABAC is not enabled on the bucket and tags match', async () => {
+    // Given a client with test data
+    const collectClient = getTestDatasetClient('1')
+
+    // And a request to access a bucket with matching tags but ABAC not enabled
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::finance-bucket',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+
+    // And the result should be ImplicitlyDenied (ABAC conditions are not evaluated when ABAC is not enabled)
+    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+  })
+
+  it('strict mode should allow ABAC access when ABAC is enabled on the bucket and tags match', async () => {
+    // Given a client with test data
+    const collectClient = getTestDatasetClient('1')
+
+    // And a request to access a bucket with matching tags and ABAC enabled
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::finance-bucket-w-abac',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+
+    // And the result should be Allowed (ABAC conditions match)
+    expect(result.analysis?.result).toEqual('Allowed')
+  })
+
+  it('strict mode should not allow ABAC access when ABAC is not enabled on the bucket and the tags do not match', async () => {
+    // Given a client with test data
+    const collectClient = getTestDatasetClient('1')
+
+    // And a request to access a bucket with non-matching tags and ABAC not enabled
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::sales-bucket',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+
+    // And the result should be ImplicitlyDenied (no matching policy)
+    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+  })
+
+  it('strict mode should not allow ABAC access when ABAC is enabled on the bucket and the tags do not match', async () => {
+    // Given a client with test data
+    const collectClient = getTestDatasetClient('1')
+
+    // And a request to access a bucket with non-matching tags even though ABAC is enabled
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::sales-bucket-w-abac',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+
+    // And the result should be ImplicitlyDenied (tags don't match the condition)
+    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+  })
+
+  ///
+  it('discovery mode should not allow ABAC access when ABAC is not enabled on the bucket and tags match', async () => {
+    // Given a client with test data
+    const collectClient = getTestDatasetClient('1')
+
+    // And a request to access a bucket with matching tags but ABAC not enabled
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::finance-bucket',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+      customContextKeys: {},
+      simulationMode: 'Discovery'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+
+    // And the result should be ImplicitlyDenied (ABAC conditions are not evaluated when ABAC is not enabled)
+    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+  })
+
+  it('discovery mode should allow ABAC access when ABAC is enabled on the bucket and tags match', async () => {
+    // Given a client with test data
+    const collectClient = getTestDatasetClient('1')
+
+    // And a request to access a bucket with matching tags and ABAC enabled
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::finance-bucket-w-abac',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+      customContextKeys: {},
+      simulationMode: 'Discovery'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+
+    // And the result should be Allowed (ABAC conditions match)
+    expect(result.analysis?.result).toEqual('Allowed')
+  })
+
+  it('discovery mode should not allow ABAC access when ABAC is not enabled on the bucket and the tags do not match', async () => {
+    // Given a client with test data
+    const collectClient = getTestDatasetClient('1')
+
+    // And a request to access a bucket with non-matching tags and ABAC not enabled
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::sales-bucket',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+      customContextKeys: {},
+      simulationMode: 'Discovery'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+
+    // And the result should be ImplicitlyDenied (no matching policy)
+    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+  })
+
+  it('discovery mode should not allow ABAC access when ABAC is enabled on the bucket and the tags do not match', async () => {
+    // Given a client with test data
+    const collectClient = getTestDatasetClient('1')
+
+    // And a request to access a bucket with non-matching tags even though ABAC is enabled
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::sales-bucket-w-abac',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+      customContextKeys: {},
+      simulationMode: 'Discovery'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+
+    // And the result should be ImplicitlyDenied (tags don't match the condition)
+    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+  })
+
+  describe('overrides', () => {
+    it('strict mode should use ABAC override when ABAC is not enabled on the bucket and tags match', async () => {
+      // Given a client with test data
+      const collectClient = getTestDatasetClient('1')
+
+      // And a request to access a bucket with matching tags but ABAC not enabled
+      const request: SimulationRequest = {
+        resourceArn: 'arn:aws:s3:::finance-bucket',
+        resourceAccount: undefined,
+        action: 's3:GetBucketPolicy',
+        principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+        customContextKeys: {},
+        simulationMode: 'Strict',
+        s3AbacOverride: 'enabled'
+      }
+
+      // When we run the simulation
+      const { result } = await simulateRequest(request, collectClient)
+
+      // Then the result should not have errors
+      expect(result.errors).toBeUndefined()
+
+      // And the result should be Allowed (ABAC override is enabled)
+      expect(result.analysis?.result).toEqual('Allowed')
+    })
+
+    it('strict mode should use ABAC override when ABAC is enabled on the bucket and tags match', async () => {
+      // Given a client with test data
+      const collectClient = getTestDatasetClient('1')
+
+      // And a request to access a bucket with matching tags and ABAC enabled
+      const request: SimulationRequest = {
+        resourceArn: 'arn:aws:s3:::finance-bucket-w-abac',
+        resourceAccount: undefined,
+        action: 's3:GetBucketPolicy',
+        principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+        customContextKeys: {},
+        simulationMode: 'Strict',
+        s3AbacOverride: 'disabled'
+      }
+
+      // When we run the simulation
+      const { result } = await simulateRequest(request, collectClient)
+
+      // Then the result should not have errors
+      expect(result.errors).toBeUndefined()
+
+      // And the result should be Allowed (ABAC conditions match)
+      expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+    })
+  })
+})

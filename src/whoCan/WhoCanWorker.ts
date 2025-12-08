@@ -2,6 +2,7 @@ import { iamActionDetails } from '@cloud-copilot/iam-data'
 import { Job } from '@cloud-copilot/job'
 import { IamCollectClient } from '../collect/client.js'
 import { simulateRequest } from '../simulate/simulate.js'
+import { S3AbacOverride } from '../utils/s3Abac.js'
 import { WhoCanAllowed } from './whoCan.js'
 
 export interface WhoCanWorkItem {
@@ -13,19 +14,25 @@ export interface WhoCanWorkItem {
 
 export function createJobForWhoCanWorkItem(
   workItem: WhoCanWorkItem,
-  collectClient: IamCollectClient
+  collectClient: IamCollectClient,
+  whoCanOptions: WhoCanOptions
 ): Job<WhoCanAllowed | undefined, Record<string, unknown>> {
   return {
     properties: {},
     execute: async (context) => {
-      return executeWhoCan(workItem, collectClient)
+      return executeWhoCan(workItem, collectClient, whoCanOptions)
     }
   }
 }
 
+export interface WhoCanOptions {
+  s3AbacOverride?: S3AbacOverride
+}
+
 export async function executeWhoCan(
   workItem: WhoCanWorkItem,
-  collectClient: IamCollectClient
+  collectClient: IamCollectClient,
+  whoCanOptions: WhoCanOptions
 ): Promise<WhoCanAllowed | undefined> {
   const { principal, resource, resourceAccount, action } = workItem
   const [service, serviceAction] = action.split(':')
@@ -36,7 +43,8 @@ export async function executeWhoCan(
       resourceAccount: resourceAccount,
       action,
       customContextKeys: {},
-      simulationMode: 'Discovery'
+      simulationMode: 'Discovery',
+      s3AbacOverride: whoCanOptions.s3AbacOverride
     },
     collectClient
   )
@@ -49,7 +57,8 @@ export async function executeWhoCan(
         resourceAccount,
         action,
         customContextKeys: {},
-        simulationMode: 'Strict'
+        simulationMode: 'Strict',
+        s3AbacOverride: whoCanOptions.s3AbacOverride
       },
       collectClient
     )
