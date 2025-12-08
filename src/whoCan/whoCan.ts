@@ -35,6 +35,7 @@ export interface ResourceAccessRequest {
   resource?: string
   resourceAccount?: string
   actions: string[]
+  sort?: boolean
   s3AbacOverride?: S3AbacOverride
 }
 
@@ -284,7 +285,7 @@ export async function whoCan(
     )
   }
 
-  return {
+  const results = {
     simulationCount,
     allowed: whoCanResults,
     allAccountsChecked: accountsToCheck.allAccounts,
@@ -293,6 +294,12 @@ export async function whoCan(
     organizationalUnitsNotFound: uniqueAccounts.organizationalUnitsNotFound,
     principalsNotFound: principalsNotFound
   }
+
+  if (request.sort) {
+    sortWhoCanResults(results)
+  }
+
+  return results
 }
 
 async function runPrincipalForActions(
@@ -570,4 +577,26 @@ async function allResourceTypesByArnLength(service: string): Promise<ResourceTyp
   return sortedResourceTypes.sort((a, b) => {
     return b.arn.length - a.arn.length
   })
+}
+
+/**
+ * Sort the results in a WhoCanResponse in place for consistent output
+ *
+ * @param whoCanResponse the WhoCanResponse to sort
+ */
+function sortWhoCanResults(whoCanResponse: WhoCanResponse) {
+  whoCanResponse.allowed.sort((a, b) => {
+    if (a.principal < b.principal) return -1
+    if (a.principal > b.principal) return 1
+    if (a.service < b.service) return -1
+    if (a.service > b.service) return 1
+    if (a.action < b.action) return -1
+    if (a.action > b.action) return 1
+    return 0
+  })
+
+  whoCanResponse.accountsNotFound.sort()
+  whoCanResponse.organizationsNotFound.sort()
+  whoCanResponse.organizationalUnitsNotFound.sort()
+  whoCanResponse.principalsNotFound.sort()
 }
