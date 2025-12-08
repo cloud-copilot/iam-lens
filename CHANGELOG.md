@@ -1,3 +1,10 @@
+## [0.1.69](https://github.com/cloud-copilot/iam-lens/compare/v0.1.68...v0.1.69) (2025-12-08)
+
+
+### Features
+
+* Add optional sorting of who-can results ([d2e381e](https://github.com/cloud-copilot/iam-lens/commit/d2e381eb7d6fea19bd293b71120fff1707d05a78))
+
 ## [0.1.68](https://github.com/cloud-copilot/iam-lens/compare/v0.1.67...v0.1.68) (2025-12-08)
 
 
