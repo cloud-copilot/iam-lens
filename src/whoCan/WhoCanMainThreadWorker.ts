@@ -1,5 +1,6 @@
 import { JobResult } from '@cloud-copilot/job'
 import { IamCollectClient } from '../collect/client.js'
+import { S3AbacOverride } from '../utils/s3Abac.js'
 import { ArrayStreamingWorkQueue } from '../workers/ArrayStreamingWorkQueue.js'
 import { PullBasedJobRunner } from '../workers/JobRunner.js'
 import { StreamingWorkQueue } from '../workers/StreamingWorkQueue.js'
@@ -9,6 +10,7 @@ import { createJobForWhoCanWorkItem, WhoCanWorkItem } from './WhoCanWorker.js'
 export function createMainThreadStreamingWorkQueue(
   queue: StreamingWorkQueue<WhoCanWorkItem> | ArrayStreamingWorkQueue<WhoCanWorkItem>,
   collectClient: IamCollectClient,
+  s3AbacOverride: S3AbacOverride | undefined,
   onComplete: (result: JobResult<WhoCanAllowed | undefined, Record<string, unknown>>) => void
 ) {
   return new PullBasedJobRunner<WhoCanAllowed | undefined, Record<string, unknown>, WhoCanWorkItem>(
@@ -17,25 +19,13 @@ export function createMainThreadStreamingWorkQueue(
       return queue.dequeue()
     },
     (workItem) => {
-      return createJobForWhoCanWorkItem(workItem, collectClient)
+      return createJobForWhoCanWorkItem(workItem, collectClient, {
+        s3AbacOverride
+      })
     },
     async (result) => {
       // no-op for now, results are handled by the caller of execute
       return onComplete(result)
     }
   )
-}
-
-export class WhoCanMainThreadWorker {
-  constructor(private collectClient: IamCollectClient) {}
-
-  public async execute(workItem: WhoCanWorkItem): Promise<WhoCanAllowed | undefined> {
-    const { principal, resource, resourceAccount, action } = workItem
-    if (!principal || !resource || !resourceAccount || !action) {
-      throw new Error(`Invalid work item: ${JSON.stringify(workItem)}`)
-    } else {
-      const { executeWhoCan } = await import('./WhoCanWorker.js')
-      return executeWhoCan(workItem, this.collectClient)
-    }
-  }
 }

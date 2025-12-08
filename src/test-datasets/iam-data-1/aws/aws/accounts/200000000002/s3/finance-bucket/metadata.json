@@ -1,0 +1,5 @@
+{
+  "name": "finance-bucket",
+  "region": "us-west-2",
+  "arn": "arn:aws:s3:::finance-bucket"
+}

@@ -924,6 +924,123 @@ describe('IamCollectClient', () => {
     })
   })
 
+  describe('getAbacEnabledForBucket', () => {
+    it('should return true if ABAC is enabled for the bucket', async () => {
+      // Given a bucket with ABAC enabled
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+
+      await store.saveResourceMetadata(accountId, bucketArn, 'metadata', {
+        abacEnabled: true
+      })
+
+      // When checking if ABAC is enabled for the bucket
+      const result = await client.getAbacEnabledForBucket(accountId, bucketArn)
+
+      // Then it should return true
+      expect(result).toBe(true)
+    })
+
+    it('should return false if ABAC is not enabled for the bucket', async () => {
+      // Given a bucket with ABAC disabled
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+
+      await store.saveResourceMetadata(accountId, bucketArn, 'metadata', {
+        abacEnabled: false
+      })
+
+      // When checking if ABAC is enabled for the bucket
+      const result = await client.getAbacEnabledForBucket(accountId, bucketArn)
+
+      // Then it should return false
+      expect(result).toBe(false)
+    })
+
+    it('should return false if ABAC is not set for the bucket', async () => {
+      // Given a bucket without ABAC configuration
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+
+      await store.saveResourceMetadata(accountId, bucketArn, 'metadata', {})
+
+      // When checking if ABAC is enabled for the bucket
+      const result = await client.getAbacEnabledForBucket(accountId, bucketArn)
+
+      // Then it should return false
+      expect(result).toBe(false)
+    })
+
+    it('should return false if the bucket does not exist', async () => {
+      // Given a bucket that does not exist
+      const { client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::non-existent-bucket'
+
+      // When checking if ABAC is enabled for the bucket
+      const result = await client.getAbacEnabledForBucket(accountId, bucketArn)
+
+      // Then it should return false
+      expect(result).toBe(false)
+    })
+
+    it('should handle S3 bucket ARN', async () => {
+      // Given a bucket with ABAC enabled
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+
+      await store.saveResourceMetadata(accountId, bucketArn, 'metadata', {
+        abacEnabled: true
+      })
+
+      // When checking if ABAC is enabled using the bucket ARN
+      const result = await client.getAbacEnabledForBucket(accountId, bucketArn)
+
+      // Then it should return true
+      expect(result).toBe(true)
+    })
+
+    it('should extract bucket ARN from S3 object ARN', async () => {
+      // Given a bucket with ABAC enabled
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+      const objectArn = `${bucketArn}/path/to/object.txt`
+
+      await store.saveResourceMetadata(accountId, bucketArn, 'metadata', {
+        abacEnabled: true
+      })
+
+      // When checking if ABAC is enabled using the object ARN
+      const result = await client.getAbacEnabledForBucket(accountId, objectArn)
+
+      // Then it should return true
+      expect(result).toBe(true)
+    })
+
+    it('should extract bucket ARN from bucket ARN with path', async () => {
+      // Given a bucket with ABAC enabled
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+      const bucketWithPath = `${bucketArn}/some/path`
+
+      await store.saveResourceMetadata(accountId, bucketArn, 'metadata', {
+        abacEnabled: true
+      })
+
+      // When checking if ABAC is enabled using bucket ARN with path
+      const result = await client.getAbacEnabledForBucket(accountId, bucketWithPath)
+
+      // Then it should return true
+      expect(result).toBe(true)
+    })
+  })
+
   describe('getAccountIdForRestApi', () => {
     it('should return the account ID for a RestApi ARN', async () => {
       // Given a RestApi ARN
@@ -1967,15 +2084,15 @@ describe('IamCollectClient', () => {
       const { store, client } = testStore()
       const accountId = '123456789012'
       const resourceArn = `arn:aws:s3:::my-bucket`
-      const tags = { Environment: 'prod', Owner: 'alice' }
+      const existingTags = { Environment: 'prod', Owner: 'alice' }
 
-      await store.saveResourceMetadata(accountId, resourceArn, 'tags', tags)
+      await store.saveResourceMetadata(accountId, resourceArn, 'tags', existingTags)
 
       // When getting the tags for the resource ARN
-      const result = await client.getTagsForResource(resourceArn, accountId)
+      const { tags } = await client.getTagsForResource(resourceArn, accountId)
 
       // Then it should return the tags
-      expect(result).toEqual(tags)
+      expect(tags).toEqual(existingTags)
     })
     it('should return an empty object if no tags exist for the resource ARN', async () => {
       // Given a resource with no tags
@@ -1984,10 +2101,10 @@ describe('IamCollectClient', () => {
       const resourceArn = `arn:aws:s3:::my-bucket`
 
       // When getting the tags for the resource ARN
-      const result = await client.getTagsForResource(resourceArn, accountId)
+      const { tags } = await client.getTagsForResource(resourceArn, accountId)
 
       // Then it should return undefined
-      expect(result).toEqual({})
+      expect(tags).toEqual({})
     })
   })
 

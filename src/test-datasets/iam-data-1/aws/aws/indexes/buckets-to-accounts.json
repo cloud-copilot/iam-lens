@@ -7,6 +7,22 @@
     "accountId": "100000000002",
     "region": "us-west-2"
   },
+  "finance-bucket": {
+    "accountId": "200000000002",
+    "region": "us-west-2"
+  },
+  "finance-bucket-w-abac": {
+    "accountId": "200000000002",
+    "region": "us-west-2"
+  },
+  "sales-bucket": {
+    "accountId": "200000000002",
+    "region": "us-west-2"
+  },
+  "sales-bucket-w-abac": {
+    "accountId": "200000000002",
+    "region": "us-west-2"
+  },
   "vpc-bucket": {
     "accountId": "200000000002",
     "region": "us-west-2"

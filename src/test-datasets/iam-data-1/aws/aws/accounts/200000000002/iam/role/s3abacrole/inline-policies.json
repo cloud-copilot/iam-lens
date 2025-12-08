@@ -1,0 +1,21 @@
+[
+  {
+    "PolicyName": "NetworkInterfaces",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "Statement1",
+          "Effect": "Allow",
+          "Action": ["s3:*"],
+          "Resource": ["*"],
+          "Condition": {
+            "StringEquals": {
+              "aws:ResourceTag/Dept": "Finance"
+            }
+          }
+        }
+      ]
+    }
+  }
+]

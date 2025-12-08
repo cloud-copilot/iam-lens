@@ -33,6 +33,7 @@ When simulating requests, iam-lens will detect the account for the principal and
 | `-v`, `--verbose`                  | Enable verbose output for the simulation to see exactly what statements applied or not and why.                                                                                                                                                                                                                         |
 | `--expect <result>`                | Optional expected outcome of the simulation. Valid values are `Allowed`, `ImplicitlyDenied`, `ExplicitlyDenied`, `AnyDeny`. If the result does not match the expected value, a non-zero exit code is returned                                                                                                           |
 | `-i`, `--ignore-missing-principal` | Ignore if the principal is not found in the data. By default a simulation will fail if the principal is not in your iam-collect data. Use this flag if you want to simulate a request for a principal that may not exist in the downloaded data.                                                                        |
+| `--s3-abac-override`               | Override the S3 ABAC setting for S3 buckets. Defaults to the bucket setting stored in your iam-collect data. Valid values are `enabled` or `disabled`.                                                                                                                                                                  |
 
 You can also include any [Global CLI Options](GlobalCliOptions.md).
 

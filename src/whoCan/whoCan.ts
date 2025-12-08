@@ -22,6 +22,7 @@ import { IamCollectClient } from '../collect/client.js'
 import { getCollectClient } from '../collect/collect.js'
 import { getAccountIdForResource, getResourcePolicyForResource } from '../resources.js'
 import { Arn } from '../utils/arn.js'
+import { S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'
 import { getWorkerScriptPath } from '../utils/workerScript.js'
 import { ArrayStreamingWorkQueue } from '../workers/ArrayStreamingWorkQueue.js'
@@ -34,6 +35,7 @@ export interface ResourceAccessRequest {
   resource?: string
   resourceAccount?: string
   actions: string[]
+  s3AbacOverride?: S3AbacOverride
 }
 
 export interface WhoCanAllowed {
@@ -76,7 +78,8 @@ export async function whoCan(
       workerData: {
         collectConfigs: collectConfigs,
         partition,
-        concurrency: 50
+        concurrency: 50,
+        s3AbacOverride: request.s3AbacOverride
       }
     })
   })
@@ -149,6 +152,7 @@ export async function whoCan(
   const mainThreadWorker = createMainThreadStreamingWorkQueue(
     simulateQueue,
     collectClient,
+    request.s3AbacOverride,
     onComplete
   )
 

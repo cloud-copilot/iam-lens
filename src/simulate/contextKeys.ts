@@ -1,4 +1,8 @@
-import { convertAssumedRoleArnToRoleArn, splitArnParts } from '@cloud-copilot/iam-utils'
+import {
+  convertAssumedRoleArnToRoleArn,
+  isS3BucketOrObjectArn,
+  splitArnParts
+} from '@cloud-copilot/iam-utils'
 import { IamCollectClient } from '../collect/client.js'
 import { isArnPrincipal, isServicePrincipal } from '../principals.js'
 import { SimulationRequest } from './simulate.js'
@@ -88,116 +92,125 @@ export async function createContextKeys(
   simulationRequest: SimulationRequest,
   service: string,
   contextKeyOverrides: ContextKeys
-): Promise<ContextKeys> {
-  const result: ContextKeys = {
+): Promise<{ resourceTagsAreKnown: boolean; contextKeys: ContextKeys }> {
+  const contextKeys: ContextKeys = {
     'aws:SecureTransport': 'true',
     'aws:CurrentTime': new Date().toISOString(),
     'aws:EpochTime': Math.floor(Date.now() / 1000).toString()
   }
 
   if (isArnPrincipal(simulationRequest.principal)) {
-    result['aws:PrincipalArn'] = simulationRequest.principal
+    contextKeys['aws:PrincipalArn'] = simulationRequest.principal
     const arnParts = splitArnParts(simulationRequest.principal)
     const principalAccountId = arnParts.accountId!
-    result['aws:PrincipalAccount'] = arnParts.accountId || ''
+    contextKeys['aws:PrincipalAccount'] = arnParts.accountId || ''
 
     const orgId = await collectClient.getOrgIdForAccount(principalAccountId)
     if (orgId) {
-      result['aws:PrincipalOrgId'] = orgId
+      contextKeys['aws:PrincipalOrgId'] = orgId
 
       const orgStructure = await collectClient.getOrgUnitHierarchyForAccount(principalAccountId)
-      result['aws:PrincipalOrgPaths'] = makeOrgPaths(orgId, orgStructure)
+      contextKeys['aws:PrincipalOrgPaths'] = makeOrgPaths(orgId, orgStructure)
     }
 
-    const tags = await collectClient.getTagsForResource(
+    const { tags } = await collectClient.getTagsForResource(
       simulationRequest.principal,
       principalAccountId
     )
 
     for (const [key, value] of Object.entries(tags)) {
-      result[`aws:PrincipalTag/${key}`] = value
+      contextKeys[`aws:PrincipalTag/${key}`] = value
     }
 
-    result['aws:PrincipalIsAWSService'] = 'false'
+    contextKeys['aws:PrincipalIsAWSService'] = 'false'
 
     if (service.toLowerCase() === 'kms') {
-      result['kms:CallerAccount'] = principalAccountId
+      contextKeys['kms:CallerAccount'] = principalAccountId
     }
 
     if (simulationRequest.principal.endsWith(':root')) {
-      result['aws:PrincipalType'] = 'Account'
-      result['aws:userid'] = principalAccountId
+      contextKeys['aws:PrincipalType'] = 'Account'
+      contextKeys['aws:userid'] = principalAccountId
     } else if (arnParts.resourceType === 'user') {
-      result['aws:PrincipalType'] = 'User'
+      contextKeys['aws:PrincipalType'] = 'User'
       const userUniqueId = await collectClient.getUniqueIdForIamResource(
         simulationRequest.principal
       )
-      result['aws:userid'] = userUniqueId || 'UNKNOWN'
+      contextKeys['aws:userid'] = userUniqueId || 'UNKNOWN'
       const userName = arnParts.resourcePath?.split('/').at(-1)!
-      result['aws:username'] = userName
+      contextKeys['aws:username'] = userName
     } else if (arnParts.resourceType === 'federated-user') {
-      result['aws:PrincipalType'] = 'FederatedUser'
-      result['aws:userid'] = `${arnParts.accountId}:${arnParts.resourcePath}`
+      contextKeys['aws:PrincipalType'] = 'FederatedUser'
+      contextKeys['aws:userid'] = `${arnParts.accountId}:${arnParts.resourcePath}`
     } else if (arnParts.resourceType === 'assumed-role') {
-      result['aws:PrincipalType'] = 'AssumedRole'
+      contextKeys['aws:PrincipalType'] = 'AssumedRole'
 
       //TODO: Set aws:userId for role principals
       const sessionName = arnParts.resourcePath?.split('/').at(-1)!
       const roleArn = convertAssumedRoleArnToRoleArn(simulationRequest.principal)
       const roleUniqueId = await collectClient.getUniqueIdForIamResource(roleArn)
-      result['aws:userid'] = `${roleUniqueId || 'UNKNOWN'}:${sessionName}`
+      contextKeys['aws:userid'] = `${roleUniqueId || 'UNKNOWN'}:${sessionName}`
     }
   }
 
   //Resource context keys
   if (!isAwsResourceInfoExcludedAction(simulationRequest.action)) {
-    result['aws:ResourceAccount'] = simulationRequest.resourceAccount!
+    contextKeys['aws:ResourceAccount'] = simulationRequest.resourceAccount!
 
     const resourceOrgId = await collectClient.getOrgIdForAccount(simulationRequest.resourceAccount!)
     if (resourceOrgId) {
-      result['aws:ResourceOrgID'] = resourceOrgId
+      contextKeys['aws:ResourceOrgID'] = resourceOrgId
 
       const orgStructure = await collectClient.getOrgUnitHierarchyForAccount(
         simulationRequest.resourceAccount!
       )
 
-      result['aws:ResourceOrgPaths'] = makeOrgPaths(resourceOrgId, orgStructure)
+      contextKeys['aws:ResourceOrgPaths'] = makeOrgPaths(resourceOrgId, orgStructure)
     }
   }
 
+  let resourceTagsAreKnown = false
   if (simulationRequest.resourceArn) {
-    const resourceTags = await collectClient.getTagsForResource(
-      simulationRequest.resourceArn,
-      simulationRequest.resourceAccount!
-    )
-
+    const isBucket = isS3BucketOrObjectArn(simulationRequest.resourceArn)
+    const { tags: resourceTags, present: resourceTagsPreset } =
+      await collectClient.getTagsForResource(
+        simulationRequest.resourceArn,
+        simulationRequest.resourceAccount!
+      )
+    resourceTagsAreKnown = resourceTagsPreset
     for (const [key, value] of Object.entries(resourceTags)) {
-      result[`aws:ResourceTag/${key}`] = value
+      contextKeys[`aws:ResourceTag/${key}`] = value
+      if (isBucket) {
+        contextKeys[`s3:BucketTag/${key}`] = value
+      }
     }
   }
 
   //Service Principal context keys
   if (isServicePrincipal(simulationRequest.principal)) {
-    result['aws:PrincipalIsAWSService'] = 'true'
-    result['aws:PrincipalServiceName'] = simulationRequest.principal
-    result['aws:SourceAccount'] = simulationRequest.resourceAccount!
-    result['aws:SourceOwner'] = simulationRequest.resourceAccount!
-    result['aws:SourceOrgID'] = result['aws:ResourceOrgID']
-    result['aws:SourceOrgPaths'] = result['aws:ResourceOrgPaths']
+    contextKeys['aws:PrincipalIsAWSService'] = 'true'
+    contextKeys['aws:PrincipalServiceName'] = simulationRequest.principal
+    contextKeys['aws:SourceAccount'] = simulationRequest.resourceAccount!
+    contextKeys['aws:SourceOwner'] = simulationRequest.resourceAccount!
+    contextKeys['aws:SourceOrgID'] = contextKeys['aws:ResourceOrgID']
+    contextKeys['aws:SourceOrgPaths'] = contextKeys['aws:ResourceOrgPaths']
   }
 
   //Apply any custom context key overrides
   for (const [key, value] of Object.entries(contextKeyOverrides)) {
-    result[key] = value
+    contextKeys[key] = value
   }
 
   //Add VPC context keys
-  const vpcKeys = await getVpcKeys(result, service, collectClient)
+  const vpcKeys = await getVpcKeys(contextKeys, service, collectClient)
   for (const [key, value] of Object.entries(vpcKeys)) {
-    result[key] = value
+    contextKeys[key] = value
   }
 
-  return result
+  return {
+    resourceTagsAreKnown,
+    contextKeys
+  }
 }
 
 /**
