@@ -375,7 +375,7 @@ export function resultMatchesExpectation(
  * Evaluates whether ABAC (Attribute-Based Access Control) is enabled for a given S3 bucket or object.
  * The evaluation can be overridden by the `s3AbacOverride` parameter.
  *
- * @param s3AbacOverride the override setting for S3 ABAC ('Enabled', 'Disabled', or undefined)
+ * @param s3AbacOverride the override setting for S3 ABAC or undefined to auto-detect
  * @param collectClient the IAM collect client to use for data access
  * @param bucketAccountId the account ID the bucket belongs to
  * @param bucketOrObjectArn the ARN of the bucket or bucket object

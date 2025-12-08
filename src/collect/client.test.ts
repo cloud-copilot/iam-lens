@@ -976,7 +976,7 @@ describe('IamCollectClient', () => {
 
     it('should return false if the bucket does not exist', async () => {
       // Given a bucket that does not exist
-      const { store, client } = testStore()
+      const { client } = testStore()
       const accountId = '123456789012'
       const bucketArn = 'arn:aws:s3:::non-existent-bucket'
 
@@ -2089,7 +2089,7 @@ describe('IamCollectClient', () => {
       await store.saveResourceMetadata(accountId, resourceArn, 'tags', existingTags)
 
       // When getting the tags for the resource ARN
-      const { tags, present } = await client.getTagsForResource(resourceArn, accountId)
+      const { tags } = await client.getTagsForResource(resourceArn, accountId)
 
       // Then it should return the tags
       expect(tags).toEqual(existingTags)
@@ -2101,7 +2101,7 @@ describe('IamCollectClient', () => {
       const resourceArn = `arn:aws:s3:::my-bucket`
 
       // When getting the tags for the resource ARN
-      const { present, tags } = await client.getTagsForResource(resourceArn, accountId)
+      const { tags } = await client.getTagsForResource(resourceArn, accountId)
 
       // Then it should return undefined
       expect(tags).toEqual({})

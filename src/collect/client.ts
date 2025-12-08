@@ -560,8 +560,9 @@ export class IamCollectClient {
   /**
    * Check if ABAC is enabled for a specific S3 bucket
    *
+   * @param accountId The account ID of the bucket
    * @param bucketOrObjectArn The ARN of the bucket or object
-   * @returns The account ID for the bucket, or undefined if not found
+   * @returns true if ABAC is enabled for the bucket, false otherwise
    */
 
   async getAbacEnabledForBucket(accountId: string, bucketOrObjectArn: string): Promise<boolean> {
@@ -910,7 +911,7 @@ export class IamCollectClient {
    *
    * @param resourceArn The ARN of the resource.
    * @param accountId The ID of the account.
-   * @returns The tags as a record, or undefined if not found.
+   * @returns an object to indicate if the resource is present and its tags (if any)
    */
   async getTagsForResource(
     resourceArn: string,

@@ -590,7 +590,7 @@ describe('s3 ABAC', () => {
       // Then the result should not have errors
       expect(result.errors).toBeUndefined()
 
-      // And the result should be Allowed (ABAC conditions match)
+      // And the result should be ImplicitlyDenied because ABAC is disabled by the override
       expect(result.analysis?.result).toEqual('ImplicitlyDenied')
     })
   })
