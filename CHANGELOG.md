@@ -1,3 +1,10 @@
+## [0.1.68](https://github.com/cloud-copilot/iam-lens/compare/v0.1.67...v0.1.68) (2025-12-08)
+
+
+### Features
+
+* S3 ABAC support with optional overrides ([ec08fd7](https://github.com/cloud-copilot/iam-lens/commit/ec08fd752da0858d24add968c4b7d87e1b0761e3))
+
 ## [0.1.67](https://github.com/cloud-copilot/iam-lens/compare/v0.1.66...v0.1.67) (2025-12-06)
 
 ## [0.1.66](https://github.com/cloud-copilot/iam-lens/compare/v0.1.65...v0.1.66) (2025-11-30)
