@@ -86,6 +86,10 @@ const main = async () => {
               'Override the S3 ABAC setting for S3 buckets. Defaults to the bucket setting stored in your iam-collect data',
             validValues: ['enabled', 'disabled'],
             defaultValue: undefined
+          }),
+          sort: booleanArgument({
+            description: 'Sort the results before outputting',
+            character: 's'
           })
         }
       },
@@ -180,7 +184,8 @@ const main = async () => {
       resource: cli.args.resource!,
       actions: cli.args.actions!,
       resourceAccount: cli.args.resourceAccount,
-      s3AbacOverride: cli.args.s3AbacOverride
+      s3AbacOverride: cli.args.s3AbacOverride,
+      sort: cli.args.sort
     })
 
     console.log(JSON.stringify(results, null, 2))
