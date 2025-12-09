@@ -475,7 +475,7 @@ describe('s3 ABAC', () => {
     // Given a client with test data
     const collectClient = getTestDatasetClient('1')
 
-    // And a request to access a bucket with matching tags but ABAC not enabled
+    // And a request to access a bucket object with matching tags but ABAC not enabled
     const request: SimulationRequest = {
       resourceArn: 'arn:aws:s3:::finance-bucket/report.pdf',
       resourceAccount: undefined,
