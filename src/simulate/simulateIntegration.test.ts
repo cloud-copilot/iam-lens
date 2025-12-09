@@ -495,6 +495,30 @@ describe('s3 ABAC', () => {
     expect(result.analysis?.result).toEqual('ImplicitlyDenied')
   })
 
+  it('discovery mode should allow ABAC access to a bucket object when ABAC is enabled on the bucket and tags match', async () => {
+    // Given a client with test data
+    const collectClient = getTestDatasetClient('1')
+
+    // And a request to access a bucket with matching tags and ABAC enabled
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::finance-bucket-w-abac/report.pdf',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal: 'arn:aws:iam::200000000002:role/s3abacrole',
+      customContextKeys: {},
+      simulationMode: 'Discovery'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should not have errors
+    expect(result.errors).toBeUndefined()
+
+    // And the result should be Allowed (ABAC conditions match)
+    expect(result.analysis?.result).toEqual('Allowed')
+  })
+
   it('discovery mode should allow ABAC access when ABAC is enabled on the bucket and tags match', async () => {
     // Given a client with test data
     const collectClient = getTestDatasetClient('1')
