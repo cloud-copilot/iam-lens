@@ -1,3 +1,10 @@
+## [0.1.70](https://github.com/cloud-copilot/iam-lens/compare/v0.1.69...v0.1.70) (2025-12-09)
+
+
+### Bug Fixes
+
+* Correctly set bucket tags for s3 objects ([dfde5bf](https://github.com/cloud-copilot/iam-lens/commit/dfde5bf96bd3cddfe68382ab3228fe0bbd654813))
+
 ## [0.1.69](https://github.com/cloud-copilot/iam-lens/compare/v0.1.68...v0.1.69) (2025-12-08)
 
 
