@@ -1,4 +1,5 @@
 import {
+  bucketArn,
   convertAssumedRoleArnToRoleArn,
   isS3BucketOrObjectArn,
   splitArnParts
@@ -174,7 +175,7 @@ export async function createContextKeys(
     const isBucket = isS3BucketOrObjectArn(simulationRequest.resourceArn)
     const { tags: resourceTags, present: resourceTagsPreset } =
       await collectClient.getTagsForResource(
-        simulationRequest.resourceArn,
+        isBucket ? bucketArn(simulationRequest.resourceArn) : simulationRequest.resourceArn,
         simulationRequest.resourceAccount!
       )
     resourceTagsAreKnown = resourceTagsPreset

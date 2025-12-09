@@ -997,9 +997,9 @@ describe('createContextKeys', () => {
         resourceAccount: '123456789012'
       }
 
-      // Mock the collect client to return tags for the object (which are bucket tags)
+      // Mock the collect client to return tags for the bucket
       const { store, client } = testStore()
-      await store.saveResourceMetadata('123456789012', objectArn, 'tags', {
+      await store.saveResourceMetadata('123456789012', bucketArn, 'tags', {
         Project: 'analytics',
         CostCenter: '12345'
       })
