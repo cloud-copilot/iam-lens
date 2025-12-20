@@ -1,3 +1,5 @@
+## [0.1.72](https://github.com/cloud-copilot/iam-lens/compare/v0.1.71...v0.1.72) (2025-12-20)
+
 ## [0.1.71](https://github.com/cloud-copilot/iam-lens/compare/v0.1.70...v0.1.71) (2025-12-13)
 
 ## [0.1.70](https://github.com/cloud-copilot/iam-lens/compare/v0.1.69...v0.1.70) (2025-12-09)
