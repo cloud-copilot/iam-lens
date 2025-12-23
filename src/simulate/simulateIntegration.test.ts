@@ -51,7 +51,7 @@ const simulateIntegrationTest: {
     expected: 'ImplicitlyDenied'
   },
   {
-    name: 'same account resource request explicity denied by session policy',
+    name: 'same account resource request explicitly denied by session policy',
     data: '1',
     request: {
       resourceArn: 'arn:aws:s3:::iam-data-482734',

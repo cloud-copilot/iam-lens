@@ -145,7 +145,6 @@ const main = async () => {
   const collectClient = getCollectClient(collectConfigs, cli.args.partition)
 
   if (cli.subcommand === 'simulate') {
-    console.log(JSON.stringify(cli.args))
     const {
       principal,
       resource,
