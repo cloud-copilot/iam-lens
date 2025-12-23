@@ -116,7 +116,7 @@
     "@cloud-copilot/iam-expand": "^0.11.29",
     "@cloud-copilot/iam-policy": "^0.1.50",
     "@cloud-copilot/iam-shrink": "^0.1.21",
-    "@cloud-copilot/iam-simulate": "^0.1.92",
+    "@cloud-copilot/iam-simulate": "^0.1.97",
     "@cloud-copilot/iam-utils": "^0.1.37",
     "@cloud-copilot/job": "^0.1.0",
     "@cloud-copilot/log": "^0.1.0",
