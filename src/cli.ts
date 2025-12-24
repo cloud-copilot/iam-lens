@@ -14,6 +14,7 @@ import { principalCan } from './principalCan/principalCan.js'
 import { makePrincipalIndex } from './principalIndex/makePrincipalIndex.js'
 import { resultMatchesExpectation, simulateRequest } from './simulate/simulate.js'
 import { iamLensVersion } from './utils/packageVersion.js'
+import { stringOrFileArgument } from './utils/stringOrFileArgument.js'
 import { whoCan } from './whoCan/whoCan.js'
 
 const main = async () => {
@@ -62,6 +63,10 @@ const main = async () => {
               'Override the S3 ABAC setting for S3 buckets. Defaults to the bucket setting stored in your iam-collect data',
             validValues: ['enabled', 'disabled'],
             defaultValue: undefined
+          }),
+          sessionPolicy: stringOrFileArgument({
+            description:
+              'The session policy to use for the simulation, if the principal type supports it'
           })
         }
       },
@@ -140,11 +145,19 @@ const main = async () => {
   const collectClient = getCollectClient(collectConfigs, cli.args.partition)
 
   if (cli.subcommand === 'simulate') {
-    const { principal, resource, resourceAccount, action, context, ignoreMissingPrincipal } =
-      cli.args
+    const {
+      principal,
+      resource,
+      resourceAccount,
+      action,
+      context,
+      ignoreMissingPrincipal,
+      sessionPolicy
+    } = cli.args
 
     const { request, result } = await simulateRequest(
       {
+        sessionPolicy,
         principal: principal!,
         resourceArn: resource,
         resourceAccount: resourceAccount,

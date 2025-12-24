@@ -29,6 +29,57 @@ const simulateIntegrationTest: {
     expected: 'Allowed'
   },
   {
+    name: 'same account resource request implicitly denied by session policy',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {},
+      simulationMode: 'Strict',
+      sessionPolicy: {
+        Version: '2012-10-17',
+        Statement: {
+          Effect: 'Allow',
+          Action: 'ec2:*',
+          Resource: '*'
+        }
+      }
+    },
+    expected: 'ImplicitlyDenied'
+  },
+  {
+    name: 'same account resource request explicitly denied by session policy',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::iam-data-482734',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {},
+      simulationMode: 'Strict',
+      sessionPolicy: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: '*',
+            Resource: '*'
+          },
+          {
+            Effect: 'Deny',
+            Action: 's3:*',
+            Resource: '*'
+          }
+        ]
+      }
+    },
+    expected: 'ExplicitlyDenied'
+  },
+  {
     name: 'cross account allowed only by resource policy',
     data: '1',
     request: {

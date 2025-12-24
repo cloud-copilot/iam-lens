@@ -72,6 +72,11 @@ export interface SimulationRequest {
    * Override for S3 ABAC settings for the simulation.
    */
   s3AbacOverride?: S3AbacOverride
+
+  /**
+   * The session policy to use for the simulation, if the principal type supports it.
+   */
+  sessionPolicy?: any
 }
 
 /**
@@ -177,6 +182,7 @@ export async function simulateRequest(
 
   const simulation: Simulation = {
     request,
+    sessionPolicy: simulationRequest.sessionPolicy,
     identityPolicies: prepareIdentityPolicies(simulationRequest.principal, principalPolicies),
     serviceControlPolicies: applicableScps,
     resourceControlPolicies: rcpsForRequest(
