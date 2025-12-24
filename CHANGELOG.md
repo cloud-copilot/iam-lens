@@ -1,3 +1,10 @@
+## [0.1.73](https://github.com/cloud-copilot/iam-lens/compare/v0.1.72...v0.1.73) (2025-12-24)
+
+
+### Features
+
+* Support session policies in simulate ([ee7d95b](https://github.com/cloud-copilot/iam-lens/commit/ee7d95bd6b98998b22f6166a63c242927113ecf4))
+
 ## [0.1.72](https://github.com/cloud-copilot/iam-lens/compare/v0.1.71...v0.1.72) (2025-12-20)
 
 ## [0.1.71](https://github.com/cloud-copilot/iam-lens/compare/v0.1.70...v0.1.71) (2025-12-13)
