@@ -293,10 +293,6 @@ describe('IamCollectClient', () => {
           orgIdentifier: accountId,
           policies: [
             {
-              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
-              policy: fullAccessPolicy
-            },
-            {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
               policy: {
                 Version: '2012-10-17',
@@ -308,6 +304,10 @@ describe('IamCollectClient', () => {
                   }
                 ]
               }
+            },
+            {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
+              policy: fullAccessPolicy
             }
           ]
         }
@@ -483,11 +483,6 @@ describe('IamCollectClient', () => {
       // Then it should return the SCPs
       expect(scps).toEqual([
         {
-          arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
-          name: 'FullAWSAccess',
-          policy: fullAccessPolicy
-        },
-        {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
           name: 'TestPolicy1',
           policy: {
@@ -500,6 +495,11 @@ describe('IamCollectClient', () => {
               }
             ]
           }
+        },
+        {
+          arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
+          name: 'FullAWSAccess',
+          policy: fullAccessPolicy
         }
       ])
     })
@@ -585,14 +585,14 @@ describe('IamCollectClient', () => {
       // Then it should return the SCPs
       expect(rcps).toEqual([
         {
-          arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
-          name: 'FullAWSAccess',
-          policy: fullAccessPolicy
-        },
-        {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
           name: 'TestPolicy1',
           policy: s3Scp
+        },
+        {
+          arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
+          name: 'FullAWSAccess',
+          policy: fullAccessPolicy
         }
       ])
     })
@@ -754,12 +754,12 @@ describe('IamCollectClient', () => {
           orgIdentifier: accountId,
           policies: [
             {
-              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
-              policy: fullAccessPolicy
-            },
-            {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
               policy: s3Scp
+            },
+            {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
+              policy: fullAccessPolicy
             }
           ]
         }
