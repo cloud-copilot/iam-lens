@@ -1,3 +1,10 @@
+## [0.1.75](https://github.com/cloud-copilot/iam-lens/compare/v0.1.74...v0.1.75) (2026-01-03)
+
+
+### Features
+
+* Add cross account S3 buckets to principal-can ([9cfbb86](https://github.com/cloud-copilot/iam-lens/commit/9cfbb86e96ae87dc916f22a68186617f1ca9ad9e))
+
 ## [0.1.74](https://github.com/cloud-copilot/iam-lens/compare/v0.1.73...v0.1.74) (2025-12-28)
 
 ## [0.1.73](https://github.com/cloud-copilot/iam-lens/compare/v0.1.72...v0.1.73) (2025-12-24)
