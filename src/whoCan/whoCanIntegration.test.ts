@@ -368,6 +368,9 @@ describe.sequential('whoCan Integration Tests', () => {
   for (const withIndex of [false, true]) {
     for (const test of whoCanIntegrationTests) {
       const { name, request, expected, only, data } = test
+
+      // Set worker threads to 1 for tests so it gets tested but doesn't saturate CPUs
+      request.workerThreads = 1
       const func = only ? it.only : it
       const testName = `${name} (withIndex: ${withIndex})`
       func(testName, async () => {

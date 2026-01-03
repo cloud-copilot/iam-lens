@@ -32,11 +32,38 @@ import { createMainThreadStreamingWorkQueue } from './WhoCanMainThreadWorker.js'
 import { WhoCanWorkItem } from './WhoCanWorker.js'
 
 export interface ResourceAccessRequest {
+  /**
+   * The ARN of the resource to check access for. If not provided, actions must be specified.
+   */
   resource?: string
+
+  /**
+   * The account ID the resource belongs to.
+   * By default this will be looked up based on the resource ARN, but that may
+   * not be possible for all actions, such as wildcard actions like `s3:ListAllMyBuckets`.
+   */
   resourceAccount?: string
+
+  /**
+   * The actions to check access for. If not provided, actions will be looked up based on the resource ARN.
+   */
   actions: string[]
+
+  /**
+   * Whether to sort the results for consistent output.
+   */
   sort?: boolean
+
+  /**
+   * An override for S3 ABAC being enabled when checking access to S3 Bucket resources.
+   */
   s3AbacOverride?: S3AbacOverride
+
+  /**
+   * The number of worker threads to use for simulations beyond the main thread.
+   * If not provided, defaults to number of CPUs - 1.
+   */
+  workerThreads?: number
 }
 
 export interface WhoCanAllowed {
@@ -58,11 +85,17 @@ export interface WhoCanResponse {
   principalsNotFound: string[]
 }
 
-function getCpuCount() {
-  if (process.env.NODE_ENV === 'test') {
-    return 2
+/**
+ * Get the number of worker threads to use, defaulting to number of CPUs - 1
+ *
+ * @param overrideValue the override value, if any
+ * @returns the override value if provided, otherwise number of CPUs - 1
+ */
+function getNumberOfWorkers(overrideValue: number | undefined): number {
+  if (typeof overrideValue === 'number' && overrideValue >= 0) {
+    return Math.floor(overrideValue)
   }
-  return numberOfCpus()
+  return Math.max(0, numberOfCpus() - 1)
 }
 
 export async function whoCan(
@@ -70,20 +103,24 @@ export async function whoCan(
   partition: string,
   request: ResourceAccessRequest
 ): Promise<WhoCanResponse> {
-  const cpus = getCpuCount()
   const { resource } = request
 
+  // Get the number of workers and the worker script path.
+  // It's possible in bundled environments that the worker script path may not be found, so handle that gracefully.
+  const numWorkers = getNumberOfWorkers(request.workerThreads)
   const workerPath = getWorkerScriptPath('whoCan/WhoCanWorkerThreadWorker.js')
-  const workers = new Array(cpus - 1).fill(undefined).map((val) => {
-    return new Worker(workerPath, {
-      workerData: {
-        collectConfigs: collectConfigs,
-        partition,
-        concurrency: 50,
-        s3AbacOverride: request.s3AbacOverride
-      }
-    })
-  })
+  const workers = !workerPath
+    ? []
+    : new Array(numWorkers).fill(undefined).map((val) => {
+        return new Worker(workerPath, {
+          workerData: {
+            collectConfigs: collectConfigs,
+            partition,
+            concurrency: 50,
+            s3AbacOverride: request.s3AbacOverride
+          }
+        })
+      })
 
   const collectClient = getCollectClient(collectConfigs, partition, {
     cacheProvider: new SharedArrayBufferMainCache(workers)
