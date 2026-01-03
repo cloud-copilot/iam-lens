@@ -1,5 +1,5 @@
 import { assert, expect } from 'vitest'
-import { PermissionConditions } from './permission.js'
+import { Permission, PermissionConditions } from './permission.js'
 import { PermissionSet } from './permissionSet.js'
 
 export interface TestPermission {
@@ -77,4 +77,65 @@ export function lowerCaseConditionKeys(
     }
   }
   return lowerCased
+}
+
+function jsonSorter(a: any, b: any): number {
+  return JSON.stringify(a).localeCompare(JSON.stringify(b))
+}
+
+/**
+ * Verify that two sets of permissions match.
+ *
+ * @param actualPermissions the actual permissions
+ * @param expectedPermissions the expected permissions
+ */
+export function expectPermissionsToMatch(
+  actualPermissions: Permission[],
+  expectedPermissions: TestPermission[]
+): void {
+  expect(actualPermissions, JSON.stringify(actualPermissions)).toHaveLength(
+    expectedPermissions.length
+  )
+  actualPermissions.sort(jsonSorter)
+  expectedPermissions.sort(jsonSorter)
+
+  const message = `Actual: \n${JSON.stringify(actualPermissions, null, 2)}\nExpected:\n${JSON.stringify(
+    expectedPermissions,
+    null,
+    2
+  )}`
+
+  // //And the resulting permissions should match the expected permissions
+  for (let i = 0; i < actualPermissions.length; i++) {
+    const actualResult = actualPermissions[i]
+    const expectedResult = expectedPermissions[i]
+
+    const [expectedService, expectedAction] = expectedResult.action.split(':')
+    expect(actualResult.effect, message).toBe(expectedResult.effect)
+    expect(actualResult.service, message).toBe(expectedService)
+    expect(actualResult.action, message).toBe(expectedAction)
+    expect(actualResult.resource, message).toEqual(expectedResult.resource)
+    expect(actualResult.notResource, message).toEqual(expectedResult.notResource)
+    expect(lowerCaseConditionKeys(actualResult.conditions), message).toEqual(
+      lowerCaseConditionKeys(expectedResult.conditions)
+    )
+  }
+}
+
+/**
+ * Convert a TestPermission to a Permission.
+ *
+ * @param testPermission the test permission to convert
+ * @returns the converted Permission
+ */
+export function convertTestPermissionToPermission(testPermission: TestPermission): Permission {
+  const [thisService, thisAction] = testPermission.action.split(':')
+  return new Permission(
+    testPermission.effect,
+    thisService,
+    thisAction,
+    testPermission.resource,
+    testPermission.notResource,
+    testPermission.conditions
+  )
 }

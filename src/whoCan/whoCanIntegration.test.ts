@@ -91,6 +91,12 @@ const whoCanIntegrationTests: {
         },
         {
           action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3',
+          level: 'list'
+        },
+        {
+          action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
           service: 's3',
           level: 'list'
@@ -117,6 +123,12 @@ const whoCanIntegrationTests: {
       who: [
         {
           action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3'
+        },
+        {
+          action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:user/user1',
           service: 's3',
           level: 'list'
@@ -141,6 +153,12 @@ const whoCanIntegrationTests: {
     },
     expected: {
       who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3'
+        },
         {
           action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:user/user1',
@@ -228,6 +246,12 @@ const whoCanIntegrationTests: {
         {
           action: 'ListBucket',
           level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3'
+        },
+        {
+          action: 'ListBucket',
+          level: 'list',
           principal: 'arn:aws:iam::200000000002:user/user1',
           service: 's3'
         }
@@ -245,6 +269,12 @@ const whoCanIntegrationTests: {
     },
     expected: {
       who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3'
+        },
         {
           action: 'ListBucket',
           level: 'list',
@@ -266,6 +296,12 @@ const whoCanIntegrationTests: {
     },
     expected: {
       who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3'
+        },
         {
           action: 'ListBucket',
           level: 'list',
@@ -291,6 +327,12 @@ const whoCanIntegrationTests: {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:role/S3AbacRole',
+          service: 's3'
+        },
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
           service: 's3'
         },
         {

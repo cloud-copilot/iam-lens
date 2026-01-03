@@ -358,12 +358,13 @@ describe('makePrincipalOnlyPolicyFromStatement', () => {
     // When calling makePrincipalOnlyPolicyFromStatement
     const result = makePrincipalOnlyPolicyFromStatement(statement)
 
-    // Then it should create a policy with no Principal/NotPrincipal but preserve principal conditions
+    // Then it should create a policy a wildcard Principal with principal-related conditions
     expect(result.toJSON()).toEqual({
       Version: '2012-10-17',
       Statement: {
         Effect: 'Allow',
         Action: '*',
+        Principal: '*',
         Resource: '*',
         Condition: {
           StringEquals: {

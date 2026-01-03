@@ -185,7 +185,7 @@ export class Permission {
     // 3. Attempt to combine conditions
     const condsA = this.conditions || {}
     const condsB = other.conditions || {}
-    const mergedConds = mergeConditions(condsA, condsB)
+    const mergedConds = unionConditions(condsA, condsB)
     if (mergedConds === null) {
       return [this, other]
     }
@@ -417,7 +417,13 @@ export class Permission {
 
   /**
    * Subtract a Deny permission from this Allow permission.
-   * Returns an array of resulting Allow permissions (may be empty if fully denied).
+   *
+   * Returns the resulting permissions, this can be:
+   * - An empty array if the Allow is fully denied by the Deny
+   * - A modified Allow permission or multiple Allow permissions
+   * - It could also return the original Allow and Deny permission if subtraction cannot be expressed purely in Allow statements
+   *
+   * @param other the Deny permission to subtract
    */
   public subtract(other: Permission): Permission[] {
     // Only subtract Deny from Allow for the same service/action
@@ -431,62 +437,9 @@ export class Permission {
       return [this]
     }
 
-    // Early exit: identical conditions and deny covers allow resources => fully denied
     const allowCondsNorm = normalizeConditionKeys(this.conditions || {})
     const denyCondsNorm = normalizeConditionKeys(other.conditions || {})
-    if (JSON.stringify(allowCondsNorm) === JSON.stringify(denyCondsNorm)) {
-      // If both have resource[] and deny resources include all allow resources
-      if (this.resource && other.resource) {
-        if (this.resource.every((a) => other.resource!.some((d) => wildcardToRegex(d).test(a)))) {
-          return []
-        }
-      }
-      // If both have notResource[] and deny.notResource excludes superset of allow.notResource
-      if (this.notResource && other.notResource) {
-        // Deny excludes everything allow excludes or more, so allow has no effective resources
-        if (this.notResource.every((n) => other.notResource!.includes(n))) {
-          return []
-        }
-      }
-    }
-
-    // When Deny has multiple condition OPERATORS, we need to create separate Allow permissions
-    // for each inverted condition, since IAM can't express NOT(A AND B AND C) in one block.
-    // However, multiple keys under the same operator can be inverted together.
-    const denyConditions = other.conditions || {}
-    const hasMultipleConditionOperators = Object.keys(denyConditions).length > 1
-
-    if (hasMultipleConditionOperators) {
-      // Special case: If deny resource is a proper subset of allow resource, keep both statements separate
-      // because it's impossible to merge them cleanly
-      if (this.resource && other.resource) {
-        const isDenySubsetOfAllow = other.resource.every((denyRes) =>
-          this.resource!.some(
-            (allowRes) => allowRes !== denyRes && wildcardToRegex(allowRes).test(denyRes)
-          )
-        )
-
-        if (isDenySubsetOfAllow) {
-          // Keep both the original allow and deny statements
-          return [this, other]
-        }
-      }
-
-      return this.subtractWithMultipleConditions(other)
-    }
-
-    // Handle simpler cases with single/no conditions using the existing logic
-    // 1. Invert Deny conditions
-    const inverted = invertConditions(denyConditions)
-
-    // 2. Merge conditions: original Allow ∧ inverted Deny
-    const allowConds = normalizeConditionKeys(this.conditions || {})
-    const mergedConds = mergeComplementaryConditions(
-      mergeConditions(allowConds, inverted) || {
-        ...allowConds,
-        ...inverted
-      }
-    )
+    const conditionsMatch = JSON.stringify(allowCondsNorm) === JSON.stringify(denyCondsNorm)
 
     const allowResource = this.resource
     const allowNotResource = this.notResource
@@ -496,424 +449,405 @@ export class Permission {
     const eff = this.effect
     const svc = this.service
     const act = this.action
-    const conds = Object.keys(mergedConds).length ? mergedConds : undefined
 
     // Case: Allow.resource & Deny.resource
     if (allowResource !== undefined && denyResource !== undefined) {
-      // If Deny has no conditions, subtract resources normally
-      if (!other.conditions || Object.keys(other.conditions).length === 0) {
-        const remaining = allowResource.filter(
-          (a) => !denyResource.some((d) => wildcardToRegex(d).test(a))
-        )
+      const overlappingResources = allowResource.some((a) => {
+        return denyResource.some((d) => {
+          return wildcardToRegex(d).test(a) || wildcardToRegex(a).test(d)
+        })
+      })
 
-        // we cannot express the subtraction in a single statement → keep both.
-        const denyIsSubset = denyResource.every((d) =>
-          allowResource.some((a) => wildcardToRegex(a).test(d))
-        )
-        if (denyIsSubset && remaining.length === allowResource.length) {
-          return [this, other]
+      // If the resources in the allow and deny do not overlap, return the allow as is
+      if (!overlappingResources) {
+        return [this]
+      }
+
+      // Categories for allows, a single allow could be more than one, because the deny could have multiple
+      // Without Conditions:
+      //1. Exactly the same as a deny - remove the allow
+      //2. A subset of a deny - remove the allow
+      //3. A superset of a deny - keep the allow and the deny
+      //4. No overlap with any deny - keep the allow as is
+      //
+      // With Conditions:
+      //1. Exactly the same as a deny - invert the conditions and keep the allow
+      //2. A subset of a deny - invert the conditions and keep the allow
+      //3. A superset of a deny - keep the allow and the deny
+      //4. No overlap with any deny - keep the allow as is
+
+      const allowMatches: string[] = []
+      const allowSubsets: string[] = []
+      const allowSupersets: string[] = []
+      const allowNoOverlap: string[] = []
+      const denySubsets: string[] = []
+      for (const allowedResource of allowResource) {
+        let isMatch = false
+        let isSubset = false
+        let isSuperset = false
+        for (const deniedResource of denyResource) {
+          if (deniedResource === allowedResource) {
+            isMatch = true
+            break
+          }
+          if (wildcardToRegex(deniedResource).test(allowedResource)) {
+            isSubset = true
+            break
+          }
+          if (wildcardToRegex(allowedResource).test(deniedResource)) {
+            isSuperset = true
+            denySubsets.push(deniedResource)
+          }
         }
 
-        if (remaining.length === 0) return []
-        return [new Permission(eff, svc, act, remaining, undefined, conds)]
+        if (isMatch) {
+          allowMatches.push(allowedResource)
+        } else if (isSubset) {
+          allowSubsets.push(allowedResource)
+        } else if (isSuperset) {
+          allowSupersets.push(allowedResource)
+        } else {
+          allowNoOverlap.push(allowedResource)
+        }
       }
-      // Deny is conditional: do not remove resources, let condition inversion handle exclusion
-      return [new Permission(eff, svc, act, allowResource, undefined, conds)]
+
+      const permissionsToReturn: Permission[] = []
+      if (allowNoOverlap.length > 0) {
+        permissionsToReturn.push(
+          new Permission(eff, svc, act, allowNoOverlap, undefined, this.conditions)
+        )
+      }
+      if (allowSupersets.length > 0) {
+        permissionsToReturn.push(
+          new Permission(eff, svc, act, allowSupersets, undefined, this.conditions)
+        )
+      }
+      if (allowMatches.length > 0 || allowSubsets.length > 0) {
+        // If conditions are identical, these are fully dropped from the Allow. If not, they need to be kept with inverted conditions
+        if (!conditionsMatch) {
+          const newAllow = new Permission(
+            eff,
+            svc,
+            act,
+            [...allowMatches, ...allowSubsets],
+            undefined,
+            this.conditions
+          )
+          permissionsToReturn.push(...applyDenyConditionsToAllow(newAllow, other))
+        }
+      }
+      if (denySubsets.length > 0) {
+        permissionsToReturn.push(
+          new Permission('Deny', svc, act, denySubsets, undefined, other.conditions)
+        )
+      }
+      return permissionsToReturn
     }
 
     // Case: Allow.resource & Deny.notResource
-    // Deny.notResource means: deny everything EXCEPT notResource patterns
-    // So deny applies to resources NOT matching notResource patterns
+    // =======================================================================
+    // SEMANTICS:
+    //   Deny.notResource means: "deny everything EXCEPT these patterns"
+    //   So the deny APPLIES to resources that do NOT match denyNotResource patterns
+    //   And the deny does NOT apply to resources that DO match denyNotResource patterns
+    // =======================================================================
     if (allowResource !== undefined && denyNotResource !== undefined) {
-      // Check if allow resource patterns include/cover the deny notResource patterns
-      // E.g., allow resource '*' includes deny notResource 'prod-*'
-      // But we need to exclude the case where they're exactly the same
-      const allowIncludesDenyNotResource = denyNotResource.some((dnr) =>
-        allowResource.some((ar) => ar !== dnr && wildcardToRegex(ar).test(dnr))
-      )
+      // STEP 1: Categorize each allow resource based on relationship to denyNotResource patterns
+      //
+      // Categories:
+      //   ExcludedFromDeny - Matches a denyNotResource pattern (deny doesn't apply to these)
+      //   AffectedByDeny   - Does NOT match any denyNotResource (deny applies to these)
+      //   Superset         - Covers (is broader than) a denyNotResource pattern
+      //
+      // Also track which denyNotResource patterns are covered by superset allow resources
 
-      // Check if conditions are identical
-      const allowCondsNorm = normalizeConditionKeys(this.conditions || {})
-      const denyCondsNorm = normalizeConditionKeys(other.conditions || {})
-      const conditionsMatch = JSON.stringify(allowCondsNorm) === JSON.stringify(denyCondsNorm)
+      const excludedFromDeny: string[] = []
+      const affectedByDeny: string[] = []
+      const supersets: string[] = []
+      const coveredDenyNotResourcePatterns: string[] = []
 
-      // If allow includes deny notResource and deny has different conditions, keep both statements
-      // This is because the relationship is too complex to merge cleanly
-      if (
-        allowIncludesDenyNotResource &&
-        !conditionsMatch &&
-        other.conditions &&
-        Object.keys(other.conditions).length > 0
-      ) {
-        return [this, other]
-      }
+      for (const allowedResource of allowResource) {
+        let isExcluded = false
+        let isSuperset = false
 
-      // Split allow resources into two categories:
-      // 1. Resources that match deny.notResource (deny doesn't apply - excluded from deny)
-      // 2. Resources that don't match deny.notResource (deny applies)
+        for (const deniedNotResource of denyNotResource) {
+          // Check if allowResource exactly matches or is covered by denyNotResource pattern
+          if (
+            allowedResource === deniedNotResource ||
+            wildcardToRegex(deniedNotResource).test(allowedResource)
+          ) {
+            isExcluded = true
+            break
+          }
+          // Check if allowResource covers (is broader than) denyNotResource pattern
+          if (wildcardToRegex(allowedResource).test(deniedNotResource)) {
+            isSuperset = true
+            if (!coveredDenyNotResourcePatterns.includes(deniedNotResource)) {
+              coveredDenyNotResourcePatterns.push(deniedNotResource)
+            }
+          }
+        }
 
-      const resourcesExcludedFromDeny: string[] = []
-      const resourcesAffectedByDeny: string[] = []
-
-      for (const ar of allowResource) {
-        const matchesDenyNotResource = denyNotResource.some((dnr) => wildcardToRegex(dnr).test(ar))
-        if (matchesDenyNotResource) {
-          resourcesExcludedFromDeny.push(ar)
+        if (isExcluded) {
+          excludedFromDeny.push(allowedResource)
+        } else if (isSuperset) {
+          supersets.push(allowedResource)
         } else {
-          resourcesAffectedByDeny.push(ar)
+          affectedByDeny.push(allowedResource)
         }
       }
 
-      // If Deny has NO conditions
-      if (!other.conditions || Object.keys(other.conditions).length === 0) {
-        // Resources affected by deny are fully denied (removed)
-        // Only resources excluded from deny survive
-
-        // If allow.resource patterns are broader than deny.notResource,
-        // narrow down to the deny.notResource patterns themselves
-        if (resourcesExcludedFromDeny.length === 0 && resourcesAffectedByDeny.length > 0) {
-          // Check if any allow resource is a superset of deny.notResource patterns
-          const narrowedResources = denyNotResource.filter((dnr) =>
-            allowResource.some((ar) => wildcardToRegex(ar).test(dnr))
-          )
-          if (narrowedResources.length > 0) {
-            return [new Permission(eff, svc, act, narrowedResources, undefined, conds)]
-          }
-          return []
-        }
-
-        if (resourcesExcludedFromDeny.length === 0) return []
-        return [new Permission(eff, svc, act, resourcesExcludedFromDeny, undefined, conds)]
+      // STEP 2: Early exit - if all allow resources are excluded from deny, return unchanged
+      if (excludedFromDeny.length === allowResource.length) {
+        return [this]
       }
 
-      // Deny has conditions - need to handle based on condition relationship
-      // (allowCondsNorm, denyCondsNorm, and conditionsMatch already declared above)
+      const denyHasConditions = other.conditions && Object.keys(other.conditions).length > 0
 
-      // Check if deny conditions are fully contained within allow conditions
-      // This means every deny condition key-value is present in allow conditions
-      const denyIsSubsetOfAllow = Object.entries(denyCondsNorm).every(([op, keyMap]) => {
-        if (!allowCondsNorm[op]) return false
-        return Object.entries(keyMap).every(([key, denyVals]) => {
-          const allowVals = allowCondsNorm[op]?.[key]
-          if (!allowVals) return false
-          // For StringEquals-like operators, all deny values must be in allow values
-          return (denyVals as string[]).every((dv) => (allowVals as string[]).includes(dv))
-        })
-      })
+      // STEP 3: Build output permissions by category
+      const permissionsToReturn: Permission[] = []
 
-      // Check if allow conditions are fully contained within deny conditions
-      const allowIsSubsetOfDeny = Object.entries(allowCondsNorm).every(([op, keyMap]) => {
-        if (!denyCondsNorm[op]) return false
-        return Object.entries(keyMap).every(([key, allowVals]) => {
-          const denyVals = denyCondsNorm[op]?.[key]
-          if (!denyVals) return false
-          return (allowVals as string[]).every((av) => (denyVals as string[]).includes(av))
-        })
-      })
-
-      // Case 1: Identical conditions
-      if (conditionsMatch) {
-        // Resources affected by deny are fully denied
-        // Narrow to resources excluded from deny (or notResource patterns if broader)
-        if (resourcesExcludedFromDeny.length > 0) {
-          return [
-            new Permission(eff, svc, act, resourcesExcludedFromDeny, undefined, this.conditions)
-          ]
-        }
-
-        // If all resources affected by deny, narrow to notResource patterns if possible
-        const narrowedResources = denyNotResource.filter((dnr) =>
-          allowResource.some((ar) => wildcardToRegex(ar).test(dnr))
-        )
-        if (narrowedResources.length > 0) {
-          return [new Permission(eff, svc, act, narrowedResources, undefined, this.conditions)]
-        }
-        return []
-      }
-
-      // Case 2: Deny conditions are superset of allow (or allow has no conditions)
-      // This means all allow cases would be denied
-      if (
-        Object.keys(allowCondsNorm).length === 0 ||
-        (allowIsSubsetOfDeny && !denyIsSubsetOfAllow)
-      ) {
-        // All allow cases are covered by deny
-        if (resourcesAffectedByDeny.length === 0) {
-          // Deny doesn't apply, keep original allow
-          return [new Permission(eff, svc, act, allowResource, undefined, this.conditions)]
-        }
-
-        // If allow has no conditions, only resourcesExcludedFromDeny can survive
-        // For resources affected by deny with inverted conditions
-        if (Object.keys(allowCondsNorm).length === 0) {
-          const results: Permission[] = []
-
-          if (resourcesExcludedFromDeny.length > 0) {
-            results.push(
-              new Permission(eff, svc, act, resourcesExcludedFromDeny, undefined, this.conditions)
-            )
-          }
-
-          if (resourcesAffectedByDeny.length > 0) {
-            // Can only survive with inverted deny conditions
-            results.push(new Permission(eff, svc, act, resourcesAffectedByDeny, undefined, conds))
-          }
-
-          return results.length > 0 ? results : []
-        }
-
-        // If allow has conditions and deny is superset, it's a full deny for affected resources
-        if (resourcesExcludedFromDeny.length > 0 && resourcesAffectedByDeny.length > 0) {
-          // Only resources excluded from deny survive
-          return [
-            new Permission(eff, svc, act, resourcesExcludedFromDeny, undefined, this.conditions)
-          ]
-        }
-
-        if (resourcesExcludedFromDeny.length > 0) {
-          return [
-            new Permission(eff, svc, act, resourcesExcludedFromDeny, undefined, this.conditions)
-          ]
-        }
-
-        // All resources affected by deny and deny conditions cover all allow conditions
-        return []
-      }
-
-      // Case 3: Allow conditions are superset of deny (some allow conditions would be denied)
-      if (denyIsSubsetOfAllow && !allowIsSubsetOfDeny) {
-        // Check if deny covers all of allow's matching condition values
-        // If allow requires A AND B, but deny only requires A, and deny's A values cover all of allow's A values,
-        // then it's a full deny (because any case matching A will be denied, regardless of B)
-        let denyCoversAllMatchingValues = true
-        for (const [op, keyMap] of Object.entries(denyCondsNorm)) {
-          for (const [key, denyVals] of Object.entries(keyMap)) {
-            const allowVals = allowCondsNorm[op]?.[key]
-            if (allowVals) {
-              // Check if all allow values for this key are covered by deny values
-              const allCovered = (allowVals as string[]).every((av) =>
-                (denyVals as string[]).includes(av)
-              )
-              if (!allCovered) {
-                denyCoversAllMatchingValues = false
-                break
-              }
-            }
-          }
-          if (!denyCoversAllMatchingValues) break
-        }
-
-        if (denyCoversAllMatchingValues) {
-          // Deny covers all matching values, so it's a full deny for affected resources
-          if (resourcesExcludedFromDeny.length > 0) {
-            return [
-              new Permission(eff, svc, act, resourcesExcludedFromDeny, undefined, this.conditions)
-            ]
-          }
-          return []
-        }
-
-        // The deny condition is a subset of allow conditions
-        // This means some values of allow conditions match the deny
-        const results: Permission[] = []
-
-        // Resources excluded from deny always survive with original conditions
-        if (resourcesExcludedFromDeny.length > 0) {
-          results.push(
-            new Permission(eff, svc, act, resourcesExcludedFromDeny, undefined, this.conditions)
-          )
-        }
-
-        // Resources affected by deny: subtract the matching condition values
-        if (resourcesAffectedByDeny.length > 0) {
-          const remainingConds: PermissionConditions = {}
-          let hasRemainingConditions = false
-
-          for (const [op, keyMap] of Object.entries(allowCondsNorm)) {
-            for (const [key, allowVals] of Object.entries(keyMap)) {
-              const denyVals = denyCondsNorm[op]?.[key]
-              if (denyVals) {
-                // Subtract deny values from allow values
-                const remaining = (allowVals as string[]).filter(
-                  (av) => !(denyVals as string[]).includes(av)
-                )
-                if (remaining.length > 0) {
-                  if (!remainingConds[op]) remainingConds[op] = {}
-                  remainingConds[op][key] = remaining
-                  hasRemainingConditions = true
-                }
-              } else {
-                // Keep as is
-                if (!remainingConds[op]) remainingConds[op] = {}
-                remainingConds[op][key] = allowVals
-                hasRemainingConditions = true
-              }
-            }
-          }
-
-          if (hasRemainingConditions) {
-            results.push(
-              new Permission(eff, svc, act, resourcesAffectedByDeny, undefined, remainingConds)
-            )
-          }
-        }
-
-        return results
-      }
-
-      // Case 4: Different/non-overlapping conditions
-      // For resources affected by deny, add inverted deny conditions to allow conditions
-      const results: Permission[] = []
-
-      if (resourcesExcludedFromDeny.length > 0) {
-        // Deny doesn't apply to these resources
-        results.push(
-          new Permission(eff, svc, act, resourcesExcludedFromDeny, undefined, this.conditions)
+      // ExcludedFromDeny: Keep as-is with original conditions (deny doesn't touch these)
+      if (excludedFromDeny.length > 0) {
+        permissionsToReturn.push(
+          new Permission(eff, svc, act, excludedFromDeny, undefined, this.conditions)
         )
       }
 
-      if (resourcesAffectedByDeny.length > 0) {
-        // Add inverted deny conditions to allow conditions
-        results.push(new Permission(eff, svc, act, resourcesAffectedByDeny, undefined, conds))
+      // Superset: Allow resource is broader than denyNotResource patterns
+      // - The covered denyNotResource patterns are excluded from deny (allow unconditionally)
+      // - The superset allow resources are affected by deny (apply inverted conditions)
+      if (supersets.length > 0) {
+        // First: Allow the covered patterns unconditionally (they're excluded from deny)
+        if (coveredDenyNotResourcePatterns.length > 0) {
+          permissionsToReturn.push(
+            new Permission(
+              eff,
+              svc,
+              act,
+              coveredDenyNotResourcePatterns,
+              undefined,
+              this.conditions
+            )
+          )
+        }
+
+        // Second: Apply inverted deny conditions to the superset resources
+        if (denyHasConditions && !conditionsMatch) {
+          const supersetAllow = new Permission(eff, svc, act, supersets, undefined, this.conditions)
+          permissionsToReturn.push(...applyDenyConditionsToAllow(supersetAllow, other))
+        }
+        // If no conditions or conditions match, the superset is fully denied (nothing to add)
       }
 
-      return results.length > 0 ? results : []
+      // AffectedByDeny: These resources are hit by the deny
+      if (affectedByDeny.length > 0) {
+        // If there are no conditions on deny - these are fully denied (drop them)
+        // If the conditions match - these are fully denied (drop them)
+        if (denyHasConditions && !conditionsMatch) {
+          // Different conditions - keep with inverted deny conditions
+          const newAllow = new Permission(eff, svc, act, affectedByDeny, undefined, this.conditions)
+          permissionsToReturn.push(...applyDenyConditionsToAllow(newAllow, other))
+        }
+      }
+
+      return permissionsToReturn
     }
 
-    // Case: Allow.notResource & Deny.resource
+    // Scenario 3: Allow.notResource & Deny.resource
     if (allowNotResource !== undefined && denyResource !== undefined) {
-      // If Deny is conditional, let conditions handle; keep original notResource
-      if (other.conditions && Object.keys(other.conditions).length > 0) {
-        return [new Permission(eff, svc, act, undefined, allowNotResource, conds)]
+      // STEP 1: Categorize relationships and track which denyResources are already covered
+      const coveredDenyResources = new Set<string>() // denyResources already excluded by allowNotResource
+      const uncoveredDenyResources: string[] = [] // denyResources that affect allowed resources
+      const subsetReplacements: { allowPattern: string; denyPattern: string }[] = []
+
+      // For each denyResource, check if it's covered by any allowNotResource
+      for (const denyPattern of denyResource) {
+        let isCovered = false
+        for (const allowPattern of allowNotResource) {
+          // ExactMatch or Superset - denyResource is already excluded
+          if (allowPattern === denyPattern || wildcardToRegex(allowPattern).test(denyPattern)) {
+            isCovered = true
+            coveredDenyResources.add(denyPattern)
+            break
+          }
+        }
+        if (!isCovered) {
+          uncoveredDenyResources.push(denyPattern)
+        }
       }
 
-      // Check if every Deny resource is already excluded by allowNotResource
-      const denyCovered = denyResource.every((dr) =>
-        allowNotResource.some((anr) => wildcardToRegex(anr).test(dr))
+      // Check for Subset patterns (denyResource covers allowNotResource)
+      for (const allowPattern of allowNotResource) {
+        for (const denyPattern of denyResource) {
+          if (wildcardToRegex(denyPattern).test(allowPattern) && allowPattern !== denyPattern) {
+            subsetReplacements.push({ allowPattern, denyPattern })
+          }
+        }
+      }
+
+      // Filter out subset deny patterns from uncoveredDenyResources to get true NoOverlap patterns
+      const subsetDenyPatternsSet = new Set(subsetReplacements.map((s) => s.denyPattern))
+      const noOverlapDenyResources = uncoveredDenyResources.filter(
+        (dr) => !subsetDenyPatternsSet.has(dr)
       )
-      if (denyCovered) {
-        // Deny adds no new exclusions; keep original
-        return [new Permission(eff, svc, act, undefined, allowNotResource, conds)]
+
+      // STEP 2: If all denyResources are covered, deny has no effect
+      if (noOverlapDenyResources.length === 0 && subsetReplacements.length === 0) {
+        return [this]
       }
 
-      // Otherwise union the exclusions
-      const newNot = Array.from(new Set([...allowNotResource, ...denyResource]))
-      return [new Permission(eff, svc, act, undefined, newNot, conds)]
+      // STEP 3: Build output permissions
+      const denyHasConditions = other.conditions && Object.keys(other.conditions).length > 0
+
+      // Build the expanded notResource (original + noOverlap deny resources + subset replacements)
+      const subsetAllowPatterns = new Set(subsetReplacements.map((s) => s.allowPattern))
+      const keptPatterns = allowNotResource.filter((p) => !subsetAllowPatterns.has(p))
+      const subsetDenyPatterns = Array.from(new Set(subsetReplacements.map((s) => s.denyPattern)))
+      const expandedNotResource = Array.from(
+        new Set([...keptPatterns, ...subsetDenyPatterns, ...noOverlapDenyResources])
+      )
+
+      // Same conditions or no deny conditions: simply expand notResource
+      if (conditionsMatch || !denyHasConditions) {
+        return [new Permission(eff, svc, act, undefined, expandedNotResource, this.conditions)]
+      }
+
+      // Different conditions: handle Subset and NoOverlap cases separately
+      const permissionsToReturn: Permission[] = []
+      const hasSubsetReplacements = subsetReplacements.length > 0
+      const hasNoOverlapAdditions = noOverlapDenyResources.length > 0
+
+      // Part 1: Original allowNotResource with inverted deny conditions
+      // (when deny condition is NOT met, original allow applies)
+      const originalAllow = new Permission(
+        eff,
+        svc,
+        act,
+        undefined,
+        allowNotResource,
+        this.conditions
+      )
+      permissionsToReturn.push(...applyDenyConditionsToAllow(originalAllow, other))
+
+      // Part 2a: For SUBSET replacements - expanded notResource WITH deny conditions
+      // (replacing smaller exclusion with larger one, only valid when condition is met)
+      if (hasSubsetReplacements) {
+        // Build notResource with just the subset replacements (not the noOverlap additions)
+        const subsetExpandedNotResource = Array.from(
+          new Set([...keptPatterns, ...subsetDenyPatterns])
+        )
+        const subsetConditions = intersectConditions(this.conditions || {}, other.conditions || {})
+        permissionsToReturn.push(
+          new Permission(
+            eff,
+            svc,
+            act,
+            undefined,
+            subsetExpandedNotResource,
+            subsetConditions || other.conditions
+          )
+        )
+      }
+
+      // Part 2b: For NO OVERLAP additions - expanded notResource WITHOUT conditions
+      // (adding new exclusion is always safe, no condition needed)
+      if (hasNoOverlapAdditions) {
+        permissionsToReturn.push(
+          new Permission(eff, svc, act, undefined, expandedNotResource, this.conditions)
+        )
+      }
+
+      return permissionsToReturn
     }
 
-    // Case: Allow.notResource & Deny.notResource --> newNot = ANR \ DNR
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SCENARIO 4: Allow.NotResource & Deny.NotResource
+    // ═══════════════════════════════════════════════════════════════════════════
+    //
+    // Semantics:
+    //   Allow.notResource = [A]: allow ALL resources EXCEPT those matching A
+    //   Deny.notResource  = [D]: deny  ALL resources EXCEPT those matching D
+    //
+    // The deny blocks everything except D (the "safe zone").
+    // The allow permits everything except A.
+    //
+    // Surviving resources = (allowed) ∩ (not denied)
+    //                     = (NOT in A) ∩ (in D)
+    //                     = resources in D that are not covered by A
+    //
+    // Result: resource: [D patterns not covered by A]
+    //
+    // ═══════════════════════════════════════════════════════════════════════════
     if (allowNotResource !== undefined && denyNotResource !== undefined) {
-      // If Deny has conditions, skip list-based subtraction and rely on conditions only
-      if (other.conditions && Object.keys(other.conditions).length > 0) {
-        return [new Permission(eff, svc, act, undefined, allowNotResource, conds)]
+      const denyHasConditions = other.conditions && Object.keys(other.conditions).length > 0
+
+      // Helper: Check if pattern A covers pattern B (A is superset of or equal to B)
+      const patternCovers = (a: string, b: string): boolean => {
+        return a === b || wildcardToRegex(a).test(b)
       }
-      const remainingNot = allowNotResource.filter(
-        (n) => !denyNotResource.some((dnr) => wildcardToRegex(dnr).test(n))
+
+      // Find D patterns that survive (not covered by any A pattern)
+      // These are the resources that are both allowed AND protected from deny
+      const survivingResources = denyNotResource.filter(
+        (dPattern) => !allowNotResource.some((aPattern) => patternCovers(aPattern, dPattern))
       )
-      if (remainingNot.length === 0) return []
-      return [new Permission(eff, svc, act, undefined, remainingNot, conds)]
+
+      // If nothing survives, return empty
+      if (survivingResources.length === 0) {
+        return []
+      }
+
+      // Handle conditions
+      if (!denyHasConditions || conditionsMatch) {
+        // No deny conditions or same conditions: apply directly
+        return [new Permission(eff, svc, act, survivingResources, undefined, this.conditions)]
+      }
+
+      // Different conditions: split into two parts
+      const permissionsToReturn: Permission[] = []
+
+      // Part 1: When deny condition is NOT met → original allow applies
+      const originalAllow = new Permission(
+        eff,
+        svc,
+        act,
+        undefined,
+        allowNotResource,
+        this.conditions
+      )
+      permissionsToReturn.push(...applyDenyConditionsToAllow(originalAllow, other))
+
+      // Part 2: When deny condition IS met → surviving resources with deny's condition
+      const denyConditionCount = Object.values(other.conditions || {}).reduce(
+        (sum, keyMap) => sum + Object.keys(keyMap).length,
+        0
+      )
+      const part2Conditions = denyConditionCount === 1 ? other.conditions : undefined
+      permissionsToReturn.push(
+        new Permission(eff, svc, act, survivingResources, undefined, part2Conditions)
+      )
+
+      return permissionsToReturn
     }
 
     // This should never happen
     throw new Error('Permission.subtract: This should never happen—invalid state.')
   }
-
-  /**
-   * Handle subtraction when the Deny permission has multiple conditions.
-   * Creates separate Allow permissions for each inverted condition.
-   */
-  private subtractWithMultipleConditions(other: Permission): Permission[] {
-    const allowResource = this.resource
-    const allowNotResource = this.notResource
-    const denyResource = other.resource
-    const denyNotResource = other.notResource
-
-    const eff = this.effect
-    const svc = this.service
-    const act = this.action
-
-    // Determine resulting resource/notResource based on Allow vs Deny patterns
-    let resultResource: string[] | undefined
-    let resultNotResource: string[] | undefined
-
-    // Case: Allow.resource & Deny.notResource --> The Deny excludes everything EXCEPT notResource
-    // So the intersection is the items from Deny.notResource that match Allow.resource patterns
-    if (allowResource !== undefined && denyNotResource !== undefined) {
-      resultResource = denyNotResource.filter((dnr) =>
-        allowResource.some((ar) => wildcardToRegex(ar).test(dnr))
-      )
-      if (resultResource.length === 0) return []
-    }
-    // Case: Allow.notResource & Deny.resource --> resultNotResource = ANR ∪ DR
-    else if (allowNotResource !== undefined && denyResource !== undefined) {
-      // Check if every Deny resource is already excluded by allowNotResource
-      const denyCovered = denyResource.every((dr) =>
-        allowNotResource.some((anr) => wildcardToRegex(anr).test(dr))
-      )
-      if (denyCovered) {
-        resultNotResource = allowNotResource
-      } else {
-        resultNotResource = Array.from(new Set([...allowNotResource, ...denyResource]))
-      }
-    }
-    // Case: Allow.resource & Deny.resource --> keep allow resource, conditions handle exclusion
-    else if (allowResource !== undefined && denyResource !== undefined) {
-      resultResource = allowResource
-    }
-    // Case: Allow.notResource & Deny.notResource --> keep allow notResource, conditions handle exclusion
-    else if (allowNotResource !== undefined && denyNotResource !== undefined) {
-      resultNotResource = allowNotResource
-    }
-
-    // Create separate Allow permissions for each condition key-value pair in Deny
-    const results: Permission[] = []
-    const allowConds = normalizeConditionKeys(this.conditions || {})
-
-    for (const [operator, keyMap] of Object.entries(other.conditions || {})) {
-      for (const [contextKey, values] of Object.entries(keyMap)) {
-        // Invert this specific condition
-        const singleCondition = { [operator]: { [contextKey]: values } }
-        const invertedCondition = invertConditions(singleCondition)
-
-        // Merge with the original Allow conditions
-        const mergedConds: PermissionConditions = { ...allowConds }
-        for (const [invertedOp, invertedKeyMap] of Object.entries(invertedCondition)) {
-          if (mergedConds[invertedOp]) {
-            // Merge keys under the same operator
-            for (const [invertedKey, invertedVals] of Object.entries(invertedKeyMap)) {
-              if (mergedConds[invertedOp][invertedKey]) {
-                // Union the values
-                mergedConds[invertedOp][invertedKey] = Array.from(
-                  new Set([...mergedConds[invertedOp][invertedKey], ...invertedVals])
-                )
-              } else {
-                mergedConds[invertedOp][invertedKey] = Array.from(invertedVals)
-              }
-            }
-          } else {
-            mergedConds[invertedOp] = { ...invertedKeyMap }
-          }
-        }
-
-        // Apply complementary condition logic
-        const finalMergedConds = mergeComplementaryConditions(mergedConds)
-
-        const finalConds = Object.keys(finalMergedConds).length ? finalMergedConds : undefined
-
-        // Create a new Allow permission with this specific inverted condition
-        results.push(new Permission(eff, svc, act, resultResource, resultNotResource, finalConds))
-      }
-    }
-
-    return results
-  }
 }
 
 /**
- * Attempt to merge two condition‐maps. If they can be expressed as a single IAM condition block,
- * return that merged block. Otherwise, return null (indicating no single‐block merger is possible).
+ * Attempt to union two sets of permission conditions.
+ *
+ * If the conditions can be merged into a single block that allows all cases allowed by either,
+ * returns the merged conditions. If they cannot be merged cleanly (e.g., differing operators
+ * or incompatible numeric boundaries), returns null.
+ *
+ * @param a First set of conditions
+ * @param b Second set of conditions
+ * @returns Merged conditions or null if they cannot be merged
  */
-function mergeConditions(
+export function unionConditions(
   a: Record<string, Record<string, string[]>>,
   b: Record<string, Record<string, string[]>>
 ): Record<string, Record<string, string[]>> | null {
@@ -1031,6 +965,172 @@ function mergeConditions(
   }
 
   return merged
+}
+
+/**
+ * Intersect two sets of permission conditions.
+ *
+ * Attempt to find the intersection of two sets of IAM condition clauses. This will
+ * combine condition operators and context keys, retaining only values that satisfy
+ * both sets of conditions. If the intersection is empty or cannot be expressed
+ * cleanly, returns null.
+ *
+ * @param conditionsA First set of conditions
+ * @param conditionsB Second set of conditions
+ * @returns Intersected conditions or null if intersection is empty or cannot be expressed
+ */
+export function intersectConditions(
+  a: Record<string, Record<string, string[]>>,
+  b: Record<string, Record<string, string[]>>
+): Record<string, Record<string, string[]>> | null {
+  // Normalize both condition sets to lowercase operators and keys
+  const normalizedA = normalizeConditionKeys(a)
+  const normalizedB = normalizeConditionKeys(b)
+
+  // Collect all unique operators from both sides
+  const allOperators = Array.from(
+    new Set([...Object.keys(normalizedA), ...Object.keys(normalizedB)])
+  )
+
+  const result: PermissionConditions = {}
+
+  for (const operator of allOperators) {
+    const keysA = normalizedA[operator] || {}
+    const keysB = normalizedB[operator] || {}
+
+    // Collect all unique context keys for this operator
+    const allContextKeys = Array.from(new Set([...Object.keys(keysA), ...Object.keys(keysB)]))
+
+    result[operator] = {}
+
+    for (const contextKey of allContextKeys) {
+      const valsA = keysA[contextKey]
+      const valsB = keysB[contextKey]
+
+      // If key exists in both sides, apply intersection logic based on operator type
+      if (valsA !== undefined && valsB !== undefined) {
+        const intersectedValues = intersectValuesForOperator(operator, valsA, valsB)
+        if (intersectedValues === null) {
+          // Empty intersection means no overlap - return null
+          return null
+        }
+        result[operator][contextKey] = intersectedValues
+      } else {
+        // Key only exists in one side - carry it through (both conditions must be satisfied)
+        result[operator][contextKey] = valsA !== undefined ? Array.from(valsA) : Array.from(valsB!)
+      }
+    }
+
+    // Remove empty operator objects
+    if (Object.keys(result[operator]).length === 0) {
+      delete result[operator]
+    }
+  }
+
+  const merged = mergeComplementaryConditions(result)
+
+  // Check if any values array became empty after merging complementary conditions
+  // (e.g., StringEquals: ['a'] merged with StringNotEquals: ['a'] results in StringEquals: [])
+  for (const [, keyMap] of Object.entries(merged)) {
+    for (const [, values] of Object.entries(keyMap)) {
+      if (values.length === 0) {
+        return null
+      }
+    }
+  }
+
+  return merged
+}
+
+/**
+ * Intersect values for a specific operator type.
+ *
+ * Returns the intersected values, or null if the intersection is empty
+ * (meaning the conditions are mutually exclusive).
+ */
+function intersectValuesForOperator(
+  operator: string,
+  valsA: string[],
+  valsB: string[]
+): string[] | null {
+  const baseOp = conditionBaseOperator(operator)
+
+  switch (baseOp) {
+    // String/ARN equality operators: intersection of allowed values
+    case 'stringequals':
+    case 'stringlike':
+    case 'arnequals':
+    case 'arnlike': {
+      const common = valsA.filter((v) => valsB.includes(v))
+      return common.length > 0 ? common : null
+    }
+
+    // String/ARN negation operators: union of exclusions (more restrictive)
+    case 'stringnotequals':
+    case 'stringnotlike':
+    case 'arnnotequals':
+    case 'arnnotlike': {
+      return Array.from(new Set([...valsA, ...valsB]))
+    }
+
+    // Numeric less-than operators: take the minimum (more restrictive)
+    case 'numericlessthan':
+    case 'numericlessthanequals': {
+      const numA = Number(valsA[0])
+      const numB = Number(valsB[0])
+      if (isNaN(numA) || isNaN(numB)) {
+        return null
+      }
+      return [String(Math.min(numA, numB))]
+    }
+
+    // Numeric greater-than operators: take the maximum (more restrictive)
+    case 'numericgreaterthan':
+    case 'numericgreaterthanequals': {
+      const numA = Number(valsA[0])
+      const numB = Number(valsB[0])
+      if (isNaN(numA) || isNaN(numB)) {
+        return null
+      }
+      return [String(Math.max(numA, numB))]
+    }
+
+    // Boolean operators: values must match exactly
+    case 'bool':
+    case 'null': {
+      if (valsA[0]?.toLowerCase() !== valsB[0]?.toLowerCase()) {
+        return null
+      }
+      return [valsA[0]]
+    }
+
+    // IP address operators: intersection of CIDR blocks
+    case 'ipaddress':
+    case 'notipaddress': {
+      const common = valsA.filter((cidr) => valsB.includes(cidr))
+      return common.length > 0 ? common : null
+    }
+
+    // Date less-than operators: take the earlier date (more restrictive)
+    case 'datelessthan':
+    case 'datelessthanequals': {
+      const dateA = valsA[0]
+      const dateB = valsB[0]
+      return [dateA < dateB ? dateA : dateB]
+    }
+
+    // Date greater-than operators: take the later date (more restrictive)
+    case 'dategreaterthan':
+    case 'dategreaterthanequals': {
+      const dateA = valsA[0]
+      const dateB = valsB[0]
+      return [dateA > dateB ? dateA : dateB]
+    }
+
+    // Unknown operator - cannot handle
+    default:
+      return null
+  }
 }
 
 /**
@@ -1164,10 +1264,10 @@ function mergeComplementaryConditions(c: PermissionConditions): PermissionCondit
     datelessthanequals: 'dategreaterthan',
     dategreaterthan: 'datelessthanequals',
     ipaddress: 'notipaddress',
-    notipaddress: 'ipaddress',
-    bool: 'bool'
+    notipaddress: 'ipaddress'
+    // bool: 'bool'
   }
-  const out = JSON.parse(JSON.stringify(c)) as PermissionConditions
+  const out = structuredClone(c)
   for (const [base, comp] of Object.entries(complement)) {
     if (out[base] && out[comp]) {
       for (const key of Object.keys(out[base])) {
@@ -1180,4 +1280,56 @@ function mergeComplementaryConditions(c: PermissionConditions): PermissionCondit
     }
   }
   return out
+}
+
+/**
+ * Apply Deny conditions to an Allow permission.
+ *
+ * A Deny permission with conditions (whether multiple operators or multiple keys under one
+ * operator) acts as an AND, meaning the Allow needs to escape ANY one of them (OR when inverted).
+ * Each condition key-value pair is inverted and creates a separate Allow permission.
+ *
+ * It is possible for any given condition to fully deny the Allow, in which case
+ * that condition will produce no resulting Allow permission. The result is an array
+ * of Allow permissions that apply after each Deny condition is applied.
+ *
+ * This may result in multiple Allow permission or an empty array if all are denied.
+ *
+ * @param allow the Allow permission
+ * @param deny the Deny permission
+ * @returns an array of resulting Allow permissions after applying Deny conditions
+ */
+export function applyDenyConditionsToAllow(allow: Permission, deny: Permission): Permission[] {
+  // If Deny has no conditions, it fully denies the Allow
+  if (!deny.conditions || Object.keys(deny.conditions).length === 0) {
+    return [allow]
+  }
+
+  const results: Permission[] = []
+  // Each Deny condition key-value pair creates a separate inverted condition for Allow
+  // (multiple keys under the same operator are each inverted separately)
+  for (const [operator, keyMap] of Object.entries(deny.conditions || {})) {
+    for (const [contextKey, values] of Object.entries(keyMap)) {
+      // Invert this specific condition
+      const singleCondition = { [operator]: { [contextKey]: values } }
+      const invertedCondition = invertConditions(singleCondition)
+
+      // Merge with the original Allow conditions
+      const mergedConditions = intersectConditions(allow.conditions || {}, invertedCondition)
+      if (mergedConditions !== null) {
+        results.push(
+          new Permission(
+            allow.effect,
+            allow.service,
+            allow.action,
+            allow.resource,
+            allow.notResource,
+            mergedConditions
+          )
+        )
+      }
+    }
+  }
+
+  return results
 }

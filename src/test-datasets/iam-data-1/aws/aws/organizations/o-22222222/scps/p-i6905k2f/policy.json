@@ -24,7 +24,12 @@
     {
       "Effect": "Deny",
       "Action": ["s3:ListBucket"],
-      "Resource": "arn:aws:s3:::iam-data-482734"
+      "Resource": "arn:aws:s3:::iam-data-482734",
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::200000000002:user/user1"
+        }
+      }
     }
   ]
 }
