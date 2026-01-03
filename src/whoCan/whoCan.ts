@@ -92,7 +92,7 @@ export interface WhoCanResponse {
  * @returns the override value if provided, otherwise number of CPUs - 1
  */
 function getNumberOfWorkers(overrideValue: number | undefined): number {
-  if (typeof overrideValue === 'number' && overrideValue > 0) {
+  if (typeof overrideValue === 'number' && overrideValue >= 0) {
     return Math.floor(overrideValue)
   }
   return Math.max(0, numberOfCpus() - 1)
