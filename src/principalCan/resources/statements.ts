@@ -99,6 +99,8 @@ export function makePrincipalOnlyPolicyFromStatement(statement: Statement): Poli
     rawStatementValues.Principal = rawStatement.Principal
   } else if (statement.isNotPrincipalStatement()) {
     rawStatementValues.NotPrincipal = rawStatement.NotPrincipal
+  } else {
+    rawStatementValues.Principal = '*'
   }
   if (rawStatement.Condition) {
     for (const operator of Object.keys(rawStatement.Condition)) {

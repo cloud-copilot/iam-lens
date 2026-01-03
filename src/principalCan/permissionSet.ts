@@ -212,20 +212,26 @@ export class PermissionSet {
           continue
         }
 
-        const thisPermissions = this.getPermissions(service, action)
+        let thisPermissions = this.getPermissions(service, action)
         const denyPermissions = deny.getPermissions(service, action)
 
-        for (const thisPermission of thisPermissions) {
-          for (const denyPermission of denyPermissions) {
+        // We need to iteratively from each set of permissions, taking the result of each subtraction and feeding it into the next one.
+        for (const denyPermission of denyPermissions) {
+          const newPermissions: Permission[] = []
+          for (const thisPermission of thisPermissions) {
             const difference = thisPermission.subtract(denyPermission)
             for (const diff of difference) {
               if (diff.effect === 'Allow') {
-                allowSet.addPermission(diff)
+                newPermissions.push(diff)
               } else {
                 denySet.addPermission(diff)
               }
             }
           }
+          thisPermissions = newPermissions
+        }
+        for (const perm of thisPermissions) {
+          allowSet.addPermission(perm)
         }
       }
     }
@@ -423,13 +429,28 @@ export function toPolicyStatements(set: PermissionSet): any {
   }
 
   // De-duplicate and sort Actions inside each bucket
-  const statements = [...buckets.values()].map((b) => ({
-    Effect: set.effect,
-    Action: b.actions.length === 1 ? b.actions[0] : [...new Set(b.actions)].sort(),
-    Resource: b.res,
-    NotResource: b.notRes,
-    Condition: b.cond
-  }))
+  const statements = [...buckets.values()].map((b) => {
+    const value: any = {
+      Effect: set.effect,
+      Action: b.actions.length === 1 ? b.actions[0] : [...new Set(b.actions)].sort()
+    }
+
+    if (b.cond) {
+      value['Condition'] = b.cond
+    }
+
+    if (b.res && b.notRes) {
+      throw new Error('Permission cannot have both Resource and NotResource defined')
+    }
+
+    if (b.res) {
+      value['Resource'] = b.res
+    } else if (b.notRes) {
+      value['NotResource'] = b.notRes
+    }
+
+    return value
+  })
 
   return statements
 }

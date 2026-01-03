@@ -20,13 +20,6 @@
       }
     },
     {
-      "Sid": "S3BucketAccess",
-      "Effect": "Deny",
-      "Principal": "*",
-      "Action": ["s3:*"],
-      "Resource": ["arn:aws:s3:::restricted-bucket", "arn:aws:s3:::restricted-bucket/*"]
-    },
-    {
       "Sid": "ListBuckets",
       "Effect": "Deny",
       "Principal": "*",

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { invertConditions, Permission, PermissionConditions } from './permission.js'
-import { lowerCaseConditionKeys } from './permissionSetTestUtils.js'
+import {
+  applyDenyConditionsToAllow,
+  intersectConditions,
+  invertConditions,
+  Permission,
+  PermissionConditions
+} from './permission.js'
+import {
+  convertTestPermissionToPermission,
+  expectPermissionsToMatch
+} from './permissionSetTestUtils.js'
 
 interface TestPermission {
   effect: 'Allow' | 'Deny'
@@ -555,24 +564,10 @@ describe('Permission#includes', () => {
     func(test.name, () => {
       //Given a permission and another permission
       const [thisService, thisAction] = test.permission.action.split(':')
-      const permission = new Permission(
-        test.permission.effect,
-        thisService,
-        thisAction,
-        test.permission.resource,
-        test.permission.notResource,
-        test.permission.conditions
-      )
+      const permission = convertTestPermissionToPermission(test.permission)
 
       const [otherService, otherAction] = test.otherPermission.action.split(':')
-      const otherPermission = new Permission(
-        test.otherPermission.effect,
-        thisService,
-        thisAction,
-        test.otherPermission.resource,
-        test.otherPermission.notResource,
-        test.otherPermission.conditions
-      )
+      const otherPermission = convertTestPermissionToPermission(test.otherPermission)
 
       //When we check if the permission includes the other permission
       const result = permission.includes(otherPermission)
@@ -1397,6 +1392,42 @@ const intersectionTests: {
         stringequals: { 'aws:username': ['alice'] }
       }
     }
+  },
+  {
+    name: 'intersection of wildcard resource with specific resource',
+    permission: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['*']
+    },
+    otherPermission: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::mybucket', 'arn:aws:s3:::mybucket/*']
+    },
+    intersection: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::mybucket', 'arn:aws:s3:::mybucket/*']
+    }
+  },
+  {
+    name: 'intersection of specific resource with wildcard resource',
+    permission: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::mybucket', 'arn:aws:s3:::mybucket/*']
+    },
+    otherPermission: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['*']
+    },
+    intersection: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::mybucket', 'arn:aws:s3:::mybucket/*']
+    }
   }
 ]
 
@@ -1455,8 +1486,11 @@ const subtractTests: {
   deny: TestPermission
   expected: TestPermission[]
 }[] = [
+  /**
+   * Scenario 1: Allow.Resource & Deny.Resource
+   **/
   {
-    name: 'Simple Resource Subtraction',
+    name: 'Allow.Resource & Deny.Resource - Deny subset of allowed strings',
     allow: {
       effect: 'Allow',
       action: 's3:GetObject',
@@ -1476,628 +1510,77 @@ const subtractTests: {
     ]
   },
   {
-    name: 'Resource & Deny.notResource subtraction',
+    name: 'Allow.Resource with Conditions & Deny.Resource with Conditions - Deny has multiple conditions',
     allow: {
       effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::bucket1/file1', 'arn:aws:s3:::bucket1/file2']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::bucket1/file2']
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::bucket1/file2']
-      }
-    ]
-  },
-  {
-    name: 'intersection of resource wildcard and notResource smaller wildcard',
-    allow: {
-      effect: 'Allow',
-      action: 's3:ListBucket',
-      resource: ['*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:ListBucket',
-      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*']
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:ListBucket',
-        resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*']
-      }
-    ]
-  },
-  {
-    name: 'intersection of resource wildcard and notResource smaller wildcard with conditions',
-    allow: {
-      effect: 'Allow',
-      action: 's3:ListBucket',
-      resource: ['*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:ListBucket',
-      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*'],
+      action: 'sts:AssumeRole',
+      resource: ['arn:aws:iam::123456789012:role/MyRole'],
       conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:ListBucket',
-        resource: ['*']
-      },
-      {
-        effect: 'Deny',
-        action: 's3:ListBucket',
-        notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*'],
-        conditions: {
-          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource NOT in NotResource (no overlap) with identical conditions - full deny',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-*', 'arn:aws:s3:::test-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: []
-  },
-  {
-    name: 'Resource NOT in NotResource (no overlap) with different conditions - allow unchanged with deny passthrough',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-*', 'arn:aws:s3:::test-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::prod-bucket/*'],
-        conditions: {
-          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] },
-          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource NOT in NotResource (no overlap) with allow conditions superset of deny - partial deny',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-bucket/*'],
-      conditions: {
-        StringEquals: {
-          'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+        StringNotLike: {
+          'aws:PrincipalArn': ['arn:aws:iam::*:root']
         }
       }
     },
     deny: {
       effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-*'],
+      action: 'sts:AssumeRole',
+      resource: ['*'],
       conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        Null: {
+          'sts:ExternalId': ['true']
+        },
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-11111111']
+        },
+        BoolIfExists: {
+          'aws:PrincipalIsAWSService': ['false']
+        }
       }
     },
     expected: [
       {
         effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::prod-bucket/*'],
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
         conditions: {
-          stringequals: {
-            'aws:sourcevpc': ['vpc-87654321']
+          StringNotLike: {
+            'aws:PrincipalArn': ['arn:aws:iam::*:root']
+          },
+          Null: {
+            'sts:ExternalId': ['false']
           }
         }
-      }
-    ]
-  },
-  {
-    name: 'Resource NOT in NotResource (no overlap) with deny conditions superset of allow - full deny',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-*'],
-      conditions: {
-        StringEquals: {
-          'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
-        }
-      }
-    },
-    expected: []
-  },
-  {
-    name: 'Resource NOT in NotResource (no overlap) with no conditions on allow - allow with inverted deny conditions',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-bucket/*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::prod-bucket/*'],
-        conditions: {
-          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource includes NotResource patterns (allow superset) with identical conditions - allow narrows to excluded resources',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::prod-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::prod-*'],
-        conditions: {
-          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource includes NotResource patterns (allow superset) with different conditions - allow unchanged with deny passthrough',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::*'],
-      conditions: {
-        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::prod-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::*'],
-        conditions: {
-          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
-        }
       },
       {
-        effect: 'Deny',
-        action: 's3:GetObject',
-        notResource: ['arn:aws:s3:::prod-*'],
-        conditions: {
-          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource includes NotResource patterns (allow superset) with allow conditions superset of deny - split allow',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::*'],
-      conditions: {
-        StringEquals: {
-          'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
-        }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::prod-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
         effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::*'],
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
         conditions: {
+          StringNotLike: {
+            'aws:PrincipalArn': ['arn:aws:iam::*:root']
+          },
           StringEquals: {
-            'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+            'aws:PrincipalOrgId': ['o-11111111']
           }
         }
       },
       {
-        effect: 'Deny',
-        action: 's3:GetObject',
-        notResource: ['arn:aws:s3:::prod-*'],
-        conditions: {
-          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource IN NotResource (no overlap, deny doesnt apply) with identical conditions - allow unchanged',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::dev-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
         effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::dev-bucket/*'],
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
         conditions: {
-          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource IN NotResource (no overlap, deny doesnt apply) with different conditions - allow unchanged',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::dev-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::dev-bucket/*'],
-        conditions: {
-          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource partially IN NotResource (partial overlap) with identical conditions - keep only excluded resources',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::dev-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::prod-*'],
-        conditions: {
-          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource partially IN NotResource (partial overlap) with different conditions - modify one resource allow, include deny as is',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*'],
-      conditions: {
-        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::dev-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::prod-*'],
-        conditions: {
-          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
-        }
-      },
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::stage-*'],
-        conditions: {
-          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] },
-          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource NOT in NotResource (full overlap) with allow having multiple conditions and deny having single matching condition - full deny',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-bucket/*'],
-      conditions: {
-        StringEquals: {
-          'aws:SourceVpc': ['vpc-12345678'],
-          'aws:PrincipalOrgId': ['o-abc123']
-        }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    expected: []
-  },
-  {
-    name: 'Resource NOT in NotResource (no overlap) with allow having no conditions and deny having multiple including it - allow with inverted additional conditions',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-bucket/*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-*'],
-      conditions: {
-        StringEquals: {
-          'aws:SourceVpc': ['vpc-12345678'],
-          'aws:PrincipalOrgId': ['o-abc123']
-        }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::prod-bucket/*'],
-        conditions: {
-          StringNotEquals: {
-            'aws:SourceVpc': ['vpc-12345678'],
-            'aws:PrincipalOrgId': ['o-abc123']
+          StringNotLike: {
+            'aws:PrincipalArn': ['arn:aws:iam::*:root']
+          },
+          BoolIfExists: {
+            'aws:PrincipalIsAWSService': ['true']
           }
         }
       }
     ]
   },
   {
-    name: 'Resource NOT in NotResource (no overlap) with allow having single (conflicting) condition and deny having multiple including it - deny all',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-*'],
-      conditions: {
-        StringEquals: {
-          'aws:SourceVpc': ['vpc-12345678'],
-          'aws:PrincipalOrgId': ['o-abc123']
-        }
-      }
-    },
-    expected: []
-  },
-  {
-    name: 'Resource NOT in NotResource (full overlap) with no conditions on deny - full deny',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::prod-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-*']
-    },
-    expected: []
-  },
-  {
-    name: 'Resource IN NotResource (no overlap) with conditions on deny - allow unchanged',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::dev-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::dev-bucket/*'],
-      conditions: {
-        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::dev-bucket/*'],
-        conditions: {
-          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Resource includes NotResource patterns (allow superset) with no conditions on either - allow narrows to excluded resources',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*']
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*']
-      }
-    ]
-  },
-  {
-    name: 'NotResource & Deny.resource subtraction',
-    allow: {
-      effect: 'Allow',
-      action: 's3:DeleteObject',
-      notResource: ['arn:aws:s3:::bucket2/private/*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:DeleteObject',
-      resource: ['arn:aws:s3:::bucket2/logs/*']
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:DeleteObject',
-        notResource: ['arn:aws:s3:::bucket2/private/*', 'arn:aws:s3:::bucket2/logs/*']
-      }
-    ]
-  },
-  {
-    name: 'NotResource & Deny.notResource subtraction',
-    allow: {
-      effect: 'Allow',
-      action: 'dynamodb:PutItem',
-      notResource: [
-        'arn:aws:dynamodb:us-west-2:123:table/data/*',
-        'arn:aws:dynamodb:us-west-2:123:table/logs/*'
-      ]
-    },
-    deny: {
-      effect: 'Deny',
-      action: 'dynamodb:PutItem',
-      notResource: ['arn:aws:dynamodb:us-west-2:123:table/logs/*']
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 'dynamodb:PutItem',
-        notResource: ['arn:aws:dynamodb:us-west-2:123:table/data/*']
-      }
-    ]
-  },
-  {
-    name: 'Full deny results in no permissions',
+    name: 'Allow.Resource & Deny.Resource - Identical resources',
     allow: {
       effect: 'Allow',
       action: 'sqs:SendMessage',
@@ -2111,7 +1594,7 @@ const subtractTests: {
     expected: []
   },
   {
-    name: 'Full deny when allow all and deny wildcard',
+    name: 'Allow.Resource & Deny.Resource - Both wildcards',
     allow: {
       effect: 'Allow',
       action: 's3:DeleteObject',
@@ -2125,7 +1608,7 @@ const subtractTests: {
     expected: []
   },
   {
-    name: 'Condition subtraction with identical conditions yields nothing',
+    name: 'Allow.Resource with Conditions & Deny.Resource with Conditions - Identical conditions',
     allow: {
       effect: 'Allow',
       action: 'ec2:StartInstances',
@@ -2145,7 +1628,7 @@ const subtractTests: {
     expected: []
   },
   {
-    name: 'Condition subtraction with superset conditions',
+    name: 'Allow.Resource with Conditions & Deny.Resource with Conditions - Allow conditions superset',
     allow: {
       effect: 'Allow',
       action: 'ec2:StartInstances',
@@ -2174,27 +1657,7 @@ const subtractTests: {
     ]
   },
   {
-    name: 'NotResource & Deny.resource subtraction',
-    allow: {
-      effect: 'Allow',
-      action: 's3:DeleteObject',
-      notResource: ['arn:aws:s3:::bucket2/private/*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:DeleteObject',
-      resource: ['arn:aws:s3:::bucket2/private/extra-private/*']
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:DeleteObject',
-        notResource: ['arn:aws:s3:::bucket2/private/*']
-      }
-    ]
-  },
-  {
-    name: 'Resource & Deny.resource subset subtraction',
+    name: 'Allow.Resource & Deny.Resource - Deny is subset',
     allow: {
       effect: 'Allow',
       action: 's3:DeleteObject',
@@ -2219,7 +1682,7 @@ const subtractTests: {
     ]
   },
   {
-    name: 'Resource wildcard minus subset wildcard (needs two statements)',
+    name: 'Allow.Resource & Deny.Resource - Deny nested wildcard',
     allow: {
       effect: 'Allow',
       action: 's3:DeleteObject',
@@ -2244,7 +1707,7 @@ const subtractTests: {
     ]
   },
   {
-    name: 'Full overlap identical resources returns empty',
+    name: 'Allow.Resource & Deny.Resource - Identical specific resource',
     allow: {
       effect: 'Allow',
       action: 's3:GetObject',
@@ -2258,61 +1721,7 @@ const subtractTests: {
     expected: []
   },
   {
-    name: 'Resource & Deny.notResource no change (subset)',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::bucket/*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::bucket/*']
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:GetObject',
-        resource: ['arn:aws:s3:::bucket/*']
-      }
-    ]
-  },
-  {
-    name: 'Resource & Deny.notResource disjoint (empty result)',
-    allow: {
-      effect: 'Allow',
-      action: 's3:GetObject',
-      resource: ['arn:aws:s3:::bucket/data/*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:GetObject',
-      notResource: ['arn:aws:s3:::bucket/logs/*']
-    },
-    expected: []
-  },
-  {
-    name: 'NotResource union new exclusions',
-    allow: {
-      effect: 'Allow',
-      action: 's3:PutObject',
-      notResource: ['arn:aws:s3:::bucket/data/*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 's3:PutObject',
-      resource: ['arn:aws:s3:::bucket/logs/*']
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 's3:PutObject',
-        notResource: ['arn:aws:s3:::bucket/data/*', 'arn:aws:s3:::bucket/logs/*']
-      }
-    ]
-  },
-  {
-    name: 'Allow * and Deny * with conditions',
+    name: 'Allow.Resource & Deny.Resource with Conditions - Both wildcard, deny has conditions',
     allow: {
       effect: 'Allow',
       action: 's3:GetObject',
@@ -2342,7 +1751,7 @@ const subtractTests: {
     ]
   },
   {
-    name: 'Subtract deny with multiple conditions',
+    name: 'Allow.Resource & Deny.Resource with Conditions - Multiple deny conditions',
     allow: { effect: 'Allow', action: 'backup:GetBackupVaultAccessPolicy', resource: ['*'] },
     deny: {
       effect: 'Deny',
@@ -2373,115 +1782,7 @@ const subtractTests: {
     ]
   },
   {
-    name: 'Deny with multiple conditions creates multiple allow statements with inverted conditions',
-    allow: {
-      effect: 'Allow',
-      action: 'sts:AssumeRole',
-      resource: ['*']
-    },
-    deny: {
-      effect: 'Deny',
-      action: 'sts:AssumeRole',
-      notResource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
-      conditions: {
-        Null: {
-          'sts:ExternalId': ['true']
-        },
-        StringNotEquals: {
-          'aws:PrincipalOrgId': ['o-uch56v3mmz']
-        },
-        BoolIfExists: {
-          'aws:PrincipalIsAWSService': ['false']
-        }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 'sts:AssumeRole',
-        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
-        conditions: {
-          Null: {
-            'sts:externalid': ['false']
-          }
-        }
-      },
-      {
-        effect: 'Allow',
-        action: 'sts:AssumeRole',
-        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
-        conditions: {
-          StringEquals: {
-            'aws:principalorgid': ['o-uch56v3mmz']
-          }
-        }
-      },
-      {
-        effect: 'Allow',
-        action: 'sts:AssumeRole',
-        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
-        conditions: {
-          BoolIfExists: {
-            'aws:principalisawsservice': ['true']
-          }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Multiple allows with conditions multiplied by deny with multiple conditions',
-    allow: {
-      effect: 'Allow',
-      action: 'sts:AssumeRole',
-      resource: ['*'],
-      conditions: {
-        StringEquals: {
-          'aws:RequestedRegion': ['us-east-1']
-        }
-      }
-    },
-    deny: {
-      effect: 'Deny',
-      action: 'sts:AssumeRole',
-      notResource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
-      conditions: {
-        Null: {
-          'sts:ExternalId': ['true']
-        },
-        StringNotEquals: {
-          'aws:PrincipalOrgId': ['o-uch56v3mmz']
-        }
-      }
-    },
-    expected: [
-      {
-        effect: 'Allow',
-        action: 'sts:AssumeRole',
-        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
-        conditions: {
-          StringEquals: {
-            'aws:requestedregion': ['us-east-1']
-          },
-          Null: {
-            'sts:externalid': ['false']
-          }
-        }
-      },
-      {
-        effect: 'Allow',
-        action: 'sts:AssumeRole',
-        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
-        conditions: {
-          StringEquals: {
-            'aws:requestedregion': ['us-east-1'],
-            'aws:principalorgid': ['o-uch56v3mmz']
-          }
-        }
-      }
-    ]
-  },
-  {
-    name: 'Deny with multiple conditions on a subset of an allow keeps both in tact',
+    name: 'Allow.Resource & Deny.Resource with Conditions - Subset with multiple conditions',
     allow: {
       effect: 'Allow',
       action: 's3:GetObject',
@@ -2520,129 +1821,1866 @@ const subtractTests: {
         }
       }
     ]
+  },
+  {
+    name: 'Allow.Resource & Deny.Resource - Disjointed resources',
+    allow: {
+      effect: 'Allow',
+      action: 's3:ListBucket',
+      resource: ['arn:aws:s3:::mybucket']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:ListBucket',
+      resource: ['arn:aws:s3:::otherbucket']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:ListBucket',
+        resource: ['arn:aws:s3:::mybucket']
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.Resource with Conditions - Disjoint resources',
+    allow: {
+      effect: 'Allow',
+      action: 's3:ListBucket',
+      resource: ['arn:aws:s3:::mybucket']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:ListBucket',
+      resource: ['arn:aws:s3:::otherbucket'],
+      conditions: {
+        StringEquals: {
+          'aws:PrincipalOrgId': ['o-abc123']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:ListBucket',
+        resource: ['arn:aws:s3:::mybucket']
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.Resource with Conditions - Wildcard allow, subset deny',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      resource: ['arn:aws:s3:::vpc-bucket/*', 'arn:aws:s3:::vpc-bucket'],
+      conditions: {
+        StringNotEquals: {
+          'aws:PrincipalArn': ['arn:aws:iam::200000000002:role/VpcBucketRole']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        resource: ['*']
+      },
+      {
+        effect: 'Deny',
+        action: 's3:DeleteObject',
+        resource: ['arn:aws:s3:::vpc-bucket/*', 'arn:aws:s3:::vpc-bucket'],
+        conditions: {
+          StringNotEquals: {
+            'aws:PrincipalArn': ['arn:aws:iam::200000000002:role/VpcBucketRole']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.Resource with Conditions - Deny superset resources',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::iam-data-482734/iam-data/*', 'arn:aws:s3:::iam-data-482734'],
+      conditions: {
+        StringEquals: {
+          'aws:PrincipalOrgId': ['o-22222222']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::iam-data-482734/*'],
+      conditions: {
+        StringEquals: {
+          'aws:PrincipalOrgId': ['o-22222222']
+        }
+      }
+    },
+    // Everything in the allow is denied by the deny, should return nothing
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::iam-data-482734'],
+        conditions: {
+          StringEquals: {
+            'aws:PrincipalOrgId': ['o-22222222']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.Resource with Conditions - Multiple deny conditions invert',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      resource: ['arn:aws:s3:::mybucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      resource: ['*'],
+      conditions: {
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-abc123']
+        },
+        IpAddress: {
+          'aws:SourceIp': ['185.7.16.19']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        resource: ['arn:aws:s3:::mybucket/*'],
+        conditions: {
+          StringEquals: {
+            'aws:PrincipalOrgId': ['o-abc123']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        resource: ['arn:aws:s3:::mybucket/*'],
+        conditions: {
+          NotIpAddress: {
+            'aws:SourceIp': ['185.7.16.19']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.Resource with Conditions - Both have conditions, deny inverts',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      resource: ['arn:aws:s3:::mybucket/*'],
+      conditions: {
+        Bool: {
+          'aws:SecureTransport': ['true']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      resource: ['*'],
+      conditions: {
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-abc123']
+        },
+        IpAddress: {
+          'aws:SourceIp': ['185.7.16.19']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        resource: ['arn:aws:s3:::mybucket/*'],
+        conditions: {
+          Bool: {
+            'aws:SecureTransport': ['true']
+          },
+          StringEquals: {
+            'aws:PrincipalOrgId': ['o-abc123']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        resource: ['arn:aws:s3:::mybucket/*'],
+        conditions: {
+          Bool: {
+            'aws:SecureTransport': ['true']
+          },
+          NotIpAddress: {
+            'aws:SourceIp': ['185.7.16.19']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.Resource with Conditions - Subset deny with multiple conditions',
+    allow: {
+      effect: 'Allow',
+      action: 'dynamodb:GetItem',
+      resource: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:RequestedRegion': ['us-west-2']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'dynamodb:GetItem',
+      resource: ['arn:aws:dynamodb:*:*:table/SensitiveTable'],
+      conditions: {
+        Null: {
+          'dynamodb:LeadingKeys': ['true']
+        },
+        Bool: {
+          'aws:SecureTransport': ['false']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'dynamodb:GetItem',
+        resource: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:RequestedRegion': ['us-west-2']
+          }
+        }
+      },
+      {
+        effect: 'Deny',
+        action: 'dynamodb:GetItem',
+        resource: ['arn:aws:dynamodb:*:*:table/SensitiveTable'],
+        conditions: {
+          Null: {
+            'dynamodb:LeadingKeys': ['true']
+          },
+          Bool: {
+            'aws:SecureTransport': ['false']
+          }
+        }
+      }
+    ]
+  },
+  /**
+   * Scenario 2: Allow.Resource & Deny.NotResource
+   **/
+  {
+    name: 'Allow.Resource & Deny.NotResource - Deny excludes part of allowed strings',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::bucket1/file1', 'arn:aws:s3:::bucket1/file2']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket1/file2']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::bucket1/file2']
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource - Deny subsets of allowed wildcard',
+    allow: {
+      effect: 'Allow',
+      action: 's3:ListBucket',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:ListBucket',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:ListBucket',
+        resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource with Conditions - Deny subsets of allowed wildcard',
+    allow: {
+      effect: 'Allow',
+      action: 's3:ListBucket',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:ListBucket',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:ListBucket',
+        resource: ['*'],
+        conditions: {
+          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:ListBucket',
+        resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::prod-*/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - No overlap, identical conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*', 'arn:aws:s3:::test-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: []
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - No overlap, different conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*', 'arn:aws:s3:::test-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] },
+          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Allow conditions superset of deny',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          stringequals: {
+            'aws:sourcevpc': ['vpc-87654321']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Deny conditions superset of allow',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+        }
+      }
+    },
+    expected: []
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource with Conditions - No overlap',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Allow superset, identical conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Allow superset, different conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] },
+          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Allow superset, allow conditions superset',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::*'],
+        conditions: {
+          StringEquals: {
+            'aws:SourceVpc': ['vpc-87654321']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: {
+            'aws:SourceVpc': ['vpc-12345678', 'vpc-87654321']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Resource in NotResource, identical conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::dev-bucket/*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Resource in NotResource, different conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::dev-bucket/*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Partial overlap, identical conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Partial overlap, different conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::stage-*'],
+        conditions: {
+          StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] },
+          StringNotEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Full overlap, allow has multiple conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678'],
+          'aws:PrincipalOrgId': ['o-abc123']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    expected: []
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource with Conditions - Deny has multiple conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678'],
+          'aws:PrincipalOrgId': ['o-abc123']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          StringNotEquals: {
+            'aws:PrincipalOrgId': ['o-abc123']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          StringNotEquals: {
+            'aws:SourceVpc': ['vpc-12345678']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Conflicting condition',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*'],
+      conditions: {
+        StringEquals: {
+          'aws:SourceVpc': ['vpc-12345678'],
+          'aws:PrincipalOrgId': ['o-abc123']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-bucket/*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] },
+          StringNotEquals: {
+            'aws:PrincipalOrgId': ['o-abc123']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource - Full overlap',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::prod-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-*']
+    },
+    expected: []
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Resource in NotResource',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::dev-bucket/*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-abc123'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::dev-bucket/*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource - Allow superset',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*', 'arn:aws:s3:::stage-*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource with Conditions - Multiple deny conditions',
+    allow: {
+      effect: 'Allow',
+      action: 'sts:AssumeRole',
+      resource: ['arn:aws:iam::123456789012:role/MyRole']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'sts:AssumeRole',
+      notResource: ['arn:aws:iam::100000000002:role/TestCrossAccount'],
+      conditions: {
+        StringLike: {
+          'aws:PrincipalArn': ['arn:aws:iam::*:root']
+        },
+        Null: {
+          'aws:AssumedRoot': ['true']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
+        conditions: {
+          StringNotLike: {
+            'aws:PrincipalArn': ['arn:aws:iam::*:root']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
+        conditions: {
+          Null: {
+            'aws:AssumedRoot': ['false']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Wildcard allow',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::*'],
+      conditions: {
+        StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::prod-*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalOrgId': ['o-111111'] }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] },
+          StringNotEquals: { 'aws:PrincipalOrgId': ['o-111111'] }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::prod-*'],
+        conditions: {
+          StringEquals: { 'aws:SourceVpc': ['vpc-12345678'] }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource - Resource in NotResource',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::bucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::bucket/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource - Disjoint patterns',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::bucket/data/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/logs/*']
+    },
+    expected: []
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource with Conditions - Wildcard allow, multiple deny conditions',
+    allow: {
+      effect: 'Allow',
+      action: 'sts:AssumeRole',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'sts:AssumeRole',
+      notResource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+      conditions: {
+        Null: {
+          'sts:ExternalId': ['true']
+        },
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-uch56v3mmz']
+        },
+        BoolIfExists: {
+          'aws:PrincipalIsAWSService': ['false']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['*'],
+        conditions: {
+          Null: {
+            'sts:externalid': ['false']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:principalorgid': ['o-uch56v3mmz']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['*'],
+        conditions: {
+          BoolIfExists: {
+            'aws:principalisawsservice': ['true']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount']
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource with Conditions & Deny.NotResource with Conditions - Wildcard allow with condition',
+    allow: {
+      effect: 'Allow',
+      action: 'sts:AssumeRole',
+      resource: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:RequestedRegion': ['us-east-1']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'sts:AssumeRole',
+      notResource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+      conditions: {
+        Null: {
+          'sts:ExternalId': ['true']
+        },
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-uch56v3mmz']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:RequestedRegion': ['us-east-1']
+          },
+          Null: {
+            'sts:ExternalId': ['false']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['*'],
+        conditions: {
+          StringEquals: {
+            'aws:RequestedRegion': ['us-east-1'],
+            'aws:PrincipalOrgId': ['o-uch56v3mmz']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::519455788571:role/TestCrossAccount'],
+        conditions: {
+          StringEquals: {
+            'aws:RequestedRegion': ['us-east-1']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow.Resource & Deny.NotResource with Conditions - Different NotResource, multiple conditions',
+    allow: {
+      effect: 'Allow',
+      action: 'sts:AssumeRole',
+      resource: ['arn:aws:iam::100000000002:role/EC2Admin']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'sts:AssumeRole',
+      notResource: ['arn:aws:iam::100000000002:role/TestCrossAccount'],
+      conditions: {
+        Null: {
+          'sts:ExternalId': ['true']
+        },
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-11111111']
+        },
+        BoolIfExists: {
+          'aws:PrincipalIsAWSService': ['false']
+        }
+      }
+    },
+    expected: [
+      // We invert all deny conditions with separate allows
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::100000000002:role/EC2Admin'],
+        conditions: {
+          Null: {
+            'sts:externalid': ['false']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::100000000002:role/EC2Admin'],
+        conditions: {
+          StringEquals: {
+            'aws:PrincipalOrgId': ['o-11111111']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::100000000002:role/EC2Admin'],
+        conditions: {
+          //TODO: This should be Bool, not BoolIfExists
+          BoolIfExists: {
+            'aws:PrincipalIsAWSService': ['true']
+          }
+        }
+      }
+    ]
+  },
+  /**
+   * Scenario 3: Allow.NotResource & Deny.Resource
+   **/
+  {
+    name: 'Allow.NotResource & Deny.Resource - Disjointed patterns',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket2/private/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      resource: ['arn:aws:s3:::bucket2/logs/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        notResource: ['arn:aws:s3:::bucket2/private/*', 'arn:aws:s3:::bucket2/logs/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource - Deny already excluded',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket2/private/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      resource: ['arn:aws:s3:::bucket2/private/extra-private/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        notResource: ['arn:aws:s3:::bucket2/private/*']
+      }
+    ]
+  },
+  // ============================================================================
+  // Allow NotResource & Deny Resource - Category Tests
+  // ============================================================================
+  {
+    name: 'Allow.NotResource & Deny.Resource - Identical patterns',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/secret/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::bucket/secret/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::bucket/secret/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource with Conditions & Deny.Resource with Conditions - Identical patterns, different conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/secret/*'],
+      conditions: { StringEquals: { 'aws:SourceVpc': ['vpc-123'] } }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::bucket/secret/*'],
+      conditions: { StringEquals: { 'aws:PrincipalTag/team': ['admin'] } }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::bucket/secret/*'],
+        conditions: { StringEquals: { 'aws:SourceVpc': ['vpc-123'] } }
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource - NotResource covers Resource',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      resource: ['arn:aws:s3:::bucket/logs/app.log']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        notResource: ['arn:aws:s3:::bucket/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource with Conditions & Deny.Resource with Conditions - NotResource covers Resource, different conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/*'],
+      conditions: { StringEquals: { 'aws:SourceVpc': ['vpc-abc'] } }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      resource: ['arn:aws:s3:::bucket/logs/*'],
+      conditions: { Bool: { 'aws:SecureTransport': ['false'] } }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        notResource: ['arn:aws:s3:::bucket/*'],
+        conditions: { StringEquals: { 'aws:SourceVpc': ['vpc-abc'] } }
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource - Deny expands exclusion',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket/private/file.txt']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      resource: ['arn:aws:s3:::bucket/private/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        notResource: ['arn:aws:s3:::bucket/private/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource with Conditions - Deny expands exclusion conditionally',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket/private/file.txt']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      resource: ['arn:aws:s3:::bucket/private/*'],
+      conditions: { StringEquals: { 'aws:PrincipalTag/role': ['intern'] } }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        notResource: ['arn:aws:s3:::bucket/private/file.txt'],
+        conditions: { StringNotEquals: { 'aws:PrincipalTag/role': ['intern'] } }
+      },
+      // When role = intern: expanded exclusion (deny applies, must exclude more)
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        notResource: ['arn:aws:s3:::bucket/private/*'],
+        conditions: { StringEquals: { 'aws:PrincipalTag/role': ['intern'] } }
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource - No overlap',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket-a/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::bucket-b/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::bucket-a/*', 'arn:aws:s3:::bucket-b/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource with Conditions - No overlap',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket-a/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::bucket-b/*'],
+      conditions: { IpAddress: { 'aws:SourceIp': ['192.168.1.0/24'] } }
+    },
+    expected: [
+      // When SourceIp ≠ 192.168.1.0/24: original allow (deny doesn't apply)
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::bucket-a/*'],
+        conditions: { NotIpAddress: { 'aws:SourceIp': ['192.168.1.0/24'] } }
+      },
+      // When SourceIp = 192.168.1.0/24: expanded exclusion (deny applies)
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::bucket-a/*', 'arn:aws:s3:::bucket-b/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource - Multiple patterns',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/private/*', 'arn:aws:s3:::bucket/logs/app.log']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      resource: ['arn:aws:s3:::bucket/logs/*', 'arn:aws:s3:::bucket/archive/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        notResource: [
+          'arn:aws:s3:::bucket/private/*',
+          'arn:aws:s3:::bucket/logs/*',
+          'arn:aws:s3:::bucket/archive/*'
+        ]
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource - All deny patterns covered',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::bucket/a/*', 'arn:aws:s3:::bucket/b/*', 'arn:aws:s3:::bucket/c/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::bucket/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource with Conditions & Deny.Resource - Allow has conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket/keep/*'],
+      conditions: { StringEquals: { 'aws:PrincipalTag/team': ['ops'] } }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      resource: ['arn:aws:s3:::bucket/protected/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        notResource: ['arn:aws:s3:::bucket/keep/*', 'arn:aws:s3:::bucket/protected/*'],
+        conditions: { StringEquals: { 'aws:PrincipalTag/team': ['ops'] } }
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource with Conditions - Deny has multiple operators',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/secret/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::bucket/data/*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalTag/team': ['external'] },
+        Bool: { 'aws:SecureTransport': ['false'] }
+      }
+    },
+    expected: [
+      // When team ≠ external: original allow (deny doesn't apply)
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::bucket/secret/*'],
+        conditions: { StringNotEquals: { 'aws:PrincipalTag/team': ['external'] } }
+      },
+      // When SecureTransport ≠ false: original allow (deny doesn't apply)
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::bucket/secret/*'],
+        conditions: { Bool: { 'aws:SecureTransport': ['true'] } }
+      },
+      // Expanded exclusion - no conditions needed since deny resource is excluded
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::bucket/secret/*', 'arn:aws:s3:::bucket/data/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource - Wildcard notResource',
+    allow: {
+      effect: 'Allow',
+      action: 'dynamodb:GetItem',
+      notResource: ['arn:aws:dynamodb:*:*:table/admin-*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'dynamodb:GetItem',
+      resource: ['arn:aws:dynamodb:us-east-1:123:table/users']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'dynamodb:GetItem',
+        notResource: [
+          'arn:aws:dynamodb:*:*:table/admin-*',
+          'arn:aws:dynamodb:us-east-1:123:table/users'
+        ]
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.Resource - Union exclusions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/data/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      resource: ['arn:aws:s3:::bucket/logs/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        notResource: ['arn:aws:s3:::bucket/data/*', 'arn:aws:s3:::bucket/logs/*']
+      }
+    ]
+  },
+  /*
+   * Allow NotResource & Deny NotResource - Scenario 4 Tests
+   *
+   * SEMANTICS:
+   *   Allow.notResource: "allow everything EXCEPT these patterns"
+   *   Deny.notResource: "deny everything EXCEPT these patterns"
+   *
+   *   The deny applies to resources NOT in denyNotResource.
+   *   Result: allow only resources that are allowed AND not denied
+   *           = NOT in allowNotResource AND IN denyNotResource
+   *
+   * Allow NotResource = U \ A
+   * Deny NotResource = U \ B
+   *
+   * Identity Forumula:
+   * X \ (U \ Y) = X ∩ Y
+   *
+   * Replace Variables:
+   * X = U \ A
+   * Y = B
+   *
+   * (U \ A) \ (U \ B) = (U \ A) ∩ B
+   *
+   * Simplify:
+   * (U \ A) \ (U \ B) = B \ A
+   *
+   */
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Allow excludes more',
+    allow: {
+      effect: 'Allow',
+      action: 'dynamodb:PutItem',
+      notResource: [
+        'arn:aws:dynamodb:us-west-2:123:table/data/*',
+        'arn:aws:dynamodb:us-west-2:123:table/logs/*'
+      ]
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'dynamodb:PutItem',
+      notResource: ['arn:aws:dynamodb:us-west-2:123:table/logs/*']
+    },
+    // All deny patterns (logs/*) are covered by allow patterns (logs/*)
+    // Deny protects logs/* but allow excludes logs/* → no resources survive
+    expected: []
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Identical patterns',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/secret/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/secret/*']
+    },
+    expected: []
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Deny excludes more',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/private/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/private/*', 'arn:aws:s3:::bucket/logs/*']
+    },
+    // Surviving = (NOT private) ∩ (private OR logs) = logs only
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        resource: ['arn:aws:s3:::bucket/logs/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Allow excludes more',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket/private/*', 'arn:aws:s3:::bucket/logs/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket/logs/*']
+    },
+    // All deny patterns are covered by allow patterns, so no resources can survive
+    // (allowed AND protected from deny) = ∅
+    expected: []
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - No overlap in exclusions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket-a/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket-b/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::bucket-b/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Deny pattern is superset of allow pattern',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/private/file.txt']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/private/*']
+    },
+    // Surviving = (NOT file.txt) ∩ (private/*) = private/* (file.txt is within private/*)
+    // We can't subtract file.txt from private/*, so we return the full protected zone
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        resource: ['arn:aws:s3:::bucket/private/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Allow pattern is superset of deny pattern',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/logs/*']
+    },
+    expected: []
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Multiple patterns mixed',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket/private/*', 'arn:aws:s3:::bucket/archive/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket/archive/*', 'arn:aws:s3:::bucket/logs/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        resource: ['arn:aws:s3:::bucket/logs/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - With same conditions',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/secret/*'],
+      conditions: { StringEquals: { 'aws:PrincipalTag/team': ['engineering'] } }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/secret/*', 'arn:aws:s3:::bucket/logs/*'],
+      conditions: { StringEquals: { 'aws:PrincipalTag/team': ['engineering'] } }
+    },
+    // Surviving = (NOT secret) ∩ (secret OR logs) = logs only
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::bucket/logs/*'],
+        conditions: { StringEquals: { 'aws:PrincipalTag/team': ['engineering'] } }
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Different conditions (deny has condition)',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/private/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      notResource: ['arn:aws:s3:::bucket/private/*', 'arn:aws:s3:::bucket/logs/*'],
+      conditions: { StringEquals: { 'aws:PrincipalTag/role': ['intern'] } }
+    },
+    expected: [
+      // When role ≠ intern: original allow (deny doesn't apply)
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        notResource: ['arn:aws:s3:::bucket/private/*'],
+        conditions: { StringNotEquals: { 'aws:PrincipalTag/role': ['intern'] } }
+      },
+      // When role = intern: surviving = (NOT private) ∩ (private OR logs) = logs only
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        resource: ['arn:aws:s3:::bucket/logs/*'],
+        conditions: { StringEquals: { 'aws:PrincipalTag/role': ['intern'] } }
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Allow has condition, deny does not',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/secret/*'],
+      conditions: { StringEquals: { 'aws:SourceVpc': ['vpc-123'] } }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::bucket/secret/*', 'arn:aws:s3:::bucket/logs/*']
+    },
+    // Surviving = (NOT secret) ∩ (secret OR logs) = logs only
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::bucket/logs/*'],
+        conditions: { StringEquals: { 'aws:SourceVpc': ['vpc-123'] } }
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Deny with multiple condition operators',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket/archive/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      notResource: ['arn:aws:s3:::bucket/archive/*', 'arn:aws:s3:::bucket/temp/*'],
+      conditions: {
+        StringEquals: { 'aws:PrincipalTag/team': ['external'] },
+        Bool: { 'aws:SecureTransport': ['false'] }
+      }
+    },
+    expected: [
+      // When team ≠ external: original allow (deny doesn't apply)
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        notResource: ['arn:aws:s3:::bucket/archive/*'],
+        conditions: { StringNotEquals: { 'aws:PrincipalTag/team': ['external'] } }
+      },
+      // When SecureTransport ≠ false: original allow (deny doesn't apply)
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        notResource: ['arn:aws:s3:::bucket/archive/*'],
+        conditions: { Bool: { 'aws:SecureTransport': ['true'] } }
+      },
+      // When both conditions met: surviving = (NOT archive) ∩ (archive OR temp) = temp only
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        resource: ['arn:aws:s3:::bucket/temp/*']
+      }
+    ]
+  },
+  {
+    name: 'Allow.NotResource & Deny.NotResource - Wildcard patterns',
+    allow: {
+      effect: 'Allow',
+      action: 'dynamodb:Query',
+      notResource: ['arn:aws:dynamodb:*:*:table/admin-*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'dynamodb:Query',
+      notResource: ['arn:aws:dynamodb:*:*:table/admin-*', 'arn:aws:dynamodb:*:*:table/audit-*']
+    },
+    // Surviving = (NOT admin-*) ∩ (admin-* OR audit-*) = audit-* only
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'dynamodb:Query',
+        resource: ['arn:aws:dynamodb:*:*:table/audit-*']
+      }
+    ]
   }
-  // {
-  //   name: 'Two allows each with different conditions multiplied by deny with two conditions',
-  //   allow: {
-  //     effect: 'Allow',
-  //     action: 'dynamodb:GetItem',
-  //     resource: ['*'],
-  //     conditions: {
-  //       StringEquals: {
-  //         'aws:RequestedRegion': ['us-west-2']
-  //       }
-  //     }
-  //   },
-  //   deny: {
-  //     effect: 'Deny',
-  //     action: 'dynamodb:GetItem',
-  //     resource: ['arn:aws:dynamodb:*:*:table/SensitiveTable'],
-  //     conditions: {
-  //       Null: {
-  //         'dynamodb:LeadingKeys': ['true']
-  //       },
-  //       Bool: {
-  //         'aws:SecureTransport': ['false']
-  //       }
-  //     }
-  //   },
-  //   expected: [
-  //     {
-  //       effect: 'Allow',
-  //       action: 'dynamodb:GetItem',
-  //       resource: ['*'],
-  //       notResource: ['arn:aws:dynamodb:*:*:table/SensitiveTable'],
-  //       conditions: {
-  //         StringEquals: {
-  //           'aws:requestedregion': ['us-west-2']
-  //         },
-  //         Null: {
-  //           'dynamodb:leadingkeys': ['false']
-  //         }
-  //       }
-  //     },
-  //     {
-  //       effect: 'Allow',
-  //       action: 'dynamodb:GetItem',
-  //       resource: ['*'],
-  //       notResource: ['arn:aws:dynamodb:*:*:table/SensitiveTable'],
-  //       conditions: {
-  //         StringEquals: {
-  //           'aws:requestedregion': ['us-west-2']
-  //         },
-  //         Bool: {
-  //           'aws:securetransport': ['true']
-  //         }
-  //       }
-  //     }
-  //   ]
-  // },
-  // {
-  //   name: 'Deny with three conditions creates three separate allows',
-  //   allow: {
-  //     effect: 'Allow',
-  //     action: 'kms:Decrypt',
-  //     resource: ['*']
-  //   },
-  //   deny: {
-  //     effect: 'Deny',
-  //     action: 'kms:Decrypt',
-  //     resource: ['arn:aws:kms:*:*:key/*'],
-  //     conditions: {
-  //       StringNotLike: {
-  //         'kms:EncryptionContext:Department': ['Engineering']
-  //       },
-  //       DateLessThan: {
-  //         'aws:CurrentTime': ['2025-12-31T23:59:59Z']
-  //       },
-  //       BoolIfExists: {
-  //         'aws:MultiFactorAuthPresent': ['false']
-  //       }
-  //     }
-  //   },
-  //   expected: [
-  //     {
-  //       effect: 'Allow',
-  //       action: 'kms:Decrypt',
-  //       resource: ['*'],
-  //       notResource: ['arn:aws:kms:*:*:key/*'],
-  //       conditions: {
-  //         StringLike: {
-  //           'kms:encryptioncontext:department': ['Engineering']
-  //         }
-  //       }
-  //     },
-  //     {
-  //       effect: 'Allow',
-  //       action: 'kms:Decrypt',
-  //       resource: ['*'],
-  //       notResource: ['arn:aws:kms:*:*:key/*'],
-  //       conditions: {
-  //         DateGreaterThanEquals: {
-  //           'aws:currenttime': ['2025-12-31T23:59:59Z']
-  //         }
-  //       }
-  //     },
-  //     {
-  //       effect: 'Allow',
-  //       action: 'kms:Decrypt',
-  //       resource: ['*'],
-  //       notResource: ['arn:aws:kms:*:*:key/*'],
-  //       conditions: {
-  //         BoolIfExists: {
-  //           'aws:multifactorauthpresent': ['true']
-  //         }
-  //       }
-  //     }
-  //   ]
-  // }
 ]
 
 describe('Permission#subtract', () => {
   for (const test of subtractTests) {
     const func = test.only ? it.only : it
-
-    func(test.name, () => {
+    func('subtract: ' + test.name, () => {
       //Given an allow and deny permission
       const [allowService, allowAction] = test.allow.action.split(':')
       const allowPermission = new Permission(
@@ -2667,24 +3705,8 @@ describe('Permission#subtract', () => {
       //When we subtract the deny from the allow
       const result = allowPermission.subtract(denyPermission)
 
-      //Then the number of the resulting permissions should match the expected
-      expect(result.length).toEqual(test.expected.length)
-
-      //And the resulting permissions should match the expected permissions
-      for (let i = 0; i < result.length; i++) {
-        const actualResult = result[i]
-        const expectedResult = test.expected[i]
-
-        const [expectedService, expectedAction] = expectedResult.action.split(':')
-        expect(actualResult.effect).toBe(expectedResult.effect)
-        expect(actualResult.service).toBe(expectedService)
-        expect(actualResult.action).toBe(expectedAction)
-        expect(actualResult.resource).toEqual(expectedResult.resource)
-        expect(actualResult.notResource).toEqual(expectedResult.notResource)
-        expect(lowerCaseConditionKeys(actualResult.conditions)).toEqual(
-          lowerCaseConditionKeys(expectedResult.conditions)
-        )
-      }
+      //Then the permissions should match
+      expectPermissionsToMatch(result, test.expected)
     })
   }
 })
@@ -2821,3 +3843,1189 @@ describe('invertConditions', () => {
     })
   }
 })
+
+const intersectConditionsTests: {
+  name: string
+  only?: true
+  initialA: PermissionConditions
+  initialB: PermissionConditions
+  expected: PermissionConditions | null
+}[] = [
+  // StringEquals tests
+  {
+    name: 'intersect two StringEquals conditions with different keys',
+    initialA: {
+      StringEquals: { 'aws:username': ['alice', 'bob'] }
+    },
+    initialB: {
+      StringEquals: { 'aws:PrincipalOrgId': ['o-12345678'] }
+    },
+    expected: {
+      stringequals: {
+        'aws:username': ['alice', 'bob'],
+        'aws:principalorgid': ['o-12345678']
+      }
+    }
+  },
+  {
+    name: 'intersect StringEquals with same key - common values',
+    initialA: {
+      StringEquals: { 'aws:username': ['alice', 'bob', 'charlie'] }
+    },
+    initialB: {
+      StringEquals: { 'aws:username': ['bob', 'charlie', 'dave'] }
+    },
+    expected: {
+      stringequals: {
+        'aws:username': ['bob', 'charlie']
+      }
+    }
+  },
+  {
+    name: 'intersect StringEquals with same key - no common values returns null',
+    initialA: {
+      StringEquals: { 'aws:username': ['alice'] }
+    },
+    initialB: {
+      StringEquals: { 'aws:username': ['bob'] }
+    },
+    expected: null
+  },
+  // StringLike tests
+  {
+    name: 'intersect StringLike with same key - common patterns',
+    initialA: {
+      StringLike: { 'aws:userid': ['admin-*', 'user-*'] }
+    },
+    initialB: {
+      StringLike: { 'aws:userid': ['user-*', 'guest-*'] }
+    },
+    expected: {
+      stringlike: {
+        'aws:userid': ['user-*']
+      }
+    }
+  },
+  // StringNotEquals tests (union of exclusions)
+  {
+    name: 'intersect StringNotEquals - union of exclusions',
+    initialA: {
+      StringNotEquals: { 'aws:username': ['alice'] }
+    },
+    initialB: {
+      StringNotEquals: { 'aws:username': ['bob'] }
+    },
+    expected: {
+      stringnotequals: {
+        'aws:username': ['alice', 'bob']
+      }
+    }
+  },
+  // ArnEquals tests
+  {
+    name: 'intersect ArnEquals with same key - common ARNs',
+    initialA: {
+      ArnEquals: { 'aws:SourceArn': ['arn:aws:s3:::bucket1', 'arn:aws:s3:::bucket2'] }
+    },
+    initialB: {
+      ArnEquals: { 'aws:SourceArn': ['arn:aws:s3:::bucket2', 'arn:aws:s3:::bucket3'] }
+    },
+    expected: {
+      arnequals: {
+        'aws:sourcearn': ['arn:aws:s3:::bucket2']
+      }
+    }
+  },
+  // ArnNotLike tests (union of exclusions)
+  {
+    name: 'intersect ArnNotLike - union of exclusions',
+    initialA: {
+      ArnNotLike: { 'aws:SourceArn': ['arn:aws:s3:::bucket1/*'] }
+    },
+    initialB: {
+      ArnNotLike: { 'aws:SourceArn': ['arn:aws:s3:::bucket2/*'] }
+    },
+    expected: {
+      arnnotlike: {
+        'aws:sourcearn': ['arn:aws:s3:::bucket1/*', 'arn:aws:s3:::bucket2/*']
+      }
+    }
+  },
+  // NumericLessThan tests
+  {
+    name: 'intersect NumericLessThan - take minimum boundary',
+    initialA: {
+      NumericLessThan: { 'aws:MultiFactorAuthAge': ['3600'] }
+    },
+    initialB: {
+      NumericLessThan: { 'aws:MultiFactorAuthAge': ['7200'] }
+    },
+    expected: {
+      numericlessthan: {
+        'aws:multifactorauthage': ['3600']
+      }
+    }
+  },
+  {
+    name: 'intersect NumericLessThanEquals - take minimum boundary',
+    initialA: {
+      NumericLessThanEquals: { 'aws:MultiFactorAuthAge': ['1800'] }
+    },
+    initialB: {
+      NumericLessThanEquals: { 'aws:MultiFactorAuthAge': ['3600'] }
+    },
+    expected: {
+      numericlessthanequals: {
+        'aws:multifactorauthage': ['1800']
+      }
+    }
+  },
+  // NumericGreaterThan tests
+  {
+    name: 'intersect NumericGreaterThan - take maximum boundary',
+    initialA: {
+      NumericGreaterThan: { 'aws:MultiFactorAuthAge': ['100'] }
+    },
+    initialB: {
+      NumericGreaterThan: { 'aws:MultiFactorAuthAge': ['200'] }
+    },
+    expected: {
+      numericgreaterthan: {
+        'aws:multifactorauthage': ['200']
+      }
+    }
+  },
+  {
+    name: 'intersect NumericGreaterThanEquals - take maximum boundary',
+    initialA: {
+      NumericGreaterThanEquals: { 'aws:MultiFactorAuthAge': ['50'] }
+    },
+    initialB: {
+      NumericGreaterThanEquals: { 'aws:MultiFactorAuthAge': ['150'] }
+    },
+    expected: {
+      numericgreaterthanequals: {
+        'aws:multifactorauthage': ['150']
+      }
+    }
+  },
+  // Bool tests
+  {
+    name: 'intersect Bool with same value - true',
+    initialA: {
+      Bool: { 'aws:SecureTransport': ['true'] }
+    },
+    initialB: {
+      Bool: { 'aws:SecureTransport': ['true'] }
+    },
+    expected: {
+      bool: {
+        'aws:securetransport': ['true']
+      }
+    }
+  },
+  {
+    name: 'intersect Bool with same value - false',
+    initialA: {
+      Bool: { 'aws:SecureTransport': ['false'] }
+    },
+    initialB: {
+      Bool: { 'aws:SecureTransport': ['false'] }
+    },
+    expected: {
+      bool: {
+        'aws:securetransport': ['false']
+      }
+    }
+  },
+  {
+    name: 'intersect Bool with different values - returns null',
+    initialA: {
+      Bool: { 'aws:SecureTransport': ['true'] }
+    },
+    initialB: {
+      Bool: { 'aws:SecureTransport': ['false'] }
+    },
+    expected: null
+  },
+  // IpAddress tests
+  {
+    name: 'intersect IpAddress with same key - common CIDRs',
+    initialA: {
+      IpAddress: { 'aws:SourceIp': ['192.168.1.0/24', '10.0.0.0/8'] }
+    },
+    initialB: {
+      IpAddress: { 'aws:SourceIp': ['10.0.0.0/8', '172.16.0.0/12'] }
+    },
+    expected: {
+      ipaddress: {
+        'aws:sourceip': ['10.0.0.0/8']
+      }
+    }
+  },
+  {
+    name: 'intersect IpAddress with no common CIDRs - returns null',
+    initialA: {
+      IpAddress: { 'aws:SourceIp': ['192.168.1.0/24'] }
+    },
+    initialB: {
+      IpAddress: { 'aws:SourceIp': ['10.0.0.0/8'] }
+    },
+    expected: null
+  },
+  // NotIpAddress tests (intersection of allowed)
+  {
+    name: 'intersect NotIpAddress with same key - common CIDRs',
+    initialA: {
+      NotIpAddress: { 'aws:SourceIp': ['192.168.1.0/24', '10.0.0.0/8'] }
+    },
+    initialB: {
+      NotIpAddress: { 'aws:SourceIp': ['10.0.0.0/8', '172.16.0.0/12'] }
+    },
+    expected: {
+      notipaddress: {
+        'aws:sourceip': ['10.0.0.0/8']
+      }
+    }
+  },
+  // DateLessThan tests
+  {
+    name: 'intersect DateLessThan - take earlier date',
+    initialA: {
+      DateLessThan: { 'aws:TokenIssueTime': ['2024-01-15T00:00:00Z'] }
+    },
+    initialB: {
+      DateLessThan: { 'aws:TokenIssueTime': ['2024-01-20T00:00:00Z'] }
+    },
+    expected: {
+      datelessthan: {
+        'aws:tokenissuetime': ['2024-01-15T00:00:00Z']
+      }
+    }
+  },
+  {
+    name: 'intersect DateLessThanEquals - take earlier date',
+    initialA: {
+      DateLessThanEquals: { 'aws:TokenIssueTime': ['2024-06-01T00:00:00Z'] }
+    },
+    initialB: {
+      DateLessThanEquals: { 'aws:TokenIssueTime': ['2024-03-01T00:00:00Z'] }
+    },
+    expected: {
+      datelessthanequals: {
+        'aws:tokenissuetime': ['2024-03-01T00:00:00Z']
+      }
+    }
+  },
+  // DateGreaterThan tests
+  {
+    name: 'intersect DateGreaterThan - take later date',
+    initialA: {
+      DateGreaterThan: { 'aws:TokenIssueTime': ['2024-01-01T00:00:00Z'] }
+    },
+    initialB: {
+      DateGreaterThan: { 'aws:TokenIssueTime': ['2024-02-01T00:00:00Z'] }
+    },
+    expected: {
+      dategreaterthan: {
+        'aws:tokenissuetime': ['2024-02-01T00:00:00Z']
+      }
+    }
+  },
+  {
+    name: 'intersect DateGreaterThanEquals - take later date',
+    initialA: {
+      DateGreaterThanEquals: { 'aws:TokenIssueTime': ['2024-03-15T00:00:00Z'] }
+    },
+    initialB: {
+      DateGreaterThanEquals: { 'aws:TokenIssueTime': ['2024-01-15T00:00:00Z'] }
+    },
+    expected: {
+      dategreaterthanequals: {
+        'aws:tokenissuetime': ['2024-03-15T00:00:00Z']
+      }
+    }
+  },
+  // Different operators tests
+  {
+    name: 'intersect different operators - combine all',
+    initialA: {
+      StringEquals: { 'aws:username': ['alice'] }
+    },
+    initialB: {
+      Bool: { 'aws:SecureTransport': ['true'] }
+    },
+    expected: {
+      stringequals: {
+        'aws:username': ['alice']
+      },
+      bool: {
+        'aws:securetransport': ['true']
+      }
+    }
+  },
+  {
+    name: 'intersect multiple operators from both sides',
+    initialA: {
+      StringEquals: { 'aws:username': ['alice'] },
+      NumericLessThan: { 'aws:MultiFactorAuthAge': ['3600'] }
+    },
+    initialB: {
+      Bool: { 'aws:SecureTransport': ['true'] },
+      IpAddress: { 'aws:SourceIp': ['10.0.0.0/8'] }
+    },
+    expected: {
+      stringequals: {
+        'aws:username': ['alice']
+      },
+      numericlessthan: {
+        'aws:multifactorauthage': ['3600']
+      },
+      bool: {
+        'aws:securetransport': ['true']
+      },
+      ipaddress: {
+        'aws:sourceip': ['10.0.0.0/8']
+      }
+    }
+  },
+  // Key only in one side tests
+  {
+    name: 'key only in A is carried through',
+    initialA: {
+      StringEquals: { 'aws:username': ['alice'], 'aws:PrincipalAccount': ['123456789012'] }
+    },
+    initialB: {
+      StringEquals: { 'aws:username': ['alice'] }
+    },
+    expected: {
+      stringequals: {
+        'aws:username': ['alice'],
+        'aws:principalaccount': ['123456789012']
+      }
+    }
+  },
+  {
+    name: 'key only in B is carried through',
+    initialA: {
+      StringEquals: { 'aws:username': ['alice'] }
+    },
+    initialB: {
+      StringEquals: { 'aws:username': ['alice'], 'aws:PrincipalAccount': ['123456789012'] }
+    },
+    expected: {
+      stringequals: {
+        'aws:username': ['alice'],
+        'aws:principalaccount': ['123456789012']
+      }
+    }
+  },
+  // Empty conditions tests
+  {
+    name: 'intersect empty A with non-empty B',
+    initialA: {},
+    initialB: {
+      StringEquals: { 'aws:username': ['alice'] }
+    },
+    expected: {
+      stringequals: {
+        'aws:username': ['alice']
+      }
+    }
+  },
+  {
+    name: 'intersect non-empty A with empty B',
+    initialA: {
+      StringEquals: { 'aws:username': ['alice'] }
+    },
+    initialB: {},
+    expected: {
+      stringequals: {
+        'aws:username': ['alice']
+      }
+    }
+  },
+  {
+    name: 'intersect both empty returns empty',
+    initialA: {},
+    initialB: {},
+    expected: {}
+  },
+  // ForAllValues/ForAnyValue prefix tests
+  {
+    name: 'intersect ForAllValues:StringEquals with same key - common values',
+    initialA: {
+      'ForAllValues:StringEquals': { 'aws:TagKeys': ['env', 'project', 'team'] }
+    },
+    initialB: {
+      'ForAllValues:StringEquals': { 'aws:TagKeys': ['project', 'team', 'owner'] }
+    },
+    expected: {
+      'forallvalues:stringequals': {
+        'aws:tagkeys': ['project', 'team']
+      }
+    }
+  },
+  {
+    name: 'intersect ForAnyValue:StringLike with same key - common values',
+    initialA: {
+      'ForAnyValue:StringLike': { 'aws:TagKeys': ['env-*', 'project-*'] }
+    },
+    initialB: {
+      'ForAnyValue:StringLike': { 'aws:TagKeys': ['project-*', 'team-*'] }
+    },
+    expected: {
+      'foranyvalue:stringlike': {
+        'aws:tagkeys': ['project-*']
+      }
+    }
+  },
+  // IfExists suffix tests
+  {
+    name: 'intersect StringEqualsIfExists with same key - common values',
+    initialA: {
+      StringEqualsIfExists: { 'aws:username': ['alice', 'bob'] }
+    },
+    initialB: {
+      StringEqualsIfExists: { 'aws:username': ['bob', 'charlie'] }
+    },
+    expected: {
+      stringequalsifexists: {
+        'aws:username': ['bob']
+      }
+    }
+  },
+  {
+    name: 'intersect BoolIfExists with same value',
+    initialA: {
+      BoolIfExists: { 'aws:PrincipalIsAWSService': ['true'] }
+    },
+    initialB: {
+      BoolIfExists: { 'aws:PrincipalIsAWSService': ['true'] }
+    },
+    expected: {
+      boolifexists: {
+        'aws:principalisawsservice': ['true']
+      }
+    }
+  },
+  // Null condition tests
+  {
+    name: 'intersect Null condition with same value',
+    initialA: {
+      Null: { 'aws:TokenIssueTime': ['true'] }
+    },
+    initialB: {
+      Null: { 'aws:TokenIssueTime': ['true'] }
+    },
+    expected: {
+      null: {
+        'aws:tokenissuetime': ['true']
+      }
+    }
+  },
+  {
+    name: 'intersect Null condition with different values - returns null',
+    initialA: {
+      Null: { 'aws:TokenIssueTime': ['true'] }
+    },
+    initialB: {
+      Null: { 'aws:TokenIssueTime': ['false'] }
+    },
+    expected: null
+  },
+  // Complex combined tests
+  {
+    name: 'complex intersection with multiple operators and keys',
+    initialA: {
+      StringEquals: { 'aws:PrincipalOrgId': ['o-12345678'] },
+      NumericLessThan: { 'aws:MultiFactorAuthAge': ['3600'] },
+      Bool: { 'aws:SecureTransport': ['true'] }
+    },
+    initialB: {
+      StringEquals: { 'aws:PrincipalOrgId': ['o-12345678'] },
+      NumericLessThan: { 'aws:MultiFactorAuthAge': ['7200'] },
+      IpAddress: { 'aws:SourceIp': ['10.0.0.0/8'] }
+    },
+    expected: {
+      stringequals: {
+        'aws:principalorgid': ['o-12345678']
+      },
+      numericlessthan: {
+        'aws:multifactorauthage': ['3600']
+      },
+      bool: {
+        'aws:securetransport': ['true']
+      },
+      ipaddress: {
+        'aws:sourceip': ['10.0.0.0/8']
+      }
+    }
+  },
+  {
+    name: 'intersection fails when one overlapping key has no common values',
+    initialA: {
+      StringEquals: { 'aws:PrincipalOrgId': ['o-12345678'], 'aws:username': ['alice'] }
+    },
+    initialB: {
+      StringEquals: { 'aws:PrincipalOrgId': ['o-87654321'] }
+    },
+    expected: null
+  }
+]
+
+for (const test of intersectConditionsTests) {
+  const func = test.only ? it.only : it
+
+  func('intersectConditions: ' + test.name, () => {
+    //Given two sets of conditions
+    const conditionsA = test.initialA
+    const conditionsB = test.initialB
+
+    //When we merge the conditions
+    const result = intersectConditions(conditionsA, conditionsB)
+
+    //Then the result should match the expected merged conditions
+    expect(result).toEqual(test.expected)
+  })
+}
+
+const applyDenyConditionsToAllowTests: {
+  name: string
+  only?: true
+  allow: TestPermission
+  deny: TestPermission
+  expected: TestPermission[]
+}[] = [
+  // Basic single condition tests
+  {
+    name: 'Apply deny with single IpAddress condition from allow without condition',
+    allow: {
+      effect: 'Allow',
+      action: 's3:ListBucket',
+      resource: ['arn:aws:s3:::mybucket']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:ListBucket',
+      resource: ['arn:aws:s3:::mybucket'],
+      conditions: {
+        IpAddress: {
+          'aws:SourceIp': ['192.168.1.0/24']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:ListBucket',
+        resource: ['arn:aws:s3:::mybucket'],
+        conditions: {
+          notipaddress: {
+            'aws:sourceip': ['192.168.1.0/24']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Apply deny with single StringEquals condition',
+    allow: {
+      effect: 'Allow',
+      action: 'sts:AssumeRole',
+      resource: ['arn:aws:iam::123456789012:role/Admin']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'sts:AssumeRole',
+      resource: ['arn:aws:iam::123456789012:role/Admin'],
+      conditions: {
+        StringEquals: {
+          'aws:PrincipalOrgId': ['o-external']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/Admin'],
+        conditions: {
+          stringnotequals: {
+            'aws:principalorgid': ['o-external']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Apply deny with single Bool condition',
+    allow: {
+      effect: 'Allow',
+      action: 's3:DeleteObject',
+      resource: ['arn:aws:s3:::mybucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:DeleteObject',
+      resource: ['arn:aws:s3:::mybucket/*'],
+      conditions: {
+        Bool: {
+          'aws:SecureTransport': ['false']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:DeleteObject',
+        resource: ['arn:aws:s3:::mybucket/*'],
+        conditions: {
+          bool: {
+            'aws:securetransport': ['true']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Apply deny with single Null condition',
+    allow: {
+      effect: 'Allow',
+      action: 'sts:AssumeRole',
+      resource: ['arn:aws:iam::123456789012:role/CrossAccount']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'sts:AssumeRole',
+      resource: ['arn:aws:iam::123456789012:role/CrossAccount'],
+      conditions: {
+        Null: {
+          'sts:ExternalId': ['true']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/CrossAccount'],
+        conditions: {
+          null: {
+            'sts:externalid': ['false']
+          }
+        }
+      }
+    ]
+  },
+
+  // Multiple conditions tests (AND -> OR inversion)
+  {
+    name: 'Apply deny with two conditions creates two separate allows',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::iam-data-482734']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::iam-data-482734'],
+      conditions: {
+        StringEquals: {
+          'aws:PrincipalOrgId': ['o-98765432']
+        },
+        IpAddress: {
+          'aws:SourceIp': ['192.168.1.0/24']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::iam-data-482734'],
+        conditions: {
+          stringnotequals: {
+            'aws:principalorgid': ['o-98765432']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::iam-data-482734'],
+        conditions: {
+          notipaddress: {
+            'aws:sourceip': ['192.168.1.0/24']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Apply deny with three conditions creates three separate allows',
+    allow: {
+      effect: 'Allow',
+      action: 'sts:AssumeRole',
+      resource: ['arn:aws:iam::123456789012:role/EC2Admin']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'sts:AssumeRole',
+      resource: ['arn:aws:iam::123456789012:role/EC2Admin'],
+      conditions: {
+        Null: {
+          'sts:ExternalId': ['true']
+        },
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-myorg']
+        },
+        BoolIfExists: {
+          'aws:PrincipalIsAWSService': ['false']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/EC2Admin'],
+        conditions: {
+          null: {
+            'sts:externalid': ['false']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/EC2Admin'],
+        conditions: {
+          stringequals: {
+            'aws:principalorgid': ['o-myorg']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/EC2Admin'],
+        conditions: {
+          boolifexists: {
+            'aws:principalisawsservice': ['true']
+          }
+        }
+      }
+    ]
+  },
+
+  // Allow with existing conditions - merge with inverted deny
+  {
+    name: 'Allow with existing condition merges with inverted deny condition',
+    allow: {
+      effect: 'Allow',
+      action: 'ec2:StartInstances',
+      resource: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:RequestedRegion': ['us-east-1', 'us-west-2']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'ec2:StartInstances',
+      resource: ['*'],
+      conditions: {
+        IpAddress: {
+          'aws:SourceIp': ['10.0.0.0/8']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'ec2:StartInstances',
+        resource: ['*'],
+        conditions: {
+          stringequals: {
+            'aws:requestedregion': ['us-east-1', 'us-west-2']
+          },
+          notipaddress: {
+            'aws:sourceip': ['10.0.0.0/8']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Allow with multiple existing conditions merges with inverted deny conditions',
+    allow: {
+      effect: 'Allow',
+      action: 'lambda:InvokeFunction',
+      resource: ['arn:aws:lambda:us-east-1:123456789012:function:*'],
+      conditions: {
+        StringEquals: {
+          'aws:PrincipalOrgId': ['o-myorg']
+        },
+        Bool: {
+          'aws:SecureTransport': ['true']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'lambda:InvokeFunction',
+      resource: ['arn:aws:lambda:us-east-1:123456789012:function:*'],
+      conditions: {
+        IpAddress: {
+          'aws:SourceIp': ['192.168.0.0/16']
+        },
+        StringEquals: {
+          'aws:username': ['badactor']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'lambda:InvokeFunction',
+        resource: ['arn:aws:lambda:us-east-1:123456789012:function:*'],
+        conditions: {
+          stringequals: {
+            'aws:principalorgid': ['o-myorg']
+          },
+          bool: {
+            'aws:securetransport': ['true']
+          },
+          notipaddress: {
+            'aws:sourceip': ['192.168.0.0/16']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'lambda:InvokeFunction',
+        resource: ['arn:aws:lambda:us-east-1:123456789012:function:*'],
+        conditions: {
+          stringequals: {
+            'aws:principalorgid': ['o-myorg']
+          },
+          bool: {
+            'aws:securetransport': ['true']
+          },
+          stringnotequals: {
+            'aws:username': ['badactor']
+          }
+        }
+      }
+    ]
+  },
+
+  // Deny without conditions - returns allow unchanged
+  {
+    name: 'Deny without conditions returns allow unchanged',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::mybucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['arn:aws:s3:::mybucket/*']
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['arn:aws:s3:::mybucket/*']
+      }
+    ]
+  },
+
+  // Conflicting conditions - should produce empty result when inverted condition conflicts with allow
+  {
+    name: 'Deny Bool condition that conflicts with Allow Bool condition produces no result for that branch',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      resource: ['*'],
+      conditions: {
+        Bool: {
+          'aws:SecureTransport': ['true']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      resource: ['*'],
+      conditions: {
+        Bool: {
+          'aws:SecureTransport': ['true']
+        }
+      }
+    },
+    expected: []
+  },
+  {
+    name: 'Deny with multiple conditions where one conflicts produces only non-conflicting branches',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObject',
+      resource: ['*'],
+      conditions: {
+        Bool: {
+          'aws:SecureTransport': ['true']
+        }
+      }
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObject',
+      resource: ['*'],
+      conditions: {
+        Bool: {
+          'aws:SecureTransport': ['true']
+        },
+        IpAddress: {
+          'aws:SourceIp': ['10.0.0.0/8']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObject',
+        resource: ['*'],
+        conditions: {
+          bool: {
+            'aws:securetransport': ['true']
+          },
+          notipaddress: {
+            'aws:sourceip': ['10.0.0.0/8']
+          }
+        }
+      }
+    ]
+  },
+
+  // ForAllValues/ForAnyValue prefix tests
+  {
+    name: 'Apply deny with ForAnyValue:StringEquals condition',
+    allow: {
+      effect: 'Allow',
+      action: 'dynamodb:Query',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'dynamodb:Query',
+      resource: ['*'],
+      conditions: {
+        'ForAnyValue:StringEquals': {
+          'dynamodb:Attributes': ['SSN', 'CreditCard']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'dynamodb:Query',
+        resource: ['*'],
+        conditions: {
+          'forallvalues:stringnotequals': {
+            'dynamodb:attributes': ['SSN', 'CreditCard']
+          }
+        }
+      }
+    ]
+  },
+  {
+    name: 'Apply deny with ForAllValues:StringEquals condition',
+    allow: {
+      effect: 'Allow',
+      action: 's3:PutObjectTagging',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:PutObjectTagging',
+      resource: ['*'],
+      conditions: {
+        'ForAllValues:StringEquals': {
+          'aws:TagKeys': ['Environment', 'Project']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:PutObjectTagging',
+        resource: ['*'],
+        conditions: {
+          'foranyvalue:stringnotequals': {
+            'aws:tagkeys': ['Environment', 'Project']
+          }
+        }
+      }
+    ]
+  },
+
+  // Multiple context keys under same operator
+  {
+    name: 'Deny with multiple context keys under same operator creates separate allows per key',
+    allow: {
+      effect: 'Allow',
+      action: 'ec2:RunInstances',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'ec2:RunInstances',
+      resource: ['*'],
+      conditions: {
+        StringEquals: {
+          'aws:RequestedRegion': ['eu-west-1'],
+          'ec2:InstanceType': ['t2.micro']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'ec2:RunInstances',
+        resource: ['*'],
+        conditions: {
+          stringnotequals: {
+            'aws:requestedregion': ['eu-west-1']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'ec2:RunInstances',
+        resource: ['*'],
+        conditions: {
+          stringnotequals: {
+            'ec2:instancetype': ['t2.micro']
+          }
+        }
+      }
+    ]
+  },
+
+  // IfExists suffix tests
+  {
+    name: 'Apply deny with StringEqualsIfExists condition preserves IfExists',
+    allow: {
+      effect: 'Allow',
+      action: 'kms:Decrypt',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 'kms:Decrypt',
+      resource: ['*'],
+      conditions: {
+        StringEqualsIfExists: {
+          'kms:ViaService': ['s3.us-east-1.amazonaws.com']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 'kms:Decrypt',
+        resource: ['*'],
+        conditions: {
+          stringnotequalsifexists: {
+            'kms:viaservice': ['s3.us-east-1.amazonaws.com']
+          }
+        }
+      }
+    ]
+  },
+
+  // Numeric condition tests
+  {
+    name: 'Apply deny with NumericLessThan condition',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      resource: ['*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      resource: ['*'],
+      conditions: {
+        NumericLessThan: {
+          'aws:MultiFactorAuthAge': ['3600']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: ['*'],
+        conditions: {
+          numericgreaterthanequals: {
+            'aws:multifactorauthage': ['3600']
+          }
+        }
+      }
+    ]
+  },
+
+  // notResource tests
+  {
+    name: 'Apply deny to allow with notResource',
+    allow: {
+      effect: 'Allow',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::restricted-bucket/*']
+    },
+    deny: {
+      effect: 'Deny',
+      action: 's3:GetObject',
+      notResource: ['arn:aws:s3:::restricted-bucket/*'],
+      conditions: {
+        StringNotEquals: {
+          'aws:PrincipalOrgId': ['o-myorg']
+        }
+      }
+    },
+    expected: [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        notResource: ['arn:aws:s3:::restricted-bucket/*'],
+        conditions: {
+          stringequals: {
+            'aws:principalorgid': ['o-myorg']
+          }
+        }
+      }
+    ]
+  }
+]
+
+for (const test of applyDenyConditionsToAllowTests) {
+  const func = test.only ? it.only : it
+
+  func('applyDenyConditionsToAllow: ' + test.name, () => {
+    //Given allow and deny conditions
+    const allowPermission = convertTestPermissionToPermission(test.allow)
+    const denyPermission = convertTestPermissionToPermission(test.deny)
+
+    //When we apply the deny conditions to the allow conditions
+    const result = applyDenyConditionsToAllow(allowPermission, denyPermission)
+
+    //Then the result should match the expected resulting conditions
+    expectPermissionsToMatch(result, test.expected)
+  })
+}

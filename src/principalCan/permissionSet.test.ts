@@ -552,12 +552,132 @@ const subtractTests: {
       }
     ],
     expectedDeny: []
+  },
+  {
+    name: 'should iteratively subtract deny permissions from allow permissions',
+    allowPermissions: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole']
+      }
+    ],
+    denyPermissions: [
+      {
+        effect: 'Deny',
+        action: 'sts:AssumeRole',
+        notResource: ['arn:aws:iam::100000000002:role/TestCrossAccount'],
+        conditions: {
+          StringLike: {
+            'aws:PrincipalArn': ['arn:aws:iam::*:root']
+          },
+          Null: {
+            'aws:AssumedRoot': ['true']
+          }
+        }
+      },
+      {
+        effect: 'Deny',
+        action: 'sts:AssumeRole',
+        resource: ['*'],
+        conditions: {
+          Null: {
+            'sts:ExternalId': ['true']
+          },
+          StringNotEquals: {
+            'aws:PrincipalOrgId': ['o-11111111']
+          },
+          BoolIfExists: {
+            'aws:PrincipalIsAWSService': ['false']
+          }
+        }
+      }
+    ],
+    expectedAllow: [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
+        conditions: {
+          StringNotLike: {
+            'aws:PrincipalArn': ['arn:aws:iam::*:root']
+          },
+          Null: {
+            'sts:ExternalId': ['false']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
+        conditions: {
+          StringNotLike: {
+            'aws:PrincipalArn': ['arn:aws:iam::*:root']
+          },
+          StringEquals: {
+            'aws:PrincipalOrgId': ['o-11111111']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
+        conditions: {
+          StringNotLike: {
+            'aws:PrincipalArn': ['arn:aws:iam::*:root']
+          },
+          BoolIfExists: {
+            'aws:PrincipalIsAWSService': ['true']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
+        conditions: {
+          Null: {
+            'aws:AssumedRoot': ['false'],
+            'sts:ExternalId': ['false']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
+        conditions: {
+          Null: {
+            'aws:AssumedRoot': ['false']
+          },
+          StringEquals: {
+            'aws:PrincipalOrgId': ['o-11111111']
+          }
+        }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: ['arn:aws:iam::123456789012:role/MyRole'],
+        conditions: {
+          Null: {
+            'aws:AssumedRoot': ['false']
+          },
+          BoolIfExists: {
+            'aws:PrincipalIsAWSService': ['true']
+          }
+        }
+      }
+    ],
+    expectedDeny: []
   }
 ]
 
 for (const test of subtractTests) {
   const func = test.only ? it.only : it
-  func(test.name, () => {
+  func('subtract: ' + test.name, () => {
     // Given a permission set with the given allow and deny permissions
     const allowPermissionSet = new PermissionSet('Allow')
     for (const perm of test.allowPermissions) {

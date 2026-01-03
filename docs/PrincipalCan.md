@@ -78,7 +78,7 @@ Support for resource-based policies is being added incrementally. The currently 
 
 | Resource Type           | Same Account | Cross Account |
 | ----------------------- | :----------: | :-----------: |
-| S3 Bucket Policies      |      ✅      |      ❌       |
+| S3 Bucket Policies      |      ✅      |      ✅       |
 | KMS Key Policies        |      ✅      |      ❌       |
 | IAM Role Trust Policies |      ✅      |      ❌       |
 
@@ -87,6 +87,18 @@ Support for resource-based policies is being added incrementally. The currently 
 ### Permission Boundaries
 
 There is an [edge case when evaluating implicit denies from permission boundaries](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html#access_policies_boundaries-eval-logic). If a resource policy grants access directly to a Role session ARN or a Federated user ARN, it can override the implicit deny from a permission boundary. This behavior is not currently supported in `principal-can`, but `simulate` and `who-can` do incorporate this behavior.
+
+## Cross-Account Evaluation
+
+When evaluating cross-account access, `principal-can` checks resource policies in other accounts that grant access to the principal. For cross-account access to be effective:
+
+1. The resource policy in the resource account must grant access to the principal (either directly or via the account `arn:aws:iam::123456789012:root`)
+2. The principal must have corresponding permissions in their identity policies.
+3. A permission boundary attached to the principal must allow the action.
+4. Any RCPs in the resource account must allow the action.
+5. Any SCPs in the principal's account must allow the action.
+
+Cross-account permissions are combined with same-account permissions in the final output.
 
 ## IAM Role Trust Policies (`sts:AssumeRole`)
 
