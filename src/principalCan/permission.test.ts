@@ -563,10 +563,7 @@ describe('Permission#includes', () => {
 
     func(test.name, () => {
       //Given a permission and another permission
-      const [thisService, thisAction] = test.permission.action.split(':')
       const permission = convertTestPermissionToPermission(test.permission)
-
-      const [otherService, otherAction] = test.otherPermission.action.split(':')
       const otherPermission = convertTestPermissionToPermission(test.otherPermission)
 
       //When we check if the permission includes the other permission
