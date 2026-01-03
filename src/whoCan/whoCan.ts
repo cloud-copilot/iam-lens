@@ -60,7 +60,7 @@ export interface ResourceAccessRequest {
   s3AbacOverride?: S3AbacOverride
 
   /**
-   * The number of additional worker threads to use for simulations.
+   * The number of worker threads to use for simulations beyond the main thread.
    * If not provided, defaults to number of CPUs - 1.
    */
   workerThreads?: number
@@ -93,9 +93,9 @@ export interface WhoCanResponse {
  */
 function getNumberOfWorkers(overrideValue: number | undefined): number {
   if (typeof overrideValue === 'number' && overrideValue > 0) {
-    return overrideValue
+    return Math.floor(overrideValue)
   }
-  return numberOfCpus() - 1
+  return Math.max(0, numberOfCpus() - 1)
 }
 
 export async function whoCan(
