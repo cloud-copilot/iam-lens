@@ -9,6 +9,7 @@ import {
   ResourceType
 } from '@cloud-copilot/iam-data'
 import { loadPolicy } from '@cloud-copilot/iam-policy'
+import { RequestDenial } from '@cloud-copilot/iam-simulate'
 import {
   isAssumedRoleArn,
   isIamRoleArn,
@@ -30,6 +31,7 @@ import { SharedArrayBufferMainCache } from '../workers/SharedArrayBufferMainCach
 import { StreamingWorkQueue } from '../workers/StreamingWorkQueue.js'
 import { createMainThreadStreamingWorkQueue } from './WhoCanMainThreadWorker.js'
 import { WhoCanWorkItem } from './WhoCanWorker.js'
+import { LightRequestAnalysis } from './requestAnalysis.js'
 
 export interface ResourceAccessRequest {
   /**
@@ -64,6 +66,11 @@ export interface ResourceAccessRequest {
    * If not provided, defaults to number of CPUs - 1.
    */
   workerThreads?: number
+
+  /**
+   * Deny details callback for simulations. If the callback returns true, deny details will be included for that simulation.
+   */
+  denyDetailsCallback?: (details: LightRequestAnalysis) => boolean
 }
 
 export interface WhoCanAllowed {
@@ -75,6 +82,13 @@ export interface WhoCanAllowed {
   dependsOnSessionName?: boolean
 }
 
+export interface WhoCanDenyDetail {
+  principal: string
+  service: string
+  action: string
+  details: RequestDenial[]
+}
+
 export interface WhoCanResponse {
   simulationCount: number
   allowed: WhoCanAllowed[]
@@ -83,6 +97,7 @@ export interface WhoCanResponse {
   organizationsNotFound: string[]
   organizationalUnitsNotFound: string[]
   principalsNotFound: string[]
+  denyDetails?: WhoCanDenyDetail[] | undefined
 }
 
 /**
@@ -109,6 +124,7 @@ export async function whoCan(
   // It's possible in bundled environments that the worker script path may not be found, so handle that gracefully.
   const numWorkers = getNumberOfWorkers(request.workerThreads)
   const workerPath = getWorkerScriptPath('whoCan/WhoCanWorkerThreadWorker.js')
+  const collectDenyDetails = !!request.denyDetailsCallback
   const workers = !workerPath
     ? []
     : new Array(numWorkers).fill(undefined).map((val) => {
@@ -117,7 +133,8 @@ export async function whoCan(
             collectConfigs: collectConfigs,
             partition,
             concurrency: 50,
-            s3AbacOverride: request.s3AbacOverride
+            s3AbacOverride: request.s3AbacOverride,
+            collectDenyDetails
           }
         })
       })
@@ -176,6 +193,7 @@ export async function whoCan(
   const simulateQueue = new StreamingWorkQueue<WhoCanWorkItem>()
 
   const simulationErrors: any[] = []
+  const denyDetails: WhoCanDenyDetail[] = []
 
   const onComplete = (result: JobResult<WhoCanAllowed | undefined, Record<string, unknown>>) => {
     simulationCount++
@@ -191,7 +209,9 @@ export async function whoCan(
     simulateQueue,
     collectClient,
     request.s3AbacOverride,
-    onComplete
+    onComplete,
+    request.denyDetailsCallback,
+    (detail) => denyDetails.push(detail)
   )
 
   workers.forEach((worker) => {
@@ -202,6 +222,18 @@ export async function whoCan(
       }
       if (msg.type === 'result') {
         onComplete(msg.result)
+      }
+      if (msg.type === 'checkDenyDetails') {
+        // Run the callback on main thread to check if we should include deny details
+        const shouldInclude = request.denyDetailsCallback?.(msg.lightAnalysis) ?? false
+        worker.postMessage({
+          type: 'denyDetailsCheckResult',
+          checkId: msg.checkId,
+          shouldInclude
+        })
+      }
+      if (msg.type === 'denyDetailsResult') {
+        denyDetails.push(msg.denyDetail)
       }
     })
   })
@@ -329,7 +361,8 @@ export async function whoCan(
     accountsNotFound: uniqueAccounts.accountsNotFound,
     organizationsNotFound: uniqueAccounts.organizationsNotFound,
     organizationalUnitsNotFound: uniqueAccounts.organizationalUnitsNotFound,
-    principalsNotFound: principalsNotFound
+    principalsNotFound: principalsNotFound,
+    denyDetails: request.denyDetailsCallback ? denyDetails : undefined
   }
 
   if (request.sort) {
@@ -623,6 +656,16 @@ async function allResourceTypesByArnLength(service: string): Promise<ResourceTyp
  */
 export function sortWhoCanResults(whoCanResponse: WhoCanResponse) {
   whoCanResponse.allowed.sort((a, b) => {
+    if (a.principal < b.principal) return -1
+    if (a.principal > b.principal) return 1
+    if (a.service < b.service) return -1
+    if (a.service > b.service) return 1
+    if (a.action < b.action) return -1
+    if (a.action > b.action) return 1
+    return 0
+  })
+
+  whoCanResponse.denyDetails?.sort((a, b) => {
     if (a.principal < b.principal) return -1
     if (a.principal > b.principal) return 1
     if (a.service < b.service) return -1
