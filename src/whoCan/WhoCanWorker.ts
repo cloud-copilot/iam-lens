@@ -1,4 +1,5 @@
 import { iamActionDetails } from '@cloud-copilot/iam-data'
+import { RequestAnalysis } from '@cloud-copilot/iam-simulate'
 import { Job } from '@cloud-copilot/job'
 import { IamCollectClient } from '../collect/client.js'
 import { simulateRequest } from '../simulate/simulate.js'
@@ -12,11 +13,33 @@ export interface WhoCanWorkItem {
   principal: string
 }
 
+/**
+ * The result of executing a whoCan work item.
+ * Contains either the allowed result or the deny analysis (but not both).
+ */
+export interface WhoCanExecutionResult {
+  /**
+   * The allowed result if the simulation was successful
+   */
+  allowed?: WhoCanAllowed
+
+  /**
+   * The deny analysis if the simulation was not allowed.
+   * Only populated when collectDenyDetails is true.
+   */
+  denyAnalysis?: RequestAnalysis
+
+  /**
+   * The work item that was executed, for context in deny details
+   */
+  workItem: WhoCanWorkItem
+}
+
 export function createJobForWhoCanWorkItem(
   workItem: WhoCanWorkItem,
   collectClient: IamCollectClient,
   whoCanOptions: WhoCanOptions
-): Job<WhoCanAllowed | undefined, Record<string, unknown>> {
+): Job<WhoCanExecutionResult, Record<string, unknown>> {
   return {
     properties: {},
     execute: async (context) => {
@@ -27,13 +50,14 @@ export function createJobForWhoCanWorkItem(
 
 export interface WhoCanOptions {
   s3AbacOverride?: S3AbacOverride
+  collectDenyDetails?: boolean
 }
 
 export async function executeWhoCan(
   workItem: WhoCanWorkItem,
   collectClient: IamCollectClient,
   whoCanOptions: WhoCanOptions
-): Promise<WhoCanAllowed | undefined> {
+): Promise<WhoCanExecutionResult> {
   const { principal, resource, resourceAccount, action } = workItem
   const [service, serviceAction] = action.split(':')
   const discoveryResult = await simulateRequest(
@@ -65,27 +89,37 @@ export async function executeWhoCan(
     if (result?.result.analysis?.result === 'Allowed') {
       const actionType = await getActionLevel(service, serviceAction)
       return {
-        principal,
-        service,
-        action: serviceAction,
-        level: actionType.toLowerCase()
+        workItem,
+        allowed: {
+          principal,
+          service,
+          action: serviceAction,
+          level: actionType.toLowerCase()
+        }
       }
     } else {
       const actionType = await getActionLevel(service, serviceAction)
       return {
-        principal,
-        service: service,
-        action: serviceAction,
-        level: actionType.toLowerCase(),
-        conditions: discoveryResult?.result.analysis.ignoredConditions,
-        dependsOnSessionName: discoveryResult?.result.analysis.ignoredRoleSessionName
-          ? true
-          : undefined
+        workItem,
+        allowed: {
+          principal,
+          service: service,
+          action: serviceAction,
+          level: actionType.toLowerCase(),
+          conditions: discoveryResult?.result.analysis.ignoredConditions,
+          dependsOnSessionName: discoveryResult?.result.analysis.ignoredRoleSessionName
+            ? true
+            : undefined
+        }
       }
     }
   }
 
-  return undefined
+  // Not allowed - return deny analysis if requested
+  return {
+    workItem,
+    denyAnalysis: whoCanOptions.collectDenyDetails ? discoveryResult?.result.analysis : undefined
+  }
 }
 
 /**

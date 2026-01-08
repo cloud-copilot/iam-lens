@@ -665,7 +665,8 @@ describe('sortWhoCanResults', () => {
       accountsNotFound: [],
       organizationsNotFound: [],
       organizationalUnitsNotFound: [],
-      principalsNotFound: []
+      principalsNotFound: [],
+      denyDetails: []
     }
 
     // When we sort the results
@@ -725,7 +726,8 @@ describe('sortWhoCanResults', () => {
         'arn:aws:iam::123456789012:role/RoleZ',
         'arn:aws:iam::123456789012:role/RoleA',
         'arn:aws:iam::123456789012:role/RoleM'
-      ]
+      ],
+      denyDetails: []
     }
 
     // When we sort the results
@@ -751,7 +753,8 @@ describe('sortWhoCanResults', () => {
       accountsNotFound: [],
       organizationsNotFound: [],
       organizationalUnitsNotFound: [],
-      principalsNotFound: []
+      principalsNotFound: [],
+      denyDetails: []
     }
 
     // When we sort the results
@@ -793,7 +796,8 @@ describe('sortWhoCanResults', () => {
       accountsNotFound: [],
       organizationsNotFound: [],
       organizationalUnitsNotFound: [],
-      principalsNotFound: []
+      principalsNotFound: [],
+      denyDetails: []
     }
 
     // When we sort the results
@@ -850,7 +854,8 @@ describe('sortWhoCanResults', () => {
       accountsNotFound: [],
       organizationsNotFound: [],
       organizationalUnitsNotFound: [],
-      principalsNotFound: []
+      principalsNotFound: [],
+      denyDetails: []
     }
 
     // When we sort the results
@@ -904,7 +909,8 @@ describe('sortWhoCanResults', () => {
       accountsNotFound: [],
       organizationsNotFound: [],
       organizationalUnitsNotFound: [],
-      principalsNotFound: []
+      principalsNotFound: [],
+      denyDetails: []
     }
 
     // When we sort the results
