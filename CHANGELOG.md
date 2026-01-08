@@ -1,3 +1,10 @@
+## [0.1.78](https://github.com/cloud-copilot/iam-lens/compare/v0.1.77...v0.1.78) (2026-01-08)
+
+
+### Features
+
+* Add the ability to get deny details from whoCan ([8be2907](https://github.com/cloud-copilot/iam-lens/commit/8be2907c873f7479c603e849c9c518a6173087c7))
+
 ## [0.1.77](https://github.com/cloud-copilot/iam-lens/compare/v0.1.76...v0.1.77) (2026-01-03)
 
 
