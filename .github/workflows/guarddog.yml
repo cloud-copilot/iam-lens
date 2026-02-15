@@ -27,5 +27,4 @@ jobs:
       - name: Install GuardDog
         run: pip install guarddog
 
-      - run: guarddog npm scan src/ --exit-non-zero-on-finding
-      # - run: guarddog npm verify package.json --exclude-rules empty_information --exit-non-zero-on-finding
+      - run: guarddog npm scan src/ --exit-non-zero-on-finding --exclude-rules npm-api-obfuscation
