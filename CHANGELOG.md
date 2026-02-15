@@ -1,3 +1,10 @@
+## [0.1.82](https://github.com/cloud-copilot/iam-lens/compare/v0.1.81...v0.1.82) (2026-02-15)
+
+
+### Bug Fixes
+
+* Remove guarddog rule causing false positives ([99ce39b](https://github.com/cloud-copilot/iam-lens/commit/99ce39ba81d41a3512008ea63465fe9b7aec70f6))
+
 ## [0.1.81](https://github.com/cloud-copilot/iam-lens/compare/v0.1.80...v0.1.81) (2026-02-14)
 
 ## [0.1.80](https://github.com/cloud-copilot/iam-lens/compare/v0.1.79...v0.1.80) (2026-01-19)
