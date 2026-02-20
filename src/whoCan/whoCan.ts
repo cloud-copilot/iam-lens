@@ -427,7 +427,6 @@ export async function whoCan(
   }
 
   await accountQueue.finishAllWork()
-  // await simulateQueue.finishAllWork()
 
   const workerPromises = workers.map((worker) => {
     return new Promise<void>((resolve, reject) => {
