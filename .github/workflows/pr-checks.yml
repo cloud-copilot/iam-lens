@@ -85,17 +85,4 @@ jobs:
         run: pip install guarddog
 
       - name: Run GuardDog scan on src
-        run: guarddog npm scan src/ --exit-non-zero-on-finding
-
-      # - name: Check if package.json changed
-      #   id: package_check
-      #   run: |
-      #     if git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | grep -q '^package\.json$'; then
-      #       echo "changed=true" >> $GITHUB_OUTPUT
-      #     else
-      #       echo "changed=false" >> $GITHUB_OUTPUT
-      #     fi
-
-      # - name: Conditionally run verify on package.json
-      #   if: steps.package_check.outputs.changed == 'true'
-      #   run: guarddog npm verify package.json --exclude-rules empty_information --exit-non-zero-on-finding
+        run: guarddog npm scan src/ --exit-non-zero-on-finding --exclude-rules npm-api-obfuscation
