@@ -1,4 +1,4 @@
-import { EvaluationResult } from '@cloud-copilot/iam-simulate'
+import { EvaluationResult, RunSimulationResults } from '@cloud-copilot/iam-simulate'
 import { describe, expect, it } from 'vitest'
 import { getTestDatasetClient } from '../test-datasets/testClient.js'
 import { simulateRequest, SimulationRequest } from './simulate.js'
@@ -348,13 +348,13 @@ describe('simulateIntegrationTest', () => {
         const { result } = await simulateRequest(request, collectClient)
 
         // Then the result should not have errors
-        expect(result.errors).toBeUndefined()
+        assertSuccessfulResult(result)
 
         // And the result should match the expected result
-        if (result.analysis?.result !== expected) {
-          console.log(JSON.stringify(result.analysis?.rcpAnalysis, null, 2))
+        if (result.overallResult !== expected) {
+          console.log(JSON.stringify(getRcpAnalysisForLogging(result), null, 2))
         }
-        expect(result.analysis?.result).toEqual(test.expected)
+        expect(result.overallResult).toEqual(test.expected)
       }
     })
   }
@@ -396,7 +396,7 @@ describe('simulatePrincipalDoesNotExist', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
   })
 })
 
@@ -419,10 +419,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be ImplicitlyDenied (ABAC conditions are not evaluated when ABAC is not enabled)
-    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+    expect(result.overallResult).toEqual('ImplicitlyDenied')
   })
 
   it('strict mode should allow ABAC access when ABAC is enabled on the bucket and tags match', async () => {
@@ -443,10 +443,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be Allowed (ABAC conditions match)
-    expect(result.analysis?.result).toEqual('Allowed')
+    expect(result.overallResult).toEqual('Allowed')
   })
 
   it('strict mode should not allow ABAC access when ABAC is not enabled on the bucket and the tags do not match', async () => {
@@ -467,10 +467,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be ImplicitlyDenied (no matching policy)
-    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+    expect(result.overallResult).toEqual('ImplicitlyDenied')
   })
 
   it('strict mode should not allow ABAC access when ABAC is enabled on the bucket and the tags do not match', async () => {
@@ -491,10 +491,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be ImplicitlyDenied (tags don't match the condition)
-    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+    expect(result.overallResult).toEqual('ImplicitlyDenied')
   })
 
   ///
@@ -516,10 +516,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be ImplicitlyDenied (ABAC conditions are not evaluated when ABAC is not enabled)
-    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+    expect(result.overallResult).toEqual('ImplicitlyDenied')
   })
 
   it('discovery mode should not allow ABAC access to a bucket object when ABAC is not enabled on the bucket and tags match', async () => {
@@ -530,7 +530,7 @@ describe('s3 ABAC', () => {
     const request: SimulationRequest = {
       resourceArn: 'arn:aws:s3:::finance-bucket/report.pdf',
       resourceAccount: undefined,
-      action: 's3:GetBucketPolicy',
+      action: 's3:GetObject',
       principal: 'arn:aws:iam::200000000002:role/s3abacrole',
       customContextKeys: {},
       simulationMode: 'Discovery'
@@ -540,10 +540,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be ImplicitlyDenied (ABAC conditions are not evaluated when ABAC is not enabled)
-    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+    expect(result.overallResult).toEqual('ImplicitlyDenied')
   })
 
   it('discovery mode should allow ABAC access to a bucket object when ABAC is enabled on the bucket and tags match', async () => {
@@ -554,7 +554,7 @@ describe('s3 ABAC', () => {
     const request: SimulationRequest = {
       resourceArn: 'arn:aws:s3:::finance-bucket-w-abac/report.pdf',
       resourceAccount: undefined,
-      action: 's3:GetBucketPolicy',
+      action: 's3:GetObject',
       principal: 'arn:aws:iam::200000000002:role/s3abacrole',
       customContextKeys: {},
       simulationMode: 'Discovery'
@@ -564,10 +564,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be Allowed (ABAC conditions match)
-    expect(result.analysis?.result).toEqual('Allowed')
+    expect(result.overallResult).toEqual('Allowed')
   })
 
   it('discovery mode should allow ABAC access when ABAC is enabled on the bucket and tags match', async () => {
@@ -588,10 +588,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be Allowed (ABAC conditions match)
-    expect(result.analysis?.result).toEqual('Allowed')
+    expect(result.overallResult).toEqual('Allowed')
   })
 
   it('discovery mode should not allow ABAC access when ABAC is not enabled on the bucket and the tags do not match', async () => {
@@ -612,10 +612,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be ImplicitlyDenied (no matching policy)
-    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+    expect(result.overallResult).toEqual('ImplicitlyDenied')
   })
 
   it('discovery mode should not allow ABAC access when ABAC is enabled on the bucket and the tags do not match', async () => {
@@ -636,10 +636,10 @@ describe('s3 ABAC', () => {
     const { result } = await simulateRequest(request, collectClient)
 
     // Then the result should not have errors
-    expect(result.errors).toBeUndefined()
+    assertSuccessfulResult(result)
 
     // And the result should be ImplicitlyDenied (tags don't match the condition)
-    expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+    expect(result.overallResult).toEqual('ImplicitlyDenied')
   })
 
   describe('overrides', () => {
@@ -662,10 +662,10 @@ describe('s3 ABAC', () => {
       const { result } = await simulateRequest(request, collectClient)
 
       // Then the result should not have errors
-      expect(result.errors).toBeUndefined()
+      assertSuccessfulResult(result)
 
       // And the result should be Allowed (ABAC override is enabled)
-      expect(result.analysis?.result).toEqual('Allowed')
+      expect(result.overallResult).toEqual('Allowed')
     })
 
     it('strict mode should use ABAC override when ABAC is enabled on the bucket and tags match', async () => {
@@ -687,10 +687,28 @@ describe('s3 ABAC', () => {
       const { result } = await simulateRequest(request, collectClient)
 
       // Then the result should not have errors
-      expect(result.errors).toBeUndefined()
+      assertSuccessfulResult(result)
 
       // And the result should be ImplicitlyDenied because ABAC is disabled by the override
-      expect(result.analysis?.result).toEqual('ImplicitlyDenied')
+      expect(result.overallResult).toEqual('ImplicitlyDenied')
     })
   })
 })
+
+function assertSuccessfulResult(
+  result: RunSimulationResults
+): asserts result is Exclude<RunSimulationResults, { resultType: 'error' }> {
+  if (result.resultType === 'error') {
+    throw new Error(`Simulation error: ${result.errors.message}`)
+  }
+}
+
+function getRcpAnalysisForLogging(result: RunSimulationResults) {
+  if (result.resultType === 'single') {
+    return result.result.analysis.rcpAnalysis
+  }
+  if (result.resultType === 'wildcard') {
+    return result.results.map((entry) => entry.analysis.rcpAnalysis)
+  }
+  return result.errors
+}

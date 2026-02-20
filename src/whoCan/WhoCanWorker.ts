@@ -1,10 +1,14 @@
 import { iamActionDetails } from '@cloud-copilot/iam-data'
-import { RequestAnalysis } from '@cloud-copilot/iam-simulate'
-import { Job } from '@cloud-copilot/job'
+import {
+  type EvaluationResult,
+  type RequestAnalysis,
+  type SuccessfulRunSimulationResults
+} from '@cloud-copilot/iam-simulate'
+import type { Job } from '@cloud-copilot/job'
 import { IamCollectClient } from '../collect/client.js'
 import { simulateRequest } from '../simulate/simulate.js'
-import { S3AbacOverride } from '../utils/s3Abac.js'
-import { WhoCanAllowed } from './whoCan.js'
+import type { S3AbacOverride } from '../utils/s3Abac.js'
+import type { WhoCanAllowed, WhoCanAllowedResourcePattern } from './whoCan.js'
 
 export interface WhoCanWorkItem {
   resource: string | undefined
@@ -14,26 +18,82 @@ export interface WhoCanWorkItem {
 }
 
 /**
+ * Execution result when the principal is allowed access.
+ */
+export interface AllowedWhoCanExecutionResult {
+  type: 'allowed'
+  workItem: WhoCanWorkItem
+  allowed: WhoCanAllowed
+}
+
+/**
+ * Execution result when the principal is denied access, without detailed analysis.
+ */
+export interface DeniedWhoCanExecutionResult {
+  type: 'denied'
+  workItem: WhoCanWorkItem
+}
+
+/**
+ * Execution result when the principal is denied access for a single resource pattern,
+ * with detailed analysis included.
+ */
+export interface DeniedSingleWhoCanExecutionResult {
+  type: 'denied_single'
+  workItem: WhoCanWorkItem
+  analysis: RequestAnalysis
+}
+
+/**
+ * Details about a denied resource pattern, including the analysis for why it was denied.
+ */
+export interface WhoCanDenyResourceDetails {
+  /**
+   * The resource pattern that was tested.
+   */
+  pattern: string
+  /**
+   * The type of resource for the pattern.
+   */
+  resourceType: string
+  /**
+   * The analysis explaining why the request was denied.
+   */
+  analysis: RequestAnalysis
+}
+
+/**
+ * Execution result when the principal is denied access for a wildcard resource,
+ * with detailed analysis for each denied pattern.
+ */
+export interface DeniedWildcardWhoCanExecutionResult {
+  type: 'denied_wildcard'
+  workItem: WhoCanWorkItem
+  overallResult: EvaluationResult
+  deniedPatterns: WhoCanDenyResourceDetails[]
+}
+
+/**
  * The result of executing a whoCan work item.
  * Contains either the allowed result or the deny analysis (but not both).
  */
-export interface WhoCanExecutionResult {
-  /**
-   * The allowed result if the simulation was successful
-   */
-  allowed?: WhoCanAllowed
+export type WhoCanExecutionResult =
+  | AllowedWhoCanExecutionResult
+  | DeniedWhoCanExecutionResult
+  | DeniedSingleWhoCanExecutionResult
+  | DeniedWildcardWhoCanExecutionResult
 
-  /**
-   * The deny analysis if the simulation was not allowed.
-   * Only populated when collectDenyDetails is true.
-   */
-  denyAnalysis?: RequestAnalysis
+/**
+ * Union type for denied execution results that include detailed analysis.
+ */
+export type DeniedWhoCanExecutionResultWithDetails =
+  | DeniedSingleWhoCanExecutionResult
+  | DeniedWildcardWhoCanExecutionResult
 
-  /**
-   * The work item that was executed, for context in deny details
-   */
-  workItem: WhoCanWorkItem
-}
+/**
+ * The possible values for the `type` discriminator of a WhoCanExecutionResult.
+ */
+export type WhoCanExecutionResultType = WhoCanExecutionResult['type']
 
 export function createJobForWhoCanWorkItem(
   workItem: WhoCanWorkItem,
@@ -73,8 +133,14 @@ export async function executeWhoCan(
     collectClient
   )
 
-  if (discoveryResult?.result.analysis?.result === 'Allowed') {
-    const result = await simulateRequest(
+  if (discoveryResult.result.resultType === 'error') {
+    // If discovery fails, we treat it as a denial without details (since we don't have analysis to share)
+    throw new Error('Discovery simulation failed: ' + discoveryResult.result.errors)
+  }
+
+  const actionType = await getActionLevel(service, serviceAction)
+  if (discoveryResult?.result.overallResult === 'Allowed') {
+    const strictResult = await simulateRequest(
       {
         principal,
         resourceArn: resource,
@@ -86,40 +152,41 @@ export async function executeWhoCan(
       },
       collectClient
     )
-    if (result?.result.analysis?.result === 'Allowed') {
-      const actionType = await getActionLevel(service, serviceAction)
-      return {
-        workItem,
-        allowed: {
-          principal,
-          service,
-          action: serviceAction,
-          level: actionType.toLowerCase()
-        }
-      }
-    } else {
-      const actionType = await getActionLevel(service, serviceAction)
-      return {
-        workItem,
-        allowed: {
-          principal,
-          service: service,
-          action: serviceAction,
-          level: actionType.toLowerCase(),
-          conditions: discoveryResult?.result.analysis.ignoredConditions,
-          dependsOnSessionName: discoveryResult?.result.analysis.ignoredRoleSessionName
-            ? true
-            : undefined
-        }
-      }
+
+    if (strictResult.result.resultType === 'error') {
+      // If discovery fails, we treat it as a denial without details (since we don't have analysis to share)
+      throw new Error('Discovery simulation failed: ' + strictResult.result.errors)
     }
+
+    if (strictResult?.result.overallResult === 'Allowed') {
+      return mapSimulationResultToWhoCanExecutionResult(
+        workItem,
+        service,
+        serviceAction,
+        actionType,
+        strictResult.result,
+        !!whoCanOptions.collectDenyDetails
+      )
+    }
+  } else {
+    return mapSimulationResultToWhoCanExecutionResult(
+      workItem,
+      service,
+      serviceAction,
+      actionType,
+      discoveryResult.result,
+      !!whoCanOptions.collectDenyDetails
+    )
   }
 
-  // Not allowed - return deny analysis if requested
-  return {
+  return mapSimulationResultToWhoCanExecutionResult(
     workItem,
-    denyAnalysis: whoCanOptions.collectDenyDetails ? discoveryResult?.result.analysis : undefined
-  }
+    service,
+    serviceAction,
+    actionType,
+    discoveryResult.result,
+    !!whoCanOptions.collectDenyDetails
+  )
 }
 
 /**
@@ -132,4 +199,86 @@ export async function executeWhoCan(
 async function getActionLevel(service: string, action: string): Promise<string> {
   const details = await iamActionDetails(service, action)
   return details.accessLevel
+}
+
+function mapSimulationResultToWhoCanExecutionResult(
+  workItem: WhoCanWorkItem,
+  service: string,
+  action: string,
+  actionType: string,
+  simulationResponse: SuccessfulRunSimulationResults,
+  collectDenyDetails: boolean
+): WhoCanExecutionResult {
+  const { principal } = workItem
+
+  if (simulationResponse.overallResult === 'Allowed') {
+    // Build allowed result
+    const allowed: WhoCanAllowed = {
+      principal,
+      service,
+      action,
+      level: actionType.toLowerCase()
+    }
+
+    if (simulationResponse.resultType === 'single') {
+      const analysis = simulationResponse.result.analysis
+      allowed.conditions = analysis.ignoredConditions
+      allowed.dependsOnSessionName = analysis.ignoredRoleSessionName ? true : undefined
+    } else {
+      // Wildcard result - collect allowed patterns
+      const allowedPatterns: WhoCanAllowedResourcePattern[] = []
+      for (const r of simulationResponse.results) {
+        if (r.analysis.result === 'Allowed') {
+          allowedPatterns.push({
+            pattern: r.resourcePattern,
+            resourceType: r.resourceType,
+            conditions: r.analysis.ignoredConditions,
+            dependsOnSessionName: r.analysis.ignoredRoleSessionName ? true : undefined
+          })
+        }
+      }
+      if (allowedPatterns.length > 0) {
+        allowed.allowedPatterns = allowedPatterns
+      }
+    }
+
+    return {
+      type: 'allowed',
+      workItem,
+      allowed
+    }
+  }
+
+  // Denied result
+  if (!collectDenyDetails) {
+    // If we don't need to collect deny details, we can return a simple denied result without analysis
+    return {
+      type: 'denied',
+      workItem
+    }
+  }
+
+  if (simulationResponse.resultType === 'single') {
+    return {
+      type: 'denied_single',
+      workItem,
+      analysis: simulationResponse.result.analysis
+    }
+  } else {
+    // Wildcard denial - collect denied patterns
+    const deniedPatterns: WhoCanDenyResourceDetails[] = simulationResponse.results
+      .filter((r) => r.analysis.result !== 'Allowed')
+      .map((r) => ({
+        pattern: r.resourcePattern,
+        resourceType: r.resourceType,
+        analysis: r.analysis
+      }))
+
+    return {
+      type: 'denied_wildcard',
+      overallResult: simulationResponse.overallResult,
+      workItem,
+      deniedPatterns
+    }
+  }
 }

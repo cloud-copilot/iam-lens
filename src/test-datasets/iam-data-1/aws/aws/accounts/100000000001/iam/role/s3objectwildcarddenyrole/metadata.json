@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::100000000001:role/S3ObjectWildcardDenyRole",
+  "name": "S3ObjectWildcardDenyRole",
+  "id": "AROAIS3OBJECTDENY",
+  "path": "/",
+  "created": "2024-07-19T21:03:16.000Z"
+}

@@ -157,6 +157,11 @@ iam-lens who-can \
   --resource arn:aws:dynamodb:us-east-1:555555555555:table/Books \
   --actions dynamodb:Query dynamodb:UpdateItem
 
+# Check a wildcard resource prefix and inspect allowed patterns
+iam-lens who-can \
+  --resource arn:aws:s3:::my-bucket/reports/* \
+  --actions s3:GetObject
+
 # Check all actions for a bucket
 iam-lens who-can \
   --resource arn:aws:s3:::my-bucket

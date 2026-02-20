@@ -1,12 +1,11 @@
 // src/workers/workerThread.ts
 import { TopLevelConfig } from '@cloud-copilot/iam-collect'
-import { getDenialReasons } from '@cloud-copilot/iam-simulate'
 import { parentPort, workerData } from 'worker_threads'
 import { getCollectClient } from '../collect/collect.js'
 import { S3AbacOverride } from '../utils/s3Abac.js'
 import { PullBasedJobRunner } from '../workers/JobRunner.js'
 import { SharedArrayBufferWorkerCache } from '../workers/SharedArrayBufferWorkerCache.js'
-import { toLightRequestAnalysis } from './requestAnalysis.js'
+import { convertToDenialDetails, toLightRequestAnalysis } from './requestAnalysis.js'
 import { executeWhoCan, WhoCanExecutionResult, WhoCanWorkItem } from './WhoCanWorker.js'
 
 if (!parentPort) {
@@ -81,7 +80,7 @@ const jobRunner = new PullBasedJobRunner<
     if (result.status === 'fulfilled') {
       const executionResult = result.value
 
-      if (executionResult.allowed) {
+      if (executionResult.type === 'allowed') {
         // Allowed - send result back to main thread
         parentPort!.postMessage({
           type: 'result',
@@ -92,9 +91,22 @@ const jobRunner = new PullBasedJobRunner<
           }
         })
       } else {
-        // If we have deny analysis and collectDenyDetails is enabled, check with main thread
-        if (collectDenyDetails && executionResult.denyAnalysis) {
-          const lightAnalysis = toLightRequestAnalysis(executionResult.denyAnalysis)
+        // Post this so that we can count the completed simulation in the main thread.
+        parentPort!.postMessage({
+          type: 'result',
+          result: {
+            status: 'fulfilled',
+            value: undefined,
+            properties: result.properties
+          }
+        })
+
+        // Check if we should include deny details
+        const hasDetails =
+          executionResult.type === 'denied_single' || executionResult.type === 'denied_wildcard'
+
+        if (collectDenyDetails && hasDetails) {
+          const lightAnalysis = toLightRequestAnalysis(executionResult)
           const checkId = denyDetailsCheckId++
 
           // Send check request to main thread
@@ -112,17 +124,9 @@ const jobRunner = new PullBasedJobRunner<
 
           if (shouldInclude) {
             // Get full denial reasons and send to main thread
-            const denialReasons = getDenialReasons(executionResult.denyAnalysis)
-            const { workItem } = executionResult
-            const [service, action] = workItem.action.split(':')
             parentPort!.postMessage({
               type: 'denyDetailsResult',
-              denyDetail: {
-                principal: workItem.principal,
-                service,
-                action,
-                details: denialReasons
-              }
+              denyDetail: convertToDenialDetails(executionResult)
             })
           }
         }
