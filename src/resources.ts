@@ -13,7 +13,7 @@ export async function getAccountIdForResource(
   collectClient: IamCollectClient,
   resourceArn: string
 ): Promise<string | undefined> {
-  if (!resourceArn.startsWith('arn')) {
+  if (!resourceArn.startsWith('arn:')) {
     return undefined
   }
   const arnParts = splitArnParts(resourceArn)
