@@ -598,14 +598,12 @@ function sortDenyDetails(details: WhoCanDenyDetail[] | undefined): WhoCanDenyDet
 function compareDenialDetails(a: DenialDetail, b: DenialDetail) {
   if (a.policyType < b.policyType) return -1
   if (a.policyType > b.policyType) return 1
-  const aPolicy = 'policyIdentifier' in a ? a.policyIdentifier || '' : ''
-  const bPolicy = 'policyIdentifier' in b ? b.policyIdentifier || '' : ''
+  const aPolicy = a.policyIdentifier ?? ''
+  const bPolicy = b.policyIdentifier ?? ''
   if (aPolicy < bPolicy) return -1
   if (aPolicy > bPolicy) return 1
-  const aStmt = 'statementId' in a ? a.statementId! : ''
-  const bStmt = 'statementId' in b ? b.statementId! : ''
-  if (aStmt < bStmt) return -1
-  if (aStmt > bStmt) return 1
+  const aStmt = a.statementId ?? ''
+  const bStmt = b.statementId ?? ''
   return 0
 }
 
