@@ -1,3 +1,15 @@
+## [0.1.84](https://github.com/cloud-copilot/iam-lens/compare/v0.1.83...v0.1.84) (2026-02-20)
+
+
+### Bug Fixes
+
+* Post denied who-can simulations from workers to the main thread to ensure simulationCount is accurate ([1709009](https://github.com/cloud-copilot/iam-lens/commit/170900955bf374aa611194783820577322576baa))
+
+
+### Features
+
+* Run who-can with resource patterns ([801e92c](https://github.com/cloud-copilot/iam-lens/commit/801e92c40d6f24ce5ca6671ba45824d371f420c5))
+
 ## [0.1.83](https://github.com/cloud-copilot/iam-lens/compare/v0.1.82...v0.1.83) (2026-02-20)
 
 ## [0.1.82](https://github.com/cloud-copilot/iam-lens/compare/v0.1.81...v0.1.82) (2026-02-15)
