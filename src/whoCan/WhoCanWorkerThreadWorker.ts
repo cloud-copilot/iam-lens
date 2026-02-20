@@ -82,7 +82,6 @@ const jobRunner = new PullBasedJobRunner<
 
       if (executionResult.type === 'allowed') {
         // Allowed - send result back to main thread
-        // TODO: Since we only post results if it is allowed, the main thread simulationCount is incorrect.
         parentPort!.postMessage({
           type: 'result',
           result: {
@@ -92,6 +91,16 @@ const jobRunner = new PullBasedJobRunner<
           }
         })
       } else {
+        // Post this so that we can count the completed simulation in the main thread.
+        parentPort!.postMessage({
+          type: 'result',
+          result: {
+            status: 'fulfilled',
+            value: undefined,
+            properties: result.properties
+          }
+        })
+
         // Check if we should include deny details
         const hasDetails =
           executionResult.type === 'denied_single' || executionResult.type === 'denied_wildcard'
