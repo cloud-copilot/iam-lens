@@ -1,11 +1,14 @@
-import { getDenialReasons } from '@cloud-copilot/iam-simulate'
 import { JobResult } from '@cloud-copilot/job'
 import { IamCollectClient } from '../collect/client.js'
 import { S3AbacOverride } from '../utils/s3Abac.js'
 import { ArrayStreamingWorkQueue } from '../workers/ArrayStreamingWorkQueue.js'
 import { PullBasedJobRunner } from '../workers/JobRunner.js'
 import { StreamingWorkQueue } from '../workers/StreamingWorkQueue.js'
-import { LightRequestAnalysis, toLightRequestAnalysis } from './requestAnalysis.js'
+import {
+  convertToDenialDetails,
+  LightRequestAnalysis,
+  toLightRequestAnalysis
+} from './requestAnalysis.js'
 import { WhoCanAllowed, WhoCanDenyDetail } from './whoCan.js'
 import {
   createJobForWhoCanWorkItem,
@@ -37,7 +40,7 @@ export function createMainThreadStreamingWorkQueue(
     async (result) => {
       if (result.status === 'fulfilled') {
         const executionResult = result.value
-        if (executionResult.allowed) {
+        if (executionResult.type === 'allowed') {
           // Simulation was allowed - pass through to onComplete
           onComplete({
             status: 'fulfilled',
@@ -53,20 +56,17 @@ export function createMainThreadStreamingWorkQueue(
           })
 
           // Check if we should include deny details
-          if (denyDetailsCallback && onDenyDetail && executionResult.denyAnalysis) {
-            const lightAnalysis = toLightRequestAnalysis(executionResult.denyAnalysis)
-            const shouldInclude = denyDetailsCallback(lightAnalysis)
+          if (denyDetailsCallback && onDenyDetail) {
+            const hasDetails =
+              executionResult.type === 'denied_single' || executionResult.type === 'denied_wildcard'
 
-            if (shouldInclude) {
-              const denialReasons = getDenialReasons(executionResult.denyAnalysis)
-              const { workItem } = executionResult
-              const [service, action] = workItem.action.split(':')
-              onDenyDetail({
-                principal: workItem.principal,
-                service,
-                action,
-                details: denialReasons
-              })
+            if (hasDetails) {
+              const lightAnalysis = toLightRequestAnalysis(executionResult)
+              const shouldInclude = denyDetailsCallback(lightAnalysis)
+
+              if (shouldInclude) {
+                onDenyDetail(convertToDenialDetails(executionResult))
+              }
             }
           }
         }

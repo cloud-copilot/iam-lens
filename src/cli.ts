@@ -170,18 +170,18 @@ const main = async () => {
       collectClient
     )
 
-    if (result.errors) {
+    if (result.resultType === 'error') {
       console.error('Simulation Errors:')
       console.log(JSON.stringify(result.errors, null, 2))
       process.exit(1)
     }
 
-    console.log(`Simulation Result: ${result.analysis?.result}`)
+    console.log(`Simulation Result: ${result.overallResult}`)
     if (cli.args.verbose) {
       console.log(JSON.stringify({ request, result }, null, 2))
     }
 
-    if (!resultMatchesExpectation(cli.args.expect, result.analysis?.result!)) {
+    if (!resultMatchesExpectation(cli.args.expect, result.overallResult!)) {
       process.exit(1)
     }
   } else if (cli.subcommand === 'who-can') {

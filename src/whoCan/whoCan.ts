@@ -73,21 +73,122 @@ export interface ResourceAccessRequest {
   denyDetailsCallback?: (details: LightRequestAnalysis) => boolean
 }
 
+/**
+ * Represents a resource pattern that is allowed for a principal, used when wildcards
+ * are in the simulation request.
+ */
+export interface WhoCanAllowedResourcePattern {
+  /**
+   * The resource pattern that allows access.
+   */
+  pattern: string
+  /**
+   * The resource type for the pattern.
+   */
+  resourceType: string
+  /**
+   * The conditions under which access is allowed for this pattern, if any.
+   */
+  conditions?: any
+  /**
+   * If true, access is only allowed when the session has a specific session name.
+   */
+  dependsOnSessionName?: boolean
+}
+
 export interface WhoCanAllowed {
   principal: string
   service: string
   action: string
   level: string
+
+  /**
+   * The conditions under which access is allowed, if any.
+   * This will be undefined if access is allowed unconditionally or
+   * if `allowedPatterns` are provided.
+   */
   conditions?: any
+
+  /**
+   * If true, indicates that access is only allowed when the session has a specific session name.
+   * This will be false or undefined if `allowedPatterns` are provided, since those patterns would specify the session name condition directly.
+   */
   dependsOnSessionName?: boolean
+
+  /**
+   * If there are multiple "allowed" patterns for a single principal because of wildcards
+   * in the simulation request, this array will contain the different resource patterns that allow access.
+   */
+  allowedPatterns?: WhoCanAllowedResourcePattern[]
 }
 
-export interface WhoCanDenyDetail {
+/**
+ * Base type for WhoCanDenyDetails
+ */
+interface BaseWhoCanDenyDetail {
+  /**
+   * The principal that was denied
+   */
   principal: string
+
+  /**
+   * The service the denied action belongs to
+   */
   service: string
+
+  /**
+   * The action that was denied, without the service prefix (e.g. "GetObject" instead of "s3:GetObject")
+   */
   action: string
+}
+
+/**
+ * Denial details for a single resource request.
+ */
+export interface SingleWhoCanDenyDetail extends BaseWhoCanDenyDetail {
+  type: 'single'
+
+  /**
+   * The specific details of why the request was denied
+   */
   details: RequestDenial[]
 }
+
+/**
+ * Denial details for a wildcard resource request that may have matched multiple patterns.
+ */
+export interface WildcardWhoCanDenyDetail extends BaseWhoCanDenyDetail {
+  type: 'wildcard'
+
+  /**
+   * The resource patterns that were denied. Could be empty if there
+   * were no patterns found that matched the resource for the principal and action.
+   *
+   * The same pattern can be returned multiple times if there are multiple resource
+   * types for that pattern/action combination.
+   */
+  deniedResources: {
+    /**
+     * The pattern tested in the simulation that resulted in a denial.
+     */
+    pattern: string
+
+    /**
+     * The resource type the pattern was tested against.
+     */
+    resourceType: string
+
+    /**
+     * The specific details of why the request was denied for this pattern.
+     */
+    details: RequestDenial[]
+  }[]
+}
+
+/**
+ * Details on why a principal was denied access to a resource for a specific action, including the specific patterns that were tested and resulted in denials.
+ */
+export type WhoCanDenyDetail = SingleWhoCanDenyDetail | WildcardWhoCanDenyDetail
 
 export interface WhoCanResponse {
   simulationCount: number
@@ -147,15 +248,13 @@ export async function whoCan(
     throw new Error('Either resourceAccount or resource must be provided in the request.')
   }
 
-  if (resource && !resource.startsWith('arn:')) {
-    throw new Error(`Invalid resource ARN: ${resource}. It must start with 'arn:'.`)
-  }
-
   const resourceAccount =
     request.resourceAccount || (await getAccountIdForResource(collectClient, resource!))
 
   if (!resourceAccount) {
-    throw new Error(`Could not determine account ID for resource ${resource}`)
+    throw new Error(
+      `Could not determine account ID for resource ${resource}. Please use a different ARN or specify resourceAccount.`
+    )
   }
 
   const actions = await actionsForWhoCan(request)
@@ -345,7 +444,11 @@ export async function whoCan(
     })
   })
 
-  await Promise.all([mainThreadWorker.finishAllWork(), ...workerPromises])
+  await Promise.all([
+    //
+    mainThreadWorker.finishAllWork(),
+    ...workerPromises
+  ])
 
   if (simulationErrors.length > 0) {
     console.error(`Completed with ${simulationErrors.length} simulation errors.`)

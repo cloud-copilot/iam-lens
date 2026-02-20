@@ -71,4 +71,16 @@ describe('getAccountIdForResource', () => {
     // Then the account ID should be returned
     expect(accountId).toEqual('888888888888') // Assuming the API is in this account
   })
+
+  it('should return undefined if the ARN is invalid', async () => {
+    // Given an invalid ARN
+    const resourceArn = '*'
+
+    // When calling getAccountIdForResource
+    const { client } = testStore()
+    const accountId = await getAccountIdForResource(client, resourceArn)
+
+    // Then the account ID should be undefined
+    expect(accountId).toBeUndefined()
+  })
 })

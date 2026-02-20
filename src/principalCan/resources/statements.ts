@@ -60,10 +60,16 @@ export async function statementAppliesToPrincipal(
     simulationMode: simulationRequest.simulationMode
   })
 
-  if (result.analysis?.result === 'Allowed') {
+  if (result.resultType === 'error') {
+    return 'NoMatch'
+  }
+
+  const analysis = result.resultType === 'single' ? result.result.analysis : undefined
+  if (analysis?.result === 'Allowed') {
     return 'PrincipalMatch'
   }
-  if (result.analysis?.resourceAnalysis?.result === 'AllowedForAccount') {
+
+  if (analysis?.resourceAnalysis?.result === 'AllowedForAccount') {
     return 'AccountMatch'
   }
   return 'NoMatch'

@@ -1,0 +1,22 @@
+[
+  {
+    "PolicyName": "S3ObjectWildcardDeny",
+    "PolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "AllowPrivate",
+          "Effect": "Allow",
+          "Action": ["s3:GetObject"],
+          "Resource": "arn:aws:s3:::wildcard-bucket/reports/private/*"
+        },
+        {
+          "Sid": "DenyPrivate",
+          "Effect": "Deny",
+          "Action": ["s3:GetObject"],
+          "Resource": "arn:aws:s3:::wildcard-bucket/reports/private/*"
+        }
+      ]
+    }
+  }
+]

@@ -8,6 +8,31 @@ Lists all principals in your IAM data who are allowed to perform one or more spe
 
 This works by starting with the resource policy (if any) and looking for all principals, accounts, and organizations that have access to the resource. It will then check each principal for the specified actions and return a list of all principals that are allowed to perform the action.
 
+## Wildcard Resource ARNs
+
+You can pass a wildcard resource ARN (for example, an S3 object prefix like `arn:aws:s3:::my-bucket/reports/*`). When the resource contains wildcards, results include `allowedPatterns` instead of `conditions`. Each `allowedPatterns` entry tells you which specific resource patterns allowed access for that principal/action.
+
+Example output snippet:
+
+```json
+{
+  "principal": "arn:aws:iam::123456789012:role/AnalyticsRole",
+  "service": "s3",
+  "action": "GetObject",
+  "level": "read",
+  "allowedPatterns": [
+    {
+      "pattern": "arn:aws:s3:::my-bucket/reports/*",
+      "resourceType": "object"
+    },
+    {
+      "pattern": "arn:aws:s3:::my-bucket/reports/2024/*",
+      "resourceType": "object"
+    }
+  ]
+}
+```
+
 ## Options
 
 | Flag                         | Description                                                                                                                                                                                                            |
@@ -37,6 +62,11 @@ iam-lens who-can \
 iam-lens who-can \
   --resource arn:aws:dynamodb:us-east-1:555555555555:table/Books \
   --actions dynamodb:Query dynamodb:UpdateItem
+
+# Check a wildcard resource prefix and inspect allowed patterns
+iam-lens who-can \
+  --resource arn:aws:s3:::my-bucket/reports/* \
+  --actions s3:GetObject
 
 # Check all actions for a bucket
 iam-lens who-can \

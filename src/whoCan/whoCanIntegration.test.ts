@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { IamCollectClient } from '../collect/client.js'
 import { makePrincipalIndex } from '../principalIndex/makePrincipalIndex.js'
 import { getTestDatasetConfigs } from '../test-datasets/testClient.js'
-import { ResourceAccessRequest, whoCan, WhoCanAllowed } from './whoCan.js'
+import { ResourceAccessRequest, whoCan, WhoCanAllowed, WhoCanDenyDetail } from './whoCan.js'
 
 const whoCanIntegrationTests: {
   only?: true
@@ -23,6 +23,7 @@ const whoCanIntegrationTests: {
     organizationalUnitsNotFound?: string[]
     principalsNotFound?: string[]
   }
+  expectedDenyDetails?: WhoCanDenyDetail[]
 }[] = [
   {
     name: 'within account and no resource policy',
@@ -178,6 +179,194 @@ const whoCanIntegrationTests: {
         'arn:aws:sts::999999999999:federated-user/Bob'
       ]
     }
+  },
+  {
+    name: 'S3 object wildcard (prefix)',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::wildcard-bucket/reports/*',
+      actions: ['s3:GetObject']
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          principal: 'arn:aws:iam::100000000001:role/S3ObjectWildcardRole',
+          service: 's3',
+          level: 'read',
+          allowedPatterns: [
+            {
+              pattern: 'arn:aws:s3:::wildcard-bucket/reports/*',
+              resourceType: 'object'
+            },
+            {
+              pattern: 'arn:aws:s3:::wildcard-bucket/reports/2024/*',
+              resourceType: 'object'
+            }
+          ]
+        },
+        {
+          action: 'GetObject',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'read',
+          allowedPatterns: [
+            {
+              pattern: '*',
+              resourceType: 'object'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    name: 'S3 object wildcard (different prefix)',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::wildcard-bucket/other/*',
+      actions: ['s3:GetObject']
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'read',
+          allowedPatterns: [
+            {
+              pattern: '*',
+              resourceType: 'object'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    name: 'S3 object wildcard (explicit deny subset)',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::wildcard-bucket/reports/private/*',
+      actions: ['s3:GetObject'],
+      denyDetailsCallback: (details) => details.overallResult === 'ExplicitlyDenied'
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'read',
+          allowedPatterns: [
+            {
+              pattern: '*',
+              resourceType: 'object'
+            }
+          ]
+        }
+      ]
+    },
+    expectedDenyDetails: [
+      {
+        action: 'GetObject',
+        deniedResources: [
+          {
+            details: [
+              {
+                denialType: 'Explicit',
+                policyIdentifier:
+                  'arn:aws:iam::100000000001:role/S3ObjectWildcardDenyRole#S3ObjectWildcardDeny',
+                policyType: 'identity',
+                statementId: 'DenyPrivate'
+              }
+            ],
+            pattern: 'arn:aws:s3:::wildcard-bucket/reports/private/*',
+            resourceType: 'object'
+          }
+        ],
+        principal: 'arn:aws:iam::100000000001:role/S3ObjectWildcardDenyRole',
+        service: 's3',
+        type: 'wildcard'
+      },
+      {
+        action: 'GetObject',
+        deniedResources: [
+          {
+            details: [
+              {
+                denialType: 'Explicit',
+                policyIdentifier:
+                  'arn:aws:iam::100000000001:role/S3ObjectWildcardRole#S3ObjectWildcards',
+                policyType: 'identity',
+                statementId: '2'
+              }
+            ],
+            pattern: 'arn:aws:s3:::wildcard-bucket/reports/private/*',
+            resourceType: 'object'
+          }
+        ],
+        principal: 'arn:aws:iam::100000000001:role/S3ObjectWildcardRole',
+        service: 's3',
+        type: 'wildcard'
+      }
+    ]
+  },
+  {
+    name: 'S3 object single resource (explicit deny)',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::wildcard-bucket/reports/private/report.pdf',
+      actions: ['s3:GetObject'],
+      denyDetailsCallback: (details) => details.overallResult === 'ExplicitlyDenied'
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'read'
+        }
+      ]
+    },
+    expectedDenyDetails: [
+      {
+        action: 'GetObject',
+        details: [
+          {
+            denialType: 'Explicit',
+            policyIdentifier:
+              'arn:aws:iam::100000000001:role/S3ObjectWildcardDenyRole#S3ObjectWildcardDeny',
+            policyType: 'identity',
+            statementId: 'DenyPrivate'
+          }
+        ],
+        principal: 'arn:aws:iam::100000000001:role/S3ObjectWildcardDenyRole',
+        service: 's3',
+        type: 'single'
+      },
+      {
+        action: 'GetObject',
+        details: [
+          {
+            denialType: 'Explicit',
+            policyIdentifier:
+              'arn:aws:iam::100000000001:role/S3ObjectWildcardRole#S3ObjectWildcards',
+            policyType: 'identity',
+            statementId: '2'
+          }
+        ],
+        principal: 'arn:aws:iam::100000000001:role/S3ObjectWildcardRole',
+        service: 's3',
+        type: 'single'
+      }
+    ]
   },
   {
     name: 'trust policy with service principal',
@@ -362,12 +551,70 @@ function sortWhoCanResults(who: WhoCanAllowed[]) {
   })
 }
 
+type DenialDetail = {
+  policyType: string
+  policyIdentifier?: string
+  statementId?: string
+  denialType: string
+}
+
+function sortDenyDetails(details: WhoCanDenyDetail[] | undefined): WhoCanDenyDetail[] {
+  const sorted = (details || []).map((detail) => {
+    if (detail.type === 'single') {
+      return {
+        ...detail,
+        details: [...detail.details].sort(compareDenialDetails)
+      }
+    }
+
+    return {
+      ...detail,
+      deniedResources: [...detail.deniedResources]
+        .map((resource) => ({
+          ...resource,
+          details: [...resource.details].sort(compareDenialDetails)
+        }))
+        .sort((a, b) => {
+          if (a.pattern < b.pattern) return -1
+          if (a.pattern > b.pattern) return 1
+          if (a.resourceType < b.resourceType) return -1
+          if (a.resourceType > b.resourceType) return 1
+          return 0
+        })
+    }
+  })
+
+  return sorted.sort((a, b) => {
+    if (a.principal < b.principal) return -1
+    if (a.principal > b.principal) return 1
+    if (a.service < b.service) return -1
+    if (a.service > b.service) return 1
+    if (a.action < b.action) return -1
+    if (a.action > b.action) return 1
+    return 0
+  })
+}
+
+function compareDenialDetails(a: DenialDetail, b: DenialDetail) {
+  if (a.policyType < b.policyType) return -1
+  if (a.policyType > b.policyType) return 1
+  const aPolicy = 'policyIdentifier' in a ? a.policyIdentifier || '' : ''
+  const bPolicy = 'policyIdentifier' in b ? b.policyIdentifier || '' : ''
+  if (aPolicy < bPolicy) return -1
+  if (aPolicy > bPolicy) return 1
+  const aStmt = 'statementId' in a ? a.statementId! : ''
+  const bStmt = 'statementId' in b ? b.statementId! : ''
+  if (aStmt < bStmt) return -1
+  if (aStmt > bStmt) return 1
+  return 0
+}
+
 // These tests all run sequentially because first they run without the principals index
 // and then they run with it.
 describe.sequential('whoCan Integration Tests', () => {
   for (const withIndex of [false, true]) {
     for (const test of whoCanIntegrationTests) {
-      const { name, request, expected, only, data } = test
+      const { name, request, expected, expectedDenyDetails, only, data } = test
 
       // Set worker threads to 1 for tests so it gets tested but doesn't saturate CPUs
       request.workerThreads = 1
@@ -425,6 +672,11 @@ describe.sequential('whoCan Integration Tests', () => {
         expect(result.accountsNotFound).toEqual(expected.accountsNotFound || [])
         expect(result.organizationsNotFound).toEqual(expected.organizationsNotFound || [])
         expect(result.principalsNotFound.sort()).toEqual(expected.principalsNotFound?.sort() || [])
+        if (expectedDenyDetails) {
+          expect(sortDenyDetails(result.denyDetails)).toEqual(sortDenyDetails(expectedDenyDetails))
+        } else {
+          expect(result.denyDetails).toBeUndefined()
+        }
       })
     }
   }
