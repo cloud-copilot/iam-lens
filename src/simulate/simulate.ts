@@ -1,24 +1,24 @@
 import { iamActionDetails, iamActionExists, iamServiceExists } from '@cloud-copilot/iam-data'
 import {
-  EvaluationResult,
+  type EvaluationResult,
   runSimulation,
-  Simulation,
-  SimulationMode
+  type Simulation,
+  type SimulationMode
 } from '@cloud-copilot/iam-simulate'
 import { isIamRoleArn, isS3BucketOrObjectArn, splitArnParts } from '@cloud-copilot/iam-utils'
-import { IamCollectClient, SimulationOrgPolicies } from '../collect/client.js'
+import { IamCollectClient, type SimulationOrgPolicies } from '../collect/client.js'
 import {
   getAllPoliciesForPrincipal,
   isServiceLinkedRole,
   principalExists,
-  PrincipalPolicies
+  type PrincipalPolicies
 } from '../principals.js'
 import {
   getAccountIdForResource,
   getRcpsForResource,
   getResourcePolicyForResource
 } from '../resources.js'
-import { S3AbacOverride } from '../utils/s3Abac.js'
+import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'
 import {
   CONTEXT_KEYS,

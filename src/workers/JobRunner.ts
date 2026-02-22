@@ -1,4 +1,4 @@
-import { Job, JobContext, JobResult } from '@cloud-copilot/job'
+import { type Job, type JobContext, type JobResult } from '@cloud-copilot/job'
 
 /**
  * A Job runner that pulls tasks from a source and executes them concurrently.

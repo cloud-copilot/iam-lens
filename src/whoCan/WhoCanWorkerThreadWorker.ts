@@ -1,12 +1,12 @@
 // src/workers/workerThread.ts
-import { TopLevelConfig } from '@cloud-copilot/iam-collect'
+import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
 import { parentPort, workerData } from 'worker_threads'
 import { getCollectClient } from '../collect/collect.js'
-import { S3AbacOverride } from '../utils/s3Abac.js'
+import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { PullBasedJobRunner } from '../workers/JobRunner.js'
 import { SharedArrayBufferWorkerCache } from '../workers/SharedArrayBufferWorkerCache.js'
 import { convertToDenialDetails, toLightRequestAnalysis } from './requestAnalysis.js'
-import { executeWhoCan, WhoCanExecutionResult, WhoCanWorkItem } from './WhoCanWorker.js'
+import { executeWhoCan, type WhoCanExecutionResult, type WhoCanWorkItem } from './WhoCanWorker.js'
 
 if (!parentPort) {
   throw new Error('Must be run as a worker thread')

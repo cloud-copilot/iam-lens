@@ -1,4 +1,4 @@
-import { loadPolicy, Statement } from '@cloud-copilot/iam-policy'
+import { loadPolicy, type Statement } from '@cloud-copilot/iam-policy'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient } from '../../../collect/client.js'
 import { Permission } from '../../permission.js'

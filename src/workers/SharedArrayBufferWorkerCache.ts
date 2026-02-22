@@ -1,5 +1,5 @@
 import { MessagePort } from 'worker_threads'
-import { Cache } from './SharedArrayBufferMainCache.js'
+import { type Cache } from './SharedArrayBufferMainCache.js'
 import { convertArrayBufferToObject, convertObjectToArrayBuffer } from './buffers.js'
 
 //TODO: Add a Prefix to avoid collisions if there are multiple caches

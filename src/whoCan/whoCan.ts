@@ -1,4 +1,4 @@
-import { TopLevelConfig } from '@cloud-copilot/iam-collect'
+import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
 import {
   iamActionDetails,
   iamActionExists,
@@ -6,10 +6,10 @@ import {
   iamResourceTypeDetails,
   iamResourceTypesForService,
   iamServiceExists,
-  ResourceType
+  type ResourceType
 } from '@cloud-copilot/iam-data'
 import { loadPolicy } from '@cloud-copilot/iam-policy'
-import { RequestDenial } from '@cloud-copilot/iam-simulate'
+import { type RequestDenial } from '@cloud-copilot/iam-simulate'
 import {
   isAssumedRoleArn,
   isIamRoleArn,
@@ -17,21 +17,21 @@ import {
   isServicePrincipal,
   splitArnParts
 } from '@cloud-copilot/iam-utils'
-import { JobResult, numberOfCpus, StreamingJobQueue } from '@cloud-copilot/job'
+import { type JobResult, numberOfCpus, StreamingJobQueue } from '@cloud-copilot/job'
 import { Worker } from 'worker_threads'
 import { IamCollectClient } from '../collect/client.js'
 import { getCollectClient } from '../collect/collect.js'
 import { getAccountIdForResource, getResourcePolicyForResource } from '../resources.js'
 import { Arn } from '../utils/arn.js'
-import { S3AbacOverride } from '../utils/s3Abac.js'
+import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'
 import { getWorkerScriptPath } from '../utils/workerScript.js'
 import { ArrayStreamingWorkQueue } from '../workers/ArrayStreamingWorkQueue.js'
 import { SharedArrayBufferMainCache } from '../workers/SharedArrayBufferMainCache.js'
 import { StreamingWorkQueue } from '../workers/StreamingWorkQueue.js'
 import { createMainThreadStreamingWorkQueue } from './WhoCanMainThreadWorker.js'
-import { WhoCanWorkItem } from './WhoCanWorker.js'
-import { LightRequestAnalysis } from './requestAnalysis.js'
+import { type WhoCanWorkItem } from './WhoCanWorker.js'
+import { type LightRequestAnalysis } from './requestAnalysis.js'
 
 export interface ResourceAccessRequest {
   /**

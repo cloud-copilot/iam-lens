@@ -1,6 +1,6 @@
 import { expandIamActions, invertIamActions } from '@cloud-copilot/iam-expand'
-import { Policy, Statement } from '@cloud-copilot/iam-policy'
-import { Permission, PermissionEffect } from './permission.js'
+import { type Policy, type Statement } from '@cloud-copilot/iam-policy'
+import { Permission, type PermissionEffect } from './permission.js'
 
 /**
  * A permission set will be a collection of permissions for a specific effect (Allow or Deny).

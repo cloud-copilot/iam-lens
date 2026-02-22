@@ -1,9 +1,9 @@
-import { loadPolicy, Policy, Statement } from '@cloud-copilot/iam-policy'
-import { runSimulation, Simulation } from '@cloud-copilot/iam-simulate'
+import { loadPolicy, type Policy, type Statement } from '@cloud-copilot/iam-policy'
+import { runSimulation, type Simulation } from '@cloud-copilot/iam-simulate'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient } from '../../collect/client.js'
 import { createContextKeys } from '../../simulate/contextKeys.js'
-import { SimulationRequest } from '../../simulate/simulate.js'
+import { type SimulationRequest } from '../../simulate/simulate.js'
 
 export type StatementPrincipalMatchType = 'PrincipalMatch' | 'AccountMatch' | 'NoMatch'
 

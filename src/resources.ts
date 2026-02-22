@@ -1,4 +1,4 @@
-import { Simulation } from '@cloud-copilot/iam-simulate'
+import { type Simulation } from '@cloud-copilot/iam-simulate'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient } from './collect/client.js'
 

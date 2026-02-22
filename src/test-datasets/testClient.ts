@@ -1,4 +1,4 @@
-import { TopLevelConfig } from '@cloud-copilot/iam-collect'
+import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
 import { existsSync } from 'fs'
 import { join, resolve } from 'path'
 import { IamCollectClient } from '../collect/client.js'
