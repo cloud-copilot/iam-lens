@@ -1,6 +1,6 @@
-import { Policy, Action as PolicyAction } from '@cloud-copilot/iam-policy'
+import { type Policy, type Action as PolicyAction } from '@cloud-copilot/iam-policy'
 import BitSet from 'bitset'
-import { IamActionCache, IamCollectClient } from '../collect/client.js'
+import { type IamActionCache, IamCollectClient } from '../collect/client.js'
 import { compressPrincipalString, encodeBitSet } from '../utils/bitset.js'
 
 /**
@@ -37,7 +37,7 @@ export async function makePrincipalIndex(collectClient: IamCollectClient) {
   }
 
   for (const type of ['action', 'notAction'] as const) {
-    for (const [service, actions] of Object.entries(principalIndex[type])) {
+    for (const [, actions] of Object.entries(principalIndex[type])) {
       for (const [action, bitset] of Object.entries(actions)) {
         actions[action] = encodeBitSet(bitset) as any
       }

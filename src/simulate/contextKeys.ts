@@ -6,7 +6,7 @@ import {
 } from '@cloud-copilot/iam-utils'
 import { IamCollectClient } from '../collect/client.js'
 import { isArnPrincipal, isServicePrincipal } from '../principals.js'
-import { SimulationRequest } from './simulate.js'
+import { type SimulationRequest } from './simulate.js'
 
 /**
  * Context keys for IAM simulation requests.

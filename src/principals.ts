@@ -7,9 +7,9 @@ import {
 } from '@cloud-copilot/iam-utils'
 import {
   IamCollectClient,
-  InlinePolicy,
-  ManagedPolicy,
-  SimulationOrgPolicies
+  type InlinePolicy,
+  type ManagedPolicy,
+  type SimulationOrgPolicies
 } from './collect/client.js'
 
 export interface PrincipalPolicies {

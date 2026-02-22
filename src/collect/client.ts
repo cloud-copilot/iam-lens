@@ -1,6 +1,6 @@
-import { AwsIamStore } from '@cloud-copilot/iam-collect'
+import { type AwsIamStore } from '@cloud-copilot/iam-collect'
 import { actionMatchesPattern } from '@cloud-copilot/iam-expand'
-import { loadPolicy, Policy } from '@cloud-copilot/iam-policy'
+import { loadPolicy, type Policy } from '@cloud-copilot/iam-policy'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 import BitSet from 'bitset'
 import { gunzipSync, gzipSync } from 'zlib'

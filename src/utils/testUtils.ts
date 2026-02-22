@@ -1,4 +1,4 @@
-import { AwsIamStore } from '@cloud-copilot/iam-collect'
+import { type AwsIamStore } from '@cloud-copilot/iam-collect'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 
 /**

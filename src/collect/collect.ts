@@ -1,5 +1,9 @@
-import { TopLevelConfig, createStorageClient, loadConfigFiles } from '@cloud-copilot/iam-collect'
-import { IamCollectClient, IamCollectClientOptions } from './client.js'
+import {
+  type TopLevelConfig,
+  createStorageClient,
+  loadConfigFiles
+} from '@cloud-copilot/iam-collect'
+import { IamCollectClient, type IamCollectClientOptions } from './client.js'
 
 /**
  * Load IAM collect configs from the specified paths.
