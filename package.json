@@ -1,6 +1,6 @@
 {
   "name": "@cloud-copilot/iam-lens",
-  "version": "0.1.87",
+  "version": "0.1.88",
   "description": "Visibility in IAM in and across AWS accounts",
   "keywords": [
     "aws",
