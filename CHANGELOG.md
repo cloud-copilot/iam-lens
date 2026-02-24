@@ -1,3 +1,10 @@
+## [0.1.91](https://github.com/cloud-copilot/iam-lens/compare/v0.1.90...v0.1.91) (2026-02-24)
+
+
+### Features
+
+* Allow custom strict context keys on simulate and whoCan ([b091cbb](https://github.com/cloud-copilot/iam-lens/commit/b091cbba3d75dd89e1c658f79348858c4dfaa72b))
+
 ## [0.1.90](https://github.com/cloud-copilot/iam-lens/compare/v0.1.89...v0.1.90) (2026-02-24)
 
 
