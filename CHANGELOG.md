@@ -1,3 +1,10 @@
+## [0.1.90](https://github.com/cloud-copilot/iam-lens/compare/v0.1.89...v0.1.90) (2026-02-24)
+
+
+### Features
+
+* Optional GrantDetails available in whoCan results ([85a5cff](https://github.com/cloud-copilot/iam-lens/commit/85a5cfffc28386d427bc64291991ca594accb9de))
+
 ## [0.1.89](https://github.com/cloud-copilot/iam-lens/compare/v0.1.88...v0.1.89) (2026-02-24)
 
 
