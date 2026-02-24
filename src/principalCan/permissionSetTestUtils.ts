@@ -1,5 +1,5 @@
 import { assert, expect } from 'vitest'
-import { Permission, PermissionConditions } from './permission.js'
+import { Permission, type PermissionConditions } from './permission.js'
 import { PermissionSet } from './permissionSet.js'
 
 export interface TestPermission {
