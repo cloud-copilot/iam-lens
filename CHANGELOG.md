@@ -1,3 +1,10 @@
+## [0.1.92](https://github.com/cloud-copilot/iam-lens/compare/v0.1.91...v0.1.92) (2026-02-24)
+
+
+### Bug Fixes
+
+* type on test utility import ([3badc07](https://github.com/cloud-copilot/iam-lens/commit/3badc0732888d9711d6e85ea7af7984a76fd0863))
+
 ## [0.1.91](https://github.com/cloud-copilot/iam-lens/compare/v0.1.90...v0.1.91) (2026-02-24)
 
 
