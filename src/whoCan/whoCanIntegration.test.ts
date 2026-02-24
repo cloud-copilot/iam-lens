@@ -282,7 +282,8 @@ const whoCanIntegrationTests: {
                 policyIdentifier:
                   'arn:aws:iam::100000000001:role/S3ObjectWildcardDenyRole#S3ObjectWildcardDeny',
                 policyType: 'identity',
-                statementId: 'DenyPrivate'
+                statementId: 'DenyPrivate',
+                statementIndex: 2
               }
             ],
             pattern: 'arn:aws:s3:::wildcard-bucket/reports/private/*',
@@ -303,7 +304,7 @@ const whoCanIntegrationTests: {
                 policyIdentifier:
                   'arn:aws:iam::100000000001:role/S3ObjectWildcardRole#S3ObjectWildcards',
                 policyType: 'identity',
-                statementId: '2'
+                statementIndex: 2
               }
             ],
             pattern: 'arn:aws:s3:::wildcard-bucket/reports/private/*',
@@ -344,7 +345,8 @@ const whoCanIntegrationTests: {
             policyIdentifier:
               'arn:aws:iam::100000000001:role/S3ObjectWildcardDenyRole#S3ObjectWildcardDeny',
             policyType: 'identity',
-            statementId: 'DenyPrivate'
+            statementId: 'DenyPrivate',
+            statementIndex: 2
           }
         ],
         principal: 'arn:aws:iam::100000000001:role/S3ObjectWildcardDenyRole',
@@ -359,7 +361,7 @@ const whoCanIntegrationTests: {
             policyIdentifier:
               'arn:aws:iam::100000000001:role/S3ObjectWildcardRole#S3ObjectWildcards',
             policyType: 'identity',
-            statementId: '2'
+            statementIndex: 2
           }
         ],
         principal: 'arn:aws:iam::100000000001:role/S3ObjectWildcardRole',
