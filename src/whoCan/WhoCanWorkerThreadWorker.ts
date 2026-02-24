@@ -13,14 +13,21 @@ if (!parentPort) {
 }
 
 // Get config from the main thread
-const { concurrency, collectConfigs, partition, s3AbacOverride, collectDenyDetails } =
-  workerData as {
-    concurrency: number
-    collectConfigs: TopLevelConfig[]
-    partition: string
-    s3AbacOverride: S3AbacOverride | undefined
-    collectDenyDetails: boolean
-  }
+const {
+  concurrency,
+  collectConfigs,
+  partition,
+  s3AbacOverride,
+  collectDenyDetails,
+  collectGrantDetails
+} = workerData as {
+  concurrency: number
+  collectConfigs: TopLevelConfig[]
+  partition: string
+  s3AbacOverride: S3AbacOverride | undefined
+  collectDenyDetails: boolean
+  collectGrantDetails: boolean
+}
 
 const taskPromises: Record<number, (val: any) => void> = {}
 
@@ -71,7 +78,8 @@ const jobRunner = new PullBasedJobRunner<
       execute: async (context) => {
         return executeWhoCan(taskDetails, collectClient, {
           s3AbacOverride,
-          collectDenyDetails
+          collectDenyDetails,
+          collectGrantDetails
         })
       }
     }

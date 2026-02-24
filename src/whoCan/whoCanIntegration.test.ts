@@ -318,6 +318,45 @@ const whoCanIntegrationTests: {
     ]
   },
   {
+    name: 'S3 object wildcard (explicit deny subset) with grant details',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::wildcard-bucket/reports/private/*',
+      actions: ['s3:GetObject'],
+      collectGrantDetails: true
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'read',
+          allowedPatterns: [
+            {
+              pattern: '*',
+              resourceType: 'object',
+              details: [
+                {
+                  policyIdentifier: 'arn:aws:iam::100000000001:policy/CustomS3Policy',
+                  policyType: 'identity',
+                  statementId: 'VisualEditor0',
+                  statementIndex: 1
+                },
+                {
+                  policyIdentifier: 'arn:aws:iam::aws:policy/AdministratorAccess',
+                  policyType: 'identity',
+                  statementIndex: 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     name: 'S3 object single resource (explicit deny)',
     data: '1',
     request: {
@@ -402,6 +441,7 @@ const whoCanIntegrationTests: {
           principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
           service: 's3',
           level: 'list',
+          dependsOnSessionName: undefined,
           conditions: {
             identity: {
               allow: [
@@ -534,6 +574,148 @@ const whoCanIntegrationTests: {
         }
       ]
     }
+  },
+  {
+    name: 'single resource with grant details',
+    data: '1',
+    request: {
+      actions: ['ec2:TerminateInstances'],
+      resource: 'arn:aws:ec2:us-east-1:100000000001:instance/i-1234567890abcdef0',
+      collectGrantDetails: true
+    },
+    expected: {
+      who: [
+        {
+          action: 'TerminateInstances',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 'ec2',
+          level: 'write',
+          details: [
+            {
+              policyIdentifier: 'arn:aws:iam::aws:policy/AdministratorAccess',
+              policyType: 'identity',
+              statementIndex: 1
+            },
+            {
+              policyIdentifier:
+                'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5#AwsSSOInlinePolicy',
+              policyType: 'identity',
+              statementId: 'Statement1',
+              statementIndex: 1
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    name: 'single resource with grant details (s3 list bucket)',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::vpc-bucket',
+      actions: ['s3:ListBucket'],
+      collectGrantDetails: true
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
+          service: 's3',
+          level: 'list',
+          conditions: {
+            identity: {
+              allow: [
+                {
+                  key: 'aws:SourceVpc',
+                  op: 'StringEquals',
+                  values: ['vpc-123456789']
+                }
+              ]
+            }
+          },
+          details: [
+            {
+              policyIdentifier: 'arn:aws:iam::200000000002:role/VpcBucketRole#ListBucket',
+              policyType: 'identity',
+              statementIndex: 1
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    name: 'wildcard resource with grant details',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::wildcard-bucket/reports/*',
+      actions: ['s3:GetObject'],
+      collectGrantDetails: true
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          principal: 'arn:aws:iam::100000000001:role/S3ObjectWildcardRole',
+          service: 's3',
+          level: 'read',
+          allowedPatterns: [
+            {
+              pattern: 'arn:aws:s3:::wildcard-bucket/reports/*',
+              resourceType: 'object',
+              details: [
+                {
+                  policyIdentifier:
+                    'arn:aws:iam::100000000001:role/S3ObjectWildcardRole#S3ObjectWildcards',
+                  policyType: 'identity',
+                  statementIndex: 1
+                }
+              ]
+            },
+            {
+              pattern: 'arn:aws:s3:::wildcard-bucket/reports/2024/*',
+              resourceType: 'object',
+              details: [
+                {
+                  policyIdentifier:
+                    'arn:aws:iam::100000000001:role/S3ObjectWildcardRole#S3ObjectWildcards',
+                  policyType: 'identity',
+                  statementIndex: 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          action: 'GetObject',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'read',
+          allowedPatterns: [
+            {
+              pattern: '*',
+              resourceType: 'object',
+              details: [
+                {
+                  policyIdentifier: 'arn:aws:iam::100000000001:policy/CustomS3Policy',
+                  policyType: 'identity',
+                  statementId: 'VisualEditor0',
+                  statementIndex: 1
+                },
+                {
+                  policyIdentifier: 'arn:aws:iam::aws:policy/AdministratorAccess',
+                  policyType: 'identity',
+                  statementIndex: 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
   }
 ]
 
@@ -544,13 +726,45 @@ const whoCanIntegrationTests: {
  * @returns Sorted array of WhoCanAllowed objects
  */
 function sortWhoCanResults(who: WhoCanAllowed[]) {
-  return who.sort((a, b) => {
+  const sorted = who.map((result) => {
+    const allowedPatterns = result.allowedPatterns
+      ? [...result.allowedPatterns]
+          .map((pattern) => ({
+            ...pattern,
+            details: pattern.details ? [...pattern.details].sort(compareGrantDetails) : undefined
+          }))
+          .sort((a, b) => {
+            if (a.pattern < b.pattern) return -1
+            if (a.pattern > b.pattern) return 1
+            if (a.resourceType < b.resourceType) return -1
+            if (a.resourceType > b.resourceType) return 1
+            return 0
+          })
+      : undefined
+
+    return {
+      ...result,
+      details: result.details ? [...result.details].sort(compareGrantDetails) : undefined,
+      allowedPatterns
+    }
+  })
+
+  return sorted.sort((a, b) => {
     if (a.principal < b.principal) return -1
     if (a.principal > b.principal) return 1
+    if (a.service < b.service) return -1
+    if (a.service > b.service) return 1
     if (a.action < b.action) return -1
     if (a.action > b.action) return 1
     return 0
   })
+}
+
+type GrantDetail = {
+  policyType: string
+  policyIdentifier?: string
+  statementId?: string
+  statementIndex: number
 }
 
 type DenialDetail = {
@@ -607,6 +821,20 @@ function compareDenialDetails(a: DenialDetail, b: DenialDetail) {
   const aStmt = a.statementId ?? ''
   const bStmt = b.statementId ?? ''
   return 0
+}
+
+function compareGrantDetails(a: GrantDetail, b: GrantDetail) {
+  if (a.policyType < b.policyType) return -1
+  if (a.policyType > b.policyType) return 1
+  const aPolicy = a.policyIdentifier ?? ''
+  const bPolicy = b.policyIdentifier ?? ''
+  if (aPolicy < bPolicy) return -1
+  if (aPolicy > bPolicy) return 1
+  const aStmt = a.statementId ?? ''
+  const bStmt = b.statementId ?? ''
+  if (aStmt < bStmt) return -1
+  if (aStmt > bStmt) return 1
+  return a.statementIndex - b.statementIndex
 }
 
 // These tests all run sequentially because first they run without the principals index

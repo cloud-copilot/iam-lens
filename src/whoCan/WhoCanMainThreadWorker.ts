@@ -22,7 +22,8 @@ export function createMainThreadStreamingWorkQueue(
   s3AbacOverride: S3AbacOverride | undefined,
   onComplete: (result: JobResult<WhoCanAllowed | undefined, Record<string, unknown>>) => void,
   denyDetailsCallback?: (details: LightRequestAnalysis) => boolean,
-  onDenyDetail?: (detail: WhoCanDenyDetail) => void
+  onDenyDetail?: (detail: WhoCanDenyDetail) => void,
+  collectGrantDetails?: boolean
 ) {
   const collectDenyDetails = !!denyDetailsCallback
 
@@ -34,7 +35,8 @@ export function createMainThreadStreamingWorkQueue(
     (workItem) => {
       return createJobForWhoCanWorkItem(workItem, collectClient, {
         s3AbacOverride,
-        collectDenyDetails
+        collectDenyDetails,
+        collectGrantDetails
       })
     },
     async (result) => {
