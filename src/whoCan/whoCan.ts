@@ -76,6 +76,12 @@ export interface ResourceAccessRequest {
    * If true, grant details will be collected for allowed simulations.
    */
   collectGrantDetails?: boolean
+
+  /**
+   * Optional context keys to consider strict when running simulations for this whoCan request.
+   * These will be added to the simulation strict context keys used by default.
+   */
+  strictContextKeys?: string[]
 }
 
 /**
@@ -254,7 +260,8 @@ export async function whoCan(
             concurrency: 50,
             s3AbacOverride: request.s3AbacOverride,
             collectDenyDetails,
-            collectGrantDetails
+            collectGrantDetails,
+            strictContextKeys: request.strictContextKeys
           }
         })
       })
@@ -330,7 +337,8 @@ export async function whoCan(
     onComplete,
     request.denyDetailsCallback,
     (detail) => denyDetails.push(detail),
-    collectGrantDetails
+    collectGrantDetails,
+    request.strictContextKeys
   )
 
   workers.forEach((worker) => {

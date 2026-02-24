@@ -113,6 +113,7 @@ export interface WhoCanOptions {
   s3AbacOverride?: S3AbacOverride
   collectDenyDetails?: boolean
   collectGrantDetails?: boolean
+  strictContextKeys?: string[]
 }
 
 export async function executeWhoCan(
@@ -130,7 +131,8 @@ export async function executeWhoCan(
       action,
       customContextKeys: {},
       simulationMode: 'Discovery',
-      s3AbacOverride: whoCanOptions.s3AbacOverride
+      s3AbacOverride: whoCanOptions.s3AbacOverride,
+      additionalStrictContextKeys: whoCanOptions.strictContextKeys
     },
     collectClient
   )
@@ -150,7 +152,8 @@ export async function executeWhoCan(
         action,
         customContextKeys: {},
         simulationMode: 'Strict',
-        s3AbacOverride: whoCanOptions.s3AbacOverride
+        s3AbacOverride: whoCanOptions.s3AbacOverride,
+        additionalStrictContextKeys: whoCanOptions.strictContextKeys
       },
       collectClient
     )

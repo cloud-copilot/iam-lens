@@ -77,6 +77,11 @@ export interface SimulationRequest {
    * The session policy to use for the simulation, if the principal type supports it.
    */
   sessionPolicy?: any
+
+  /**
+   * Additional strict context keys to include for the simulation. These will be added to the default strict context keys.
+   */
+  additionalStrictContextKeys?: string[]
 }
 
 /**
@@ -214,7 +219,10 @@ export async function simulateRequest(
 
   // Assemble the strict context keys for the simulation
   // Start with the default known context keys
-  const strictContextKeys = [...knownContextKeys]
+  const strictContextKeys = [
+    ...knownContextKeys,
+    ...(simulationRequest.additionalStrictContextKeys ?? [])
+  ]
 
   if (!simulationRequest.principal.endsWith(':root')) {
     // Treat this as strict unless it is a root principal

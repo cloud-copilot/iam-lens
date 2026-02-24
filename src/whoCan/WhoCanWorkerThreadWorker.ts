@@ -19,7 +19,8 @@ const {
   partition,
   s3AbacOverride,
   collectDenyDetails,
-  collectGrantDetails
+  collectGrantDetails,
+  strictContextKeys
 } = workerData as {
   concurrency: number
   collectConfigs: TopLevelConfig[]
@@ -27,6 +28,7 @@ const {
   s3AbacOverride: S3AbacOverride | undefined
   collectDenyDetails: boolean
   collectGrantDetails: boolean
+  strictContextKeys: string[] | undefined
 }
 
 const taskPromises: Record<number, (val: any) => void> = {}
@@ -79,7 +81,8 @@ const jobRunner = new PullBasedJobRunner<
         return executeWhoCan(taskDetails, collectClient, {
           s3AbacOverride,
           collectDenyDetails,
-          collectGrantDetails
+          collectGrantDetails,
+          strictContextKeys
         })
       }
     }
