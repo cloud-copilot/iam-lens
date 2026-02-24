@@ -458,6 +458,66 @@ const whoCanIntegrationTests: {
     }
   },
   {
+    name: 'ListBucket with condition and no strictContextKeys',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::vpc-bucket',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
+          service: 's3',
+          level: 'list',
+          conditions: {
+            identity: {
+              allow: [
+                {
+                  key: 'aws:SourceVpc',
+                  op: 'StringEquals',
+                  values: ['vpc-123456789']
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    name: 'ListBucket with condition and strictContextKeys aws:SourceVpc',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::vpc-bucket',
+      actions: ['s3:ListBucket'],
+      strictContextKeys: ['aws:SourceVpc'],
+      denyDetailsCallback: (details) => details.overallResult === 'ImplicitlyDenied'
+    },
+    expected: {
+      who: []
+    },
+    expectedDenyDetails: [
+      {
+        type: 'single',
+        principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
+        service: 's3',
+        action: 'ListBucket',
+        details: [
+          {
+            denialType: 'Implicit',
+            policyType: 'identity'
+          },
+          {
+            denialType: 'Implicit',
+            policyType: 'resource'
+          }
+        ]
+      }
+    ]
+  },
+  {
     name: 'ListBucket with tags and ABAC',
     description:
       'This checks against a bucket with tags that has ABAC enabled so the ABAC role should have access',

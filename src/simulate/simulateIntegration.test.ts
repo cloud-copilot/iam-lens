@@ -325,6 +325,37 @@ const simulateIntegrationTest: {
       simulationMode: 'Strict'
     },
     expected: 'Allowed'
+  },
+  {
+    name: 'vpc condition ignored in Discovery mode without additionalStrictContextKeys',
+    comment:
+      'VpcBucketRole has an Allow for s3:ListBucket conditioned on aws:SourceVpc. In Discovery mode the condition key is not in knownContextKeys, so it is ignored and the Allow applies.',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::vpc-bucket',
+      resourceAccount: undefined,
+      action: 's3:ListBucket',
+      principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
+      customContextKeys: {},
+      simulationMode: 'Discovery'
+    },
+    expected: 'Allowed'
+  },
+  {
+    name: 'additionalStrictContextKeys causes vpc condition to be evaluated and deny access',
+    comment:
+      'Same request as above, but with aws:SourceVpc added to additionalStrictContextKeys. Now the condition is enforced: no value is present, so it fails and the Allow does not apply.',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::vpc-bucket',
+      resourceAccount: undefined,
+      action: 's3:ListBucket',
+      principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
+      customContextKeys: {},
+      simulationMode: 'Discovery',
+      additionalStrictContextKeys: ['aws:SourceVpc']
+    },
+    expected: 'ImplicitlyDenied'
   }
 ]
 
