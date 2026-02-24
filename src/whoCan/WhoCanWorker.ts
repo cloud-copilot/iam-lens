@@ -1,6 +1,7 @@
 import { iamActionDetails } from '@cloud-copilot/iam-data'
 import {
   type EvaluationResult,
+  getGrantReasons,
   type RequestAnalysis,
   type SuccessfulRunSimulationResults
 } from '@cloud-copilot/iam-simulate'
@@ -111,6 +112,7 @@ export function createJobForWhoCanWorkItem(
 export interface WhoCanOptions {
   s3AbacOverride?: S3AbacOverride
   collectDenyDetails?: boolean
+  collectGrantDetails?: boolean
 }
 
 export async function executeWhoCan(
@@ -165,7 +167,8 @@ export async function executeWhoCan(
         serviceAction,
         actionType,
         strictResult.result,
-        !!whoCanOptions.collectDenyDetails
+        !!whoCanOptions.collectDenyDetails,
+        !!whoCanOptions.collectGrantDetails
       )
     }
   } else {
@@ -175,7 +178,8 @@ export async function executeWhoCan(
       serviceAction,
       actionType,
       discoveryResult.result,
-      !!whoCanOptions.collectDenyDetails
+      !!whoCanOptions.collectDenyDetails,
+      !!whoCanOptions.collectGrantDetails
     )
   }
 
@@ -185,7 +189,8 @@ export async function executeWhoCan(
     serviceAction,
     actionType,
     discoveryResult.result,
-    !!whoCanOptions.collectDenyDetails
+    !!whoCanOptions.collectDenyDetails,
+    !!whoCanOptions.collectGrantDetails
   )
 }
 
@@ -207,7 +212,8 @@ function mapSimulationResultToWhoCanExecutionResult(
   action: string,
   actionType: string,
   simulationResponse: SuccessfulRunSimulationResults,
-  collectDenyDetails: boolean
+  collectDenyDetails: boolean,
+  collectGrantDetails: boolean
 ): WhoCanExecutionResult {
   const { principal } = workItem
 
@@ -224,8 +230,11 @@ function mapSimulationResultToWhoCanExecutionResult(
       const analysis = simulationResponse.result.analysis
       allowed.conditions = analysis.ignoredConditions
       allowed.dependsOnSessionName = analysis.ignoredRoleSessionName ? true : undefined
+      if (collectGrantDetails) {
+        allowed.details = getGrantReasons(analysis)
+      }
     } else {
-      // Wildcard result - collect allowed patterns
+      // Wildcard result - collect allowed patterns with per-pattern grant details
       const allowedPatterns: WhoCanAllowedResourcePattern[] = []
       for (const r of simulationResponse.results) {
         if (r.analysis.result === 'Allowed') {
@@ -233,7 +242,8 @@ function mapSimulationResultToWhoCanExecutionResult(
             pattern: r.resourcePattern,
             resourceType: r.resourceType,
             conditions: r.analysis.ignoredConditions,
-            dependsOnSessionName: r.analysis.ignoredRoleSessionName ? true : undefined
+            dependsOnSessionName: r.analysis.ignoredRoleSessionName ? true : undefined,
+            ...(collectGrantDetails && { details: getGrantReasons(r.analysis) })
           })
         }
       }

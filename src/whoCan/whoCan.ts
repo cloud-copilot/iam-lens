@@ -9,7 +9,7 @@ import {
   type ResourceType
 } from '@cloud-copilot/iam-data'
 import { loadPolicy } from '@cloud-copilot/iam-policy'
-import { type RequestDenial } from '@cloud-copilot/iam-simulate'
+import { type RequestDenial, type RequestGrant } from '@cloud-copilot/iam-simulate'
 import {
   isAssumedRoleArn,
   isIamRoleArn,
@@ -71,6 +71,11 @@ export interface ResourceAccessRequest {
    * Deny details callback for simulations. If the callback returns true, deny details will be included for that simulation.
    */
   denyDetailsCallback?: (details: LightRequestAnalysis) => boolean
+
+  /**
+   * If true, grant details will be collected for allowed simulations.
+   */
+  collectGrantDetails?: boolean
 }
 
 /**
@@ -94,6 +99,11 @@ export interface WhoCanAllowedResourcePattern {
    * If true, access is only allowed when the session has a specific session name.
    */
   dependsOnSessionName?: boolean
+
+  /**
+   * The policy statements that granted access for this resource pattern.
+   */
+  details?: RequestGrant[]
 }
 
 export interface WhoCanAllowed {
@@ -120,6 +130,13 @@ export interface WhoCanAllowed {
    * in the simulation request, this array will contain the different resource patterns that allow access.
    */
   allowedPatterns?: WhoCanAllowedResourcePattern[]
+
+  /**
+   * The policy statements that granted access for this result.
+   * Only populated for single resource simulations. For wildcard
+   * simulations, see `details` on each entry in `allowedPatterns`.
+   */
+  details?: RequestGrant[]
 }
 
 /**
@@ -226,6 +243,7 @@ export async function whoCan(
   const numWorkers = getNumberOfWorkers(request.workerThreads)
   const workerPath = getWorkerScriptPath('whoCan/WhoCanWorkerThreadWorker.js')
   const collectDenyDetails = !!request.denyDetailsCallback
+  const collectGrantDetails = !!request.collectGrantDetails
   const workers = !workerPath
     ? []
     : new Array(numWorkers).fill(undefined).map((val) => {
@@ -235,7 +253,8 @@ export async function whoCan(
             partition,
             concurrency: 50,
             s3AbacOverride: request.s3AbacOverride,
-            collectDenyDetails
+            collectDenyDetails,
+            collectGrantDetails
           }
         })
       })
@@ -310,7 +329,8 @@ export async function whoCan(
     request.s3AbacOverride,
     onComplete,
     request.denyDetailsCallback,
-    (detail) => denyDetails.push(detail)
+    (detail) => denyDetails.push(detail),
+    collectGrantDetails
   )
 
   workers.forEach((worker) => {
