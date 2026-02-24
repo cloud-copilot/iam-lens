@@ -1,3 +1,10 @@
+## [0.1.89](https://github.com/cloud-copilot/iam-lens/compare/v0.1.88...v0.1.89) (2026-02-24)
+
+
+### Features
+
+* Include blockedBy set in callback for whoCan denyDetailsCallback ([b5a42d4](https://github.com/cloud-copilot/iam-lens/commit/b5a42d41e94e4eaaca0adcac0dc064830c9cf40a))
+
 ## [0.1.88](https://github.com/cloud-copilot/iam-lens/compare/v0.1.87...v0.1.88) (2026-02-23)
 
 ## [0.1.87](https://github.com/cloud-copilot/iam-lens/compare/v0.1.86...v0.1.87) (2026-02-23)
