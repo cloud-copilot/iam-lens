@@ -1,5 +1,6 @@
 import {
   getDenialReasons,
+  type BlockedReason,
   type EvaluationResult,
   type RequestAnalysis
 } from '@cloud-copilot/iam-simulate'
@@ -21,6 +22,7 @@ export interface LightResourceAnalysis {
     NonNullable<RequestAnalysis['permissionBoundaryAnalysis']>,
     'result'
   >
+  blockedBy: Set<BlockedReason>
 }
 
 /**
@@ -92,7 +94,8 @@ function toLightResourceAnalysis(analysis: RequestAnalysis): LightResourceAnalys
     rcpAnalysis: analysis.rcpAnalysis ? { result: analysis.rcpAnalysis.result } : undefined,
     permissionBoundaryAnalysis: analysis.permissionBoundaryAnalysis
       ? { result: analysis.permissionBoundaryAnalysis.result }
-      : undefined
+      : undefined,
+    blockedBy: new Set(analysis.blockedBy)
   }
 }
 
