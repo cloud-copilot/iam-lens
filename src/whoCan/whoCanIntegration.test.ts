@@ -455,7 +455,6 @@ const whoCanIntegrationTests: {
           principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
           service: 's3',
           level: 'list',
-          dependsOnSessionName: undefined,
           resourceType: 'bucket',
           conditions: {
             identity: {
