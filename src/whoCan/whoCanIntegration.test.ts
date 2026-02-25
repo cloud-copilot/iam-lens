@@ -39,7 +39,8 @@ const whoCanIntegrationTests: {
           principal:
             'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
           service: 'ec2',
-          level: 'write'
+          level: 'write',
+          resourceType: 'instance'
         }
       ]
     }
@@ -82,32 +83,37 @@ const whoCanIntegrationTests: {
           action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:user/user1',
           service: 's3',
-          level: 'list'
+          level: 'list',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:role/S3AbacRole',
           service: 's3',
-          level: 'list'
+          level: 'list',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
           service: 's3',
-          level: 'list'
+          level: 'list',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
           service: 's3',
-          level: 'list'
+          level: 'list',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           principal:
             'arn:aws:iam::200000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
           service: 's3',
-          level: 'list'
+          level: 'list',
+          resourceType: 'bucket'
         }
       ],
       organizationsNotFound: ['o-33333333']
@@ -126,20 +132,23 @@ const whoCanIntegrationTests: {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:user/user1',
           service: 's3',
-          level: 'list'
+          level: 'list',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           principal:
             'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
           service: 's3',
-          level: 'list'
+          level: 'list',
+          resourceType: 'bucket'
         }
       ],
       accountsNotFound: ['999999999999']
@@ -158,20 +167,23 @@ const whoCanIntegrationTests: {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:user/user1',
           service: 's3',
-          level: 'list'
+          level: 'list',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           principal:
             'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
           service: 's3',
-          level: 'list'
+          level: 'list',
+          resourceType: 'bucket'
         }
       ],
       principalsNotFound: [
@@ -371,7 +383,8 @@ const whoCanIntegrationTests: {
           principal:
             'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
           service: 's3',
-          level: 'read'
+          level: 'read',
+          resourceType: 'object'
         }
       ]
     },
@@ -422,7 +435,8 @@ const whoCanIntegrationTests: {
           action: 'AssumeRole',
           principal: 'lambda.amazonaws.com',
           service: 'sts',
-          level: 'write'
+          level: 'write',
+          resourceType: 'role'
         }
       ]
     }
@@ -442,6 +456,7 @@ const whoCanIntegrationTests: {
           service: 's3',
           level: 'list',
           dependsOnSessionName: undefined,
+          resourceType: 'bucket',
           conditions: {
             identity: {
               allow: [
@@ -471,6 +486,7 @@ const whoCanIntegrationTests: {
           principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
           service: 's3',
           level: 'list',
+          resourceType: 'bucket',
           conditions: {
             identity: {
               allow: [
@@ -532,19 +548,22 @@ const whoCanIntegrationTests: {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:role/S3AbacRole',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:user/user1',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         }
       ]
     }
@@ -564,13 +583,15 @@ const whoCanIntegrationTests: {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:user/user1',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         }
       ]
     }
@@ -591,13 +612,15 @@ const whoCanIntegrationTests: {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:user/user1',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         }
       ]
     }
@@ -618,19 +641,22 @@ const whoCanIntegrationTests: {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:role/S3AbacRole',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         },
         {
           action: 'ListBucket',
           level: 'list',
           principal: 'arn:aws:iam::200000000002:user/user1',
-          service: 's3'
+          service: 's3',
+          resourceType: 'bucket'
         }
       ]
     }
@@ -651,6 +677,7 @@ const whoCanIntegrationTests: {
             'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
           service: 'ec2',
           level: 'write',
+          resourceType: 'instance',
           details: [
             {
               policyIdentifier: 'arn:aws:iam::aws:policy/AdministratorAccess',
@@ -684,6 +711,7 @@ const whoCanIntegrationTests: {
           principal: 'arn:aws:iam::200000000002:role/VpcBucketRole',
           service: 's3',
           level: 'list',
+          resourceType: 'bucket',
           conditions: {
             identity: {
               allow: [

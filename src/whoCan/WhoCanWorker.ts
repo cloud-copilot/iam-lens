@@ -231,8 +231,17 @@ function mapSimulationResultToWhoCanExecutionResult(
 
     if (simulationResponse.resultType === 'single') {
       const analysis = simulationResponse.result.analysis
-      allowed.conditions = analysis.ignoredConditions
-      allowed.dependsOnSessionName = analysis.ignoredRoleSessionName ? true : undefined
+      if (analysis.ignoredConditions && Object.keys(analysis.ignoredConditions).length > 0) {
+        allowed.conditions = analysis.ignoredConditions
+      }
+
+      if (analysis.ignoredRoleSessionName) {
+        allowed.dependsOnSessionName = true
+      }
+      if (simulationResponse.result.resourceType) {
+        allowed.resourceType = simulationResponse.result.resourceType
+      }
+
       if (collectGrantDetails) {
         allowed.details = getGrantReasons(analysis)
       }
