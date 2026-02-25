@@ -1,3 +1,10 @@
+## [0.1.93](https://github.com/cloud-copilot/iam-lens/compare/v0.1.92...v0.1.93) (2026-02-25)
+
+
+### Features
+
+* Add resource type for single whoCan result ([cabda57](https://github.com/cloud-copilot/iam-lens/commit/cabda57c05aa9afff4640cad847995c859f98fa2))
+
 ## [0.1.92](https://github.com/cloud-copilot/iam-lens/compare/v0.1.91...v0.1.92) (2026-02-24)
 
 
