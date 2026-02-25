@@ -3376,7 +3376,7 @@ const subtractTests: {
    * Allow NotResource = U \ A
    * Deny NotResource = U \ B
    *
-   * Identity Forumula:
+   * Identity Formula:
    * X \ (U \ Y) = X ∩ Y
    *
    * Replace Variables:
