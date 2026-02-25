@@ -93,14 +93,17 @@ export interface WhoCanAllowedResourcePattern {
    * The resource pattern that allows access.
    */
   pattern: string
+
   /**
    * The resource type for the pattern.
    */
   resourceType: string
+
   /**
    * The conditions under which access is allowed for this pattern, if any.
    */
   conditions?: any
+
   /**
    * If true, access is only allowed when the session has a specific session name.
    */
@@ -124,6 +127,12 @@ export interface WhoCanAllowed {
    * if `allowedPatterns` are provided.
    */
   conditions?: any
+
+  /**
+   * The resource type for the allowed action. This will be undefined if `allowedPatterns` are provided,
+   * since those patterns specify the resource type directly.
+   */
+  resourceType?: string
 
   /**
    * If true, indicates that access is only allowed when the session has a specific session name.
