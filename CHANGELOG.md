@@ -1,3 +1,10 @@
+## [0.1.95](https://github.com/cloud-copilot/iam-lens/compare/v0.1.94...v0.1.95) (2026-02-25)
+
+
+### Features
+
+* Allow overriding the folder that has worker scripts ([fa48413](https://github.com/cloud-copilot/iam-lens/commit/fa484138675e392b55bee571aa4732c1d3375413))
+
 ## [0.1.94](https://github.com/cloud-copilot/iam-lens/compare/v0.1.93...v0.1.94) (2026-02-25)
 
 ## [0.1.93](https://github.com/cloud-copilot/iam-lens/compare/v0.1.92...v0.1.93) (2026-02-25)
