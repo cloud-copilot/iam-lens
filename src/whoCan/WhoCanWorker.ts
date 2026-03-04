@@ -138,8 +138,7 @@ export async function executeWhoCan(
   )
 
   if (discoveryResult.result.resultType === 'error') {
-    // If discovery fails, we treat it as a denial without details (since we don't have analysis to share)
-    throw new Error('Discovery simulation failed: ' + discoveryResult.result.errors)
+    throw new Error('Discovery simulation failed: ' + JSON.stringify(discoveryResult.result.errors))
   }
 
   const actionType = await getActionLevel(service, serviceAction)
@@ -159,8 +158,7 @@ export async function executeWhoCan(
     )
 
     if (strictResult.result.resultType === 'error') {
-      // If discovery fails, we treat it as a denial without details (since we don't have analysis to share)
-      throw new Error('Discovery simulation failed: ' + strictResult.result.errors)
+      throw new Error('Strict simulation failed: ' + JSON.stringify(strictResult.result.errors))
     }
 
     if (strictResult?.result.overallResult === 'Allowed') {
