@@ -727,6 +727,45 @@ const whoCanIntegrationTests: {
               policyIdentifier: 'arn:aws:iam::200000000002:role/VpcBucketRole#ListBucket',
               policyType: 'identity',
               statementIndex: 1
+            },
+            {
+              orgIdentifier: 'r-dh2e',
+              policyIdentifier: 'RCPFullAWSAccess',
+              policyType: 'rcp',
+              statementIndex: 1
+            },
+            {
+              orgIdentifier: 'ou-dh2e-aps19rip',
+              policyIdentifier: 'RCPFullAWSAccess',
+              policyType: 'rcp',
+              statementIndex: 1
+            },
+            {
+              orgIdentifier: '200000000002',
+              policyIdentifier: 'RCPFullAWSAccess',
+              policyType: 'rcp',
+              statementIndex: 1
+            },
+            {
+              orgIdentifier: 'r-dh2e',
+              policyIdentifier:
+                'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
+              policyType: 'scp',
+              statementIndex: 1
+            },
+            {
+              orgIdentifier: 'ou-dh2e-aps19rip',
+              policyIdentifier:
+                'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
+              policyType: 'scp',
+              statementIndex: 1
+            },
+            {
+              orgIdentifier: '200000000002',
+              policyIdentifier:
+                'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
+              policyType: 'scp',
+              statementIndex: 1
             }
           ]
         }
