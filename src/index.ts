@@ -2,9 +2,23 @@ export {
   IamCollectClient,
   InMemoryCacheProvider,
   NoCacheProvider,
-  type CacheProvider
+  type CacheProvider,
+  type IamCollectClientOptions
 } from './collect/client.js'
-export { getCollectClient, loadCollectConfigs } from './collect/collect.js'
+export type {
+  ManagedPolicy,
+  InlinePolicy,
+  OrgPolicy,
+  SimulationOrgPolicies,
+  OrgPolicyType,
+  IamActionCache
+} from './collect/client.js'
+export {
+  getCollectClient,
+  loadCollectConfigs,
+  type ClientFactoryPlugin,
+  type CollectClientOptions
+} from './collect/collect.js'
 export { principalCan, type PrincipalCanInput } from './principalCan/principalCan.js'
 export { makePrincipalIndex } from './principalIndex/makePrincipalIndex.js'
 export type { ContextKeys } from './simulate/contextKeys.js'
