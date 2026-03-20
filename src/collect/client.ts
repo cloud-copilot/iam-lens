@@ -1001,7 +1001,8 @@ export class IamCollectClient {
   }
 
   /**
-   * Get the accounts for a given organization path.
+   * Get the accounts for a given organization path, includes
+   * accounts directly under the OU and in child OUs.
    *
    * @param orgId the ID of the organization
    * @param ouIds the ids of the organizational units in the path
@@ -1308,13 +1309,13 @@ export class IamCollectClient {
    * have permission to perform the action. If the data is not available, it
    * will return undefined.
    *
-   * @param allFromAccount The account ID from which to include all principals in the result, regardless of the action filter. All principals from this account will be returned, even if they do not have the specified action allowed.
+   * @param allFromAccount The account ID from which to include all principals in the result, regardless of the action filter. When `undefined`, no account receives this treatment — only principals matching the action filter are returned.
    * @param accountIds The list of account IDs to check for principals that may have permission to perform the specified action. Only principals from these accounts that may have the action allowed will be included.
    * @param action The action to check.
    * @returns A list of principals that may have permission to perform the action, or undefined if the data is not available.
    */
   async getPrincipalsWithActionAllowed(
-    allFromAccount: string,
+    allFromAccount: string | undefined,
     accountIds: string[],
     action: string
   ): Promise<string[] | undefined> {
@@ -1393,7 +1394,7 @@ export class IamCollectClient {
 
     let finalBitset = accountBitset.and(actionBitset)
 
-    if (accountsIndex[allFromAccount]) {
+    if (allFromAccount && accountsIndex[allFromAccount]) {
       finalBitset = finalBitset.or(decodeBitSet(accountsIndex[allFromAccount]))
     }
 

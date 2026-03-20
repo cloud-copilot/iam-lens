@@ -32,7 +32,23 @@ import { SharedArrayBufferMainCache } from '../workers/SharedArrayBufferMainCach
 import { StreamingWorkQueue } from '../workers/StreamingWorkQueue.js'
 import { createMainThreadStreamingWorkQueue } from './WhoCanMainThreadWorker.js'
 import { type WhoCanWorkItem } from './WhoCanWorker.js'
+import { intersectWithPrincipalScope, resolvePrincipalScope } from './principalScope.js'
 import { type LightRequestAnalysis } from './requestAnalysis.js'
+
+/**
+ * Limits the set of principals that `whoCan` tests. The scope is a union of
+ * principal ARNs, account IDs, and OU paths. It is **intersected** with the
+ * resource-policy-derived scope so that principals outside the resource
+ * policy's reach are still excluded.
+ */
+export interface WhoCanPrincipalScope {
+  /** Exact principal ARNs to test individually (does NOT expand to whole-account search). */
+  principals?: string[]
+  /** Account IDs — test all principals in these accounts. */
+  accounts?: string[]
+  /** OU paths — test all principals in accounts under these OUs. Each string is a slash-separated path like `o-aaa/r-bbb/ou-ccc`, matching the format used by `aws:PrincipalOrgPaths` and `specificOrganizationalUnits`. */
+  ous?: string[]
+}
 
 export interface ResourceAccessRequest {
   /**
@@ -89,6 +105,13 @@ export interface ResourceAccessRequest {
    * Used for scenario testing where a layered client needs to be used in worker threads.
    */
   clientFactoryPlugin?: ClientFactoryPlugin
+
+  /**
+   * Optional scope to limit the set of principals tested. When provided, the
+   * scope is intersected with the resource-policy-derived scope to narrow the
+   * search space.
+   */
+  principalScope?: WhoCanPrincipalScope
 }
 
 /**
@@ -328,6 +351,24 @@ export async function whoCan(
 
   const uniqueAccounts = await uniqueAccountsToCheck(collectClient, accountsToCheck)
 
+  let accountsForSearch = uniqueAccounts.accounts
+  let principalsForSearch = accountsToCheck.specificPrincipals
+  let scopeIncludesResourceAccount = true
+
+  if (request.principalScope) {
+    const resolved = await resolvePrincipalScope(collectClient, request.principalScope)
+    const intersection = intersectWithPrincipalScope(
+      uniqueAccounts.accounts,
+      accountsToCheck.specificPrincipals,
+      accountsToCheck.allAccounts,
+      resolved.accounts,
+      resolved.principals
+    )
+    accountsForSearch = intersection.accounts
+    principalsForSearch = intersection.principals
+    scopeIncludesResourceAccount = resolved.accounts.has(resourceAccount)
+  }
+
   const whoCanResults: WhoCanAllowed[] = []
 
   const concurrency = Math.min(50, Math.max(1, numberOfCpus() * 2))
@@ -396,10 +437,11 @@ export async function whoCan(
 
   const principalIndexExists = await collectClient.principalIndexExists()
   if (principalIndexExists) {
+    const allFromAccount = scopeIncludesResourceAccount ? resourceAccount : undefined
     for (const action of actions) {
       const indexedPrincipals = await collectClient.getPrincipalsWithActionAllowed(
-        resourceAccount,
-        uniqueAccounts.accounts,
+        allFromAccount,
+        accountsForSearch,
         action
       )
       for (const principal of indexedPrincipals || []) {
@@ -412,7 +454,7 @@ export async function whoCan(
       }
     }
   } else {
-    for (const account of uniqueAccounts.accounts) {
+    for (const account of accountsForSearch) {
       accountQueue.enqueue({
         properties: {},
         execute: async () => {
@@ -433,7 +475,7 @@ export async function whoCan(
   }
 
   const principalsNotFound: string[] = []
-  for (const principal of accountsToCheck.specificPrincipals) {
+  for (const principal of principalsForSearch) {
     accountQueue.enqueue({
       properties: {},
       execute: async () => {
@@ -505,7 +547,7 @@ export async function whoCan(
   const results = {
     simulationCount,
     allowed: whoCanResults,
-    allAccountsChecked: accountsToCheck.allAccounts,
+    allAccountsChecked: request.principalScope ? false : accountsToCheck.allAccounts,
     accountsNotFound: uniqueAccounts.accountsNotFound,
     organizationsNotFound: uniqueAccounts.organizationsNotFound,
     organizationalUnitsNotFound: uniqueAccounts.organizationalUnitsNotFound,
