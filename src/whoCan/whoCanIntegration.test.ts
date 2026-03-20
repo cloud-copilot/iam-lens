@@ -842,6 +842,202 @@ const whoCanIntegrationTests: {
         }
       ]
     }
+  },
+  {
+    name: 'principalScope with matching account limits results',
+    description:
+      'Same as "shared with an account" but with principalScope limiting to only account 200000000002',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-acct',
+      actions: ['s3:ListBucket'],
+      principalScope: { accounts: ['200000000002'] }
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        }
+      ],
+      accountsNotFound: ['999999999999']
+    }
+  },
+  {
+    name: 'principalScope with specific principals limits to those principals',
+    description:
+      'Same as "shared with specific principals" but scope limits to just one of the cross-account principals. Missing principals from the resource policy are filtered out by the scope intersection.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-principal',
+      actions: ['s3:ListBucket'],
+      principalScope: {
+        principals: ['arn:aws:iam::200000000002:role/S3CrossAccountRole']
+      }
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3',
+          resourceType: 'bucket'
+        }
+      ]
+    }
+  },
+  {
+    name: 'principalScope with no overlap returns empty allowed',
+    description: 'When scope accounts do not overlap with resource policy accounts, no results',
+    data: '1',
+    request: {
+      resource: 'arn:aws:ec2:us-east-1:100000000001:instance/i-1234567890abcdef0',
+      actions: ['ec2:TerminateInstances'],
+      principalScope: { accounts: ['999999999999'] }
+    },
+    expected: {
+      who: []
+    }
+  },
+  {
+    name: 'principalScope with same-account principal only does not widen to whole account',
+    description:
+      'When scope contains only a specific principal ARN, only that principal is tested — the account is not searched broadly',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-principal',
+      actions: ['s3:ListBucket'],
+      principalScope: {
+        principals: [
+          'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5'
+        ]
+      }
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          resourceType: 'bucket'
+        }
+      ]
+    }
+  },
+  {
+    name: 'principalScope with account and principal for same account does not duplicate results',
+    description:
+      'When scope has both accounts and principals for the same account, the principal is covered by the account loop and should not appear twice',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-acct',
+      actions: ['s3:ListBucket'],
+      principalScope: {
+        accounts: ['100000000002'],
+        principals: [
+          'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5'
+        ]
+      }
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          principal:
+            'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        }
+      ],
+      accountsNotFound: ['999999999999']
+    }
+  },
+  {
+    name: 'principalScope with service principal when resource policy names it',
+    description:
+      'LambdaRole trust policy names lambda.amazonaws.com. Scoping to that service principal should find it.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:iam::200000000002:role/LambdaRole',
+      actions: ['sts:AssumeRole'],
+      principalScope: {
+        principals: ['lambda.amazonaws.com']
+      }
+    },
+    expected: {
+      who: [
+        {
+          action: 'AssumeRole',
+          principal: 'lambda.amazonaws.com',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        }
+      ]
+    }
+  },
+  {
+    name: 'principalScope with service principal when resource policy does not name it',
+    description:
+      'The who-can-acct bucket policy does not name any service principal. Scoping to lambda.amazonaws.com should find nothing.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-acct',
+      actions: ['s3:ListBucket'],
+      principalScope: {
+        principals: ['lambda.amazonaws.com']
+      }
+    },
+    expected: {
+      who: [],
+      accountsNotFound: ['999999999999']
+    }
+  },
+  {
+    name: 'principalScope with bad OU path returns empty results',
+    description:
+      'When the scope contains an OU path that does not exist, it resolves to no accounts and produces no results',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-acct',
+      actions: ['s3:ListBucket'],
+      principalScope: {
+        ous: ['o-11111111/r-dh2e/ou-nonexistent']
+      }
+    },
+    expected: {
+      who: [],
+      accountsNotFound: ['999999999999']
+    }
+  },
+  {
+    name: 'principalScope with empty scope returns empty results',
+    description:
+      'An empty principalScope ({}) resolves to no accounts and no principals, so nothing is tested',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-acct',
+      actions: ['s3:ListBucket'],
+      principalScope: {}
+    },
+    expected: {
+      who: [],
+      accountsNotFound: ['999999999999']
+    }
   }
 ]
 
