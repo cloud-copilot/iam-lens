@@ -1,3 +1,10 @@
+## [0.1.100](https://github.com/cloud-copilot/iam-lens/compare/v0.1.99...v0.1.100) (2026-03-20)
+
+
+### Features
+
+* Allow custom client wrappers for whoCan ([fbb7ba7](https://github.com/cloud-copilot/iam-lens/commit/fbb7ba7df002cae0f6704aba08d79eee6d149ff1))
+
 ## [0.1.99](https://github.com/cloud-copilot/iam-lens/compare/v0.1.98...v0.1.99) (2026-03-07)
 
 ## [0.1.98](https://github.com/cloud-copilot/iam-lens/compare/v0.1.97...v0.1.98) (2026-03-04)
