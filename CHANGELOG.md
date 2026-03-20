@@ -1,3 +1,10 @@
+## [0.1.101](https://github.com/cloud-copilot/iam-lens/compare/v0.1.100...v0.1.101) (2026-03-20)
+
+
+### Features
+
+* Allow a principal scope to be passed to whoCan ([1697ee2](https://github.com/cloud-copilot/iam-lens/commit/1697ee262d173cc241f3c169d38a60c29f92bd3a))
+
 ## [0.1.100](https://github.com/cloud-copilot/iam-lens/compare/v0.1.99...v0.1.100) (2026-03-20)
 
 
