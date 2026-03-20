@@ -25,6 +25,7 @@ export type { ContextKeys } from './simulate/contextKeys.js'
 export { simulateRequest, type SimulationRequest } from './simulate/simulate.js'
 export {
   whoCan,
+  type WhoCanPrincipalScope,
   type ResourceAccessRequest,
   type WhoCanAllowed,
   type WhoCanResponse
