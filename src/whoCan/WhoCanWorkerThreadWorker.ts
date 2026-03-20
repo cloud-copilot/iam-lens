@@ -1,7 +1,7 @@
 // src/workers/workerThread.ts
 import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
 import { parentPort, workerData } from 'worker_threads'
-import { getCollectClient } from '../collect/collect.js'
+import { type ClientFactoryPlugin, getCollectClient } from '../collect/collect.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { PullBasedJobRunner } from '../workers/JobRunner.js'
 import { SharedArrayBufferWorkerCache } from '../workers/SharedArrayBufferWorkerCache.js'
@@ -20,7 +20,8 @@ const {
   s3AbacOverride,
   collectDenyDetails,
   collectGrantDetails,
-  strictContextKeys
+  strictContextKeys,
+  clientFactoryPlugin
 } = workerData as {
   concurrency: number
   collectConfigs: TopLevelConfig[]
@@ -29,6 +30,7 @@ const {
   collectDenyDetails: boolean
   collectGrantDetails: boolean
   strictContextKeys: string[] | undefined
+  clientFactoryPlugin: ClientFactoryPlugin | undefined
 }
 
 const taskPromises: Record<number, (val: any) => void> = {}
@@ -59,7 +61,8 @@ parentPort.on('message', (msg) => {
 })
 
 const collectClient = getCollectClient(collectConfigs, partition, {
-  cacheProvider: new SharedArrayBufferWorkerCache(parentPort)
+  cacheProvider: new SharedArrayBufferWorkerCache(parentPort),
+  clientFactoryPlugin
 })
 
 const jobRunner = new PullBasedJobRunner<

@@ -74,7 +74,7 @@ interface OrgUnitDetails {
 
 type OrgUnits = Record<string, OrgUnitDetails>
 
-type OrgPolicyType = 'scps' | 'rcps'
+export type OrgPolicyType = 'scps' | 'rcps'
 
 interface OrganizationMetadata {
   id: string
@@ -191,6 +191,19 @@ export class IamCollectClient {
     } else {
       this.cacheProvider = clientOptions.cacheProvider
     }
+  }
+
+  public getStore(): AwsIamStore {
+    return this.storageClient
+  }
+
+  /**
+   * Returns the cache provider used by this client.
+   *
+   * @returns The {@link CacheProvider} instance in use.
+   */
+  public getCacheProvider(): CacheProvider {
+    return this.cacheProvider
   }
 
   private async withCache<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {

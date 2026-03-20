@@ -1,4 +1,5 @@
 import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
+import { type ClientFactoryPlugin } from '../collect/collect.js'
 import {
   iamActionDetails,
   iamActionExists,
@@ -82,6 +83,12 @@ export interface ResourceAccessRequest {
    * These will be added to the simulation strict context keys used by default.
    */
   strictContextKeys?: string[]
+
+  /**
+   * Optional plugin to wrap the collect client with a custom implementation.
+   * Used for scenario testing where a layered client needs to be used in worker threads.
+   */
+  clientFactoryPlugin?: ClientFactoryPlugin
 }
 
 /**
@@ -270,13 +277,15 @@ export async function whoCan(
             s3AbacOverride: request.s3AbacOverride,
             collectDenyDetails,
             collectGrantDetails,
-            strictContextKeys: request.strictContextKeys
+            strictContextKeys: request.strictContextKeys,
+            clientFactoryPlugin: request.clientFactoryPlugin
           }
         })
       })
 
   const collectClient = getCollectClient(collectConfigs, partition, {
-    cacheProvider: new SharedArrayBufferMainCache(workers)
+    cacheProvider: new SharedArrayBufferMainCache(workers),
+    clientFactoryPlugin: request.clientFactoryPlugin
   })
 
   if (!request.resourceAccount && !request.resource) {
