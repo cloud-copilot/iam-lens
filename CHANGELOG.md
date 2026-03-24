@@ -1,3 +1,10 @@
+## [0.1.103](https://github.com/cloud-copilot/iam-lens/compare/v0.1.102...v0.1.103) (2026-03-24)
+
+
+### Bug Fixes
+
+* Fix dynamic imports for custom collect clients ([a1aa5ff](https://github.com/cloud-copilot/iam-lens/commit/a1aa5ffa569a6f6d8605d3df48908c4cfa77ddc5))
+
 ## [0.1.102](https://github.com/cloud-copilot/iam-lens/compare/v0.1.101...v0.1.102) (2026-03-22)
 
 ## [0.1.101](https://github.com/cloud-copilot/iam-lens/compare/v0.1.100...v0.1.101) (2026-03-20)
