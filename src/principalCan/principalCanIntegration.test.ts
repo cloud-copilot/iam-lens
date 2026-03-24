@@ -194,7 +194,7 @@ for (const testCase of principalCanIntegrationTests) {
   testFn(`principalCan Integration Test: ${testCase.name}`, async () => {
     // Given a test data set
     const configs = getTestDatasetConfigs(testCase.data)
-    const collectClient = getCollectClient(configs, 'aws')
+    const collectClient = await getCollectClient(configs, 'aws')
 
     // When we run principalCan
     const result = await principalCan(collectClient, testCase.input)

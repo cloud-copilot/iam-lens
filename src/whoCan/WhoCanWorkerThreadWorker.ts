@@ -60,7 +60,7 @@ parentPort.on('message', (msg) => {
   }
 })
 
-const collectClient = getCollectClient(collectConfigs, partition, {
+const collectClientPromise = getCollectClient(collectConfigs, partition, {
   cacheProvider: new SharedArrayBufferWorkerCache(parentPort),
   clientFactoryPlugin
 })
@@ -81,6 +81,7 @@ const jobRunner = new PullBasedJobRunner<
     return {
       properties: {},
       execute: async (context) => {
+        const collectClient = await collectClientPromise
         return executeWhoCan(taskDetails, collectClient, {
           s3AbacOverride,
           collectDenyDetails,
