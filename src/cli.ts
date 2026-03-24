@@ -142,7 +142,7 @@ const main = async () => {
     cli.args.collectConfigs.push('./iam-collect.jsonc')
   }
   const collectConfigs = await loadCollectConfigs(cli.args.collectConfigs)
-  const collectClient = getCollectClient(collectConfigs, cli.args.partition)
+  const collectClient = await getCollectClient(collectConfigs, cli.args.partition)
 
   if (cli.subcommand === 'simulate') {
     const {
@@ -216,7 +216,7 @@ const main = async () => {
 
     console.log(JSON.stringify(results, null, 2))
   } else if (cli.subcommand === 'index-principals') {
-    const indexClient = getCollectClient(collectConfigs, cli.args.partition, {
+    const indexClient = await getCollectClient(collectConfigs, cli.args.partition, {
       cacheProvider: new NoCacheProvider()
     })
     await makePrincipalIndex(indexClient)

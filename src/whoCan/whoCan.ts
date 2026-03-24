@@ -306,7 +306,7 @@ export async function whoCan(
         })
       })
 
-  const collectClient = getCollectClient(collectConfigs, partition, {
+  const collectClient = await getCollectClient(collectConfigs, partition, {
     cacheProvider: new SharedArrayBufferMainCache(workers),
     clientFactoryPlugin: request.clientFactoryPlugin
   })

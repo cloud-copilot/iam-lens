@@ -10,7 +10,7 @@ import { getCollectClient } from '../collect/collect.js'
  * @param dataSetId the ID of the test dataset to use
  * @returns IamCollectClient instance configured for the specified dataset
  */
-export function getTestDatasetClient(dataSetId: string): IamCollectClient {
+export async function getTestDatasetClient(dataSetId: string): Promise<IamCollectClient> {
   const path = resolve(join('./src', 'test-datasets', `iam-data-${dataSetId}`))
   if (!existsSync(path)) {
     throw new Error(

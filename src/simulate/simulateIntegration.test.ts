@@ -366,7 +366,7 @@ describe('simulateIntegrationTest', () => {
 
     testFn(name, async () => {
       // Given a client
-      const collectClient = getTestDatasetClient(test.data)
+      const collectClient = await getTestDatasetClient(test.data)
 
       if (test.expectedError) {
         //If an error is expected
@@ -394,7 +394,7 @@ describe('simulateIntegrationTest', () => {
 describe('simulatePrincipalDoesNotExist', () => {
   it('should throw an error if the principal does not exist', async () => {
     // Given a request with a non-existent principal
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
     const request: SimulationRequest = {
       resourceArn: 'arn:aws:s3:::iam-data-482734',
       resourceAccount: undefined,
@@ -412,7 +412,7 @@ describe('simulatePrincipalDoesNotExist', () => {
 
   it('should not throw an error if ignoreMissingPrincipal is true', async () => {
     // Given a request with a non-existent principal and ignoreMissingPrincipal set to true
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
     const request: SimulationRequest = {
       resourceArn: 'arn:aws:s3:::iam-data-482734',
       resourceAccount: undefined,
@@ -434,7 +434,7 @@ describe('simulatePrincipalDoesNotExist', () => {
 describe('s3 ABAC', () => {
   it('strict mode should not allow ABAC access when ABAC is not enabled on the bucket and tags match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket with matching tags but ABAC not enabled
     const request: SimulationRequest = {
@@ -458,7 +458,7 @@ describe('s3 ABAC', () => {
 
   it('strict mode should allow ABAC access when ABAC is enabled on the bucket and tags match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket with matching tags and ABAC enabled
     const request: SimulationRequest = {
@@ -482,7 +482,7 @@ describe('s3 ABAC', () => {
 
   it('strict mode should not allow ABAC access when ABAC is not enabled on the bucket and the tags do not match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket with non-matching tags and ABAC not enabled
     const request: SimulationRequest = {
@@ -506,7 +506,7 @@ describe('s3 ABAC', () => {
 
   it('strict mode should not allow ABAC access when ABAC is enabled on the bucket and the tags do not match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket with non-matching tags even though ABAC is enabled
     const request: SimulationRequest = {
@@ -531,7 +531,7 @@ describe('s3 ABAC', () => {
   ///
   it('discovery mode should not allow ABAC access when ABAC is not enabled on the bucket and tags match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket with matching tags but ABAC not enabled
     const request: SimulationRequest = {
@@ -555,7 +555,7 @@ describe('s3 ABAC', () => {
 
   it('discovery mode should not allow ABAC access to a bucket object when ABAC is not enabled on the bucket and tags match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket object with matching tags but ABAC not enabled
     const request: SimulationRequest = {
@@ -579,7 +579,7 @@ describe('s3 ABAC', () => {
 
   it('discovery mode should allow ABAC access to a bucket object when ABAC is enabled on the bucket and tags match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket with matching tags and ABAC enabled
     const request: SimulationRequest = {
@@ -603,7 +603,7 @@ describe('s3 ABAC', () => {
 
   it('discovery mode should allow ABAC access when ABAC is enabled on the bucket and tags match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket with matching tags and ABAC enabled
     const request: SimulationRequest = {
@@ -627,7 +627,7 @@ describe('s3 ABAC', () => {
 
   it('discovery mode should not allow ABAC access when ABAC is not enabled on the bucket and the tags do not match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket with non-matching tags and ABAC not enabled
     const request: SimulationRequest = {
@@ -651,7 +651,7 @@ describe('s3 ABAC', () => {
 
   it('discovery mode should not allow ABAC access when ABAC is enabled on the bucket and the tags do not match', async () => {
     // Given a client with test data
-    const collectClient = getTestDatasetClient('1')
+    const collectClient = await getTestDatasetClient('1')
 
     // And a request to access a bucket with non-matching tags even though ABAC is enabled
     const request: SimulationRequest = {
@@ -676,7 +676,7 @@ describe('s3 ABAC', () => {
   describe('overrides', () => {
     it('strict mode should use ABAC override when ABAC is not enabled on the bucket and tags match', async () => {
       // Given a client with test data
-      const collectClient = getTestDatasetClient('1')
+      const collectClient = await getTestDatasetClient('1')
 
       // And a request to access a bucket with matching tags but ABAC not enabled
       const request: SimulationRequest = {
@@ -701,7 +701,7 @@ describe('s3 ABAC', () => {
 
     it('strict mode should use ABAC override when ABAC is enabled on the bucket and tags match', async () => {
       // Given a client with test data
-      const collectClient = getTestDatasetClient('1')
+      const collectClient = await getTestDatasetClient('1')
 
       // And a request to access a bucket with matching tags and ABAC enabled
       const request: SimulationRequest = {
