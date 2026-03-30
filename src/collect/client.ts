@@ -1,4 +1,5 @@
 import { type AwsIamStore } from '@cloud-copilot/iam-collect'
+import { log } from '@cloud-copilot/log'
 import { actionMatchesPattern } from '@cloud-copilot/iam-expand'
 import { loadPolicy, type Policy } from '@cloud-copilot/iam-policy'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
@@ -461,7 +462,7 @@ export class IamCollectClient {
         'policy'
       )
       if (!policyDocument) {
-        console.error(`Policy document not found for ${policyArn} in org ${orgId}`)
+        log.warn(`Policy document not found for ${policyArn} in org ${orgId}`)
       }
 
       return {
@@ -582,12 +583,14 @@ export class IamCollectClient {
     if (bucketOrObjectArn.includes('/')) {
       bucketOrObjectArn = bucketOrObjectArn.split('/').at(0)!
     }
-    const bucketMetadata = await this.storageClient.getResourceMetadata<
-      { abacEnabled?: boolean },
-      {}
-    >(accountId, bucketOrObjectArn, 'metadata', {})
+    return this.withCache(`abacEnabledForBucket:${bucketOrObjectArn}`, async () => {
+      const bucketMetadata = await this.storageClient.getResourceMetadata<
+        { abacEnabled?: boolean },
+        {}
+      >(accountId, bucketOrObjectArn, 'metadata', {})
 
-    return !!bucketMetadata.abacEnabled
+      return !!bucketMetadata.abacEnabled
+    })
   }
 
   /**
@@ -640,7 +643,7 @@ export class IamCollectClient {
         'current-policy'
       )
       if (!policyDocument) {
-        console.error(`Policy document not found for ${policyArn} in account ${accountId}`)
+        log.warn(`Policy document not found for ${policyArn} in account ${accountId}`)
       }
       return {
         arn: policyMetadata.arn,
@@ -1291,7 +1294,7 @@ export class IamCollectClient {
         const jsonString = decompressedData.toString('utf8')
         return JSON.parse(jsonString) as IamActionCache
       } catch (error) {
-        console.error('Failed to decompress or parse principal index:', error)
+        log.error('Failed to decompress or parse principal index', { error })
         return undefined
       }
     })

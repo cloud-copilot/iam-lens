@@ -1,4 +1,5 @@
 import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
+import { log } from '@cloud-copilot/log'
 import { type ClientFactoryPlugin } from '../collect/collect.js'
 import {
   iamActionDetails,
@@ -384,7 +385,7 @@ export async function whoCan(
     if (result.status === 'fulfilled' && result.value) {
       whoCanResults.push(result.value)
     } else if (result.status === 'rejected') {
-      console.error('Error running simulation:', result.reason)
+      log.error('Error running simulation', { error: result.reason })
       simulationErrors.push(result)
     }
   }
@@ -524,7 +525,7 @@ export async function whoCan(
         }
       })
       worker.on('error', (err) => {
-        console.error('Worker error:', err)
+        log.error('Worker error', { error: err })
         reject(err)
       })
       worker.postMessage({ type: 'finishWork' })
@@ -538,7 +539,7 @@ export async function whoCan(
   ])
 
   if (simulationErrors.length > 0) {
-    console.error(`Completed with ${simulationErrors.length} simulation errors.`)
+    log.error(`Completed with ${simulationErrors.length} simulation errors.`)
     throw new Error(
       `Completed with ${simulationErrors.length} simulation errors. See previous logs.`
     )
