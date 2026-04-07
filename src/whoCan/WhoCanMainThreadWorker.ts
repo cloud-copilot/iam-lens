@@ -1,85 +1,160 @@
 import { type JobResult } from '@cloud-copilot/job'
 import { IamCollectClient } from '../collect/client.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
-import { ArrayStreamingWorkQueue } from '../workers/ArrayStreamingWorkQueue.js'
 import { PullBasedJobRunner } from '../workers/JobRunner.js'
-import { StreamingWorkQueue } from '../workers/StreamingWorkQueue.js'
 import {
   convertToDenialDetails,
   type LightRequestAnalysis,
   toLightRequestAnalysis
 } from './requestAnalysis.js'
 import { type WhoCanAllowed, type WhoCanDenyDetail } from './whoCan.js'
-import {
-  createJobForWhoCanWorkItem,
-  type WhoCanExecutionResult,
-  type WhoCanWorkItem
-} from './WhoCanWorker.js'
+import { executeWhoCan, type WhoCanExecutionResult, type WhoCanWorkItem } from './WhoCanWorker.js'
 
+/**
+ * A work item tagged with its owning request ID, used by the main-thread
+ * runner so that simulation results can be routed back to the correct request.
+ */
+export interface TaggedWhoCanWorkItem extends WhoCanWorkItem {
+  /** The request ID this work item belongs to. */
+  requestId: string
+}
+
+/**
+ * Properties attached to each job so the requestId survives through to onComplete.
+ */
+interface MainThreadJobProperties {
+  /** The request ID this job belongs to. */
+  requestId: string
+
+  /** Whether deny details should be collected for this work item's request. */
+  collectDenyDetails: boolean
+}
+
+/**
+ * Dequeues the next tagged work item from the processor's FIFO scheduler.
+ *
+ * @returns the next tagged work item, or undefined if none are ready.
+ */
+export type DequeueWork = () => TaggedWhoCanWorkItem | undefined
+
+/**
+ * Called when a simulation completes (allowed, denied, or error). Routes
+ * the result back to the processor by requestId.
+ *
+ * @param requestId - The request this result belongs to.
+ * @param result - The simulation result (fulfilled with WhoCanAllowed or undefined, or rejected).
+ */
+export type OnSimulationResult = (
+  requestId: string,
+  result: JobResult<WhoCanAllowed | undefined, Record<string, unknown>>
+) => void
+
+/**
+ * Checks whether deny details should be included for a denied simulation.
+ *
+ * @param requestId - The request this check belongs to.
+ * @param lightAnalysis - The light analysis for the denied simulation.
+ * @returns true if deny details should be collected and delivered.
+ */
+export type OnCheckDenyDetails = (requestId: string, lightAnalysis: LightRequestAnalysis) => boolean
+
+/**
+ * Called when deny details are ready to be delivered.
+ *
+ * @param requestId - The request this detail belongs to.
+ * @param detail - The deny detail record.
+ */
+export type OnDenyDetail = (requestId: string, detail: WhoCanDenyDetail) => void
+
+/**
+ * Creates a main-thread simulation runner that pulls tagged work items from
+ * the processor's FIFO scheduler and routes results back by requestId.
+ *
+ * The requestId is threaded through the job's properties so it is available
+ * in onComplete without needing the workerId.
+ *
+ * @param dequeueWork - Function to dequeue the next tagged work item.
+ * @param onSimulationResult - Callback for simulation results.
+ * @param onCheckDenyDetails - Callback to check whether to collect deny details.
+ * @param onDenyDetail - Callback for deny detail delivery.
+ * @param collectClient - The IAM collect client for fetching policy data.
+ * @param s3AbacOverride - Optional override for S3 ABAC when checking S3 Bucket access.
+ * @param collectGrantDetails - Whether to collect grant details for allowed simulations.
+ * @param concurrency - The number of concurrent simulations to run on the main thread. Defaults to 50.
+ * @returns a PullBasedJobRunner that processes tagged whoCan work items.
+ */
 export function createMainThreadStreamingWorkQueue(
-  queue: StreamingWorkQueue<WhoCanWorkItem> | ArrayStreamingWorkQueue<WhoCanWorkItem>,
+  dequeueWork: DequeueWork,
+  onSimulationResult: OnSimulationResult,
+  onCheckDenyDetails: OnCheckDenyDetails,
+  onDenyDetail: OnDenyDetail,
   collectClient: IamCollectClient,
   s3AbacOverride: S3AbacOverride | undefined,
-  onComplete: (result: JobResult<WhoCanAllowed | undefined, Record<string, unknown>>) => void,
-  denyDetailsCallback?: (details: LightRequestAnalysis) => boolean,
-  onDenyDetail?: (detail: WhoCanDenyDetail) => void,
-  collectGrantDetails?: boolean,
-  strictContextKeys?: string[]
+  collectGrantDetails: boolean,
+  concurrency: number = 50
 ) {
-  const collectDenyDetails = !!denyDetailsCallback
-
-  return new PullBasedJobRunner<WhoCanExecutionResult, Record<string, unknown>, WhoCanWorkItem>(
-    50,
+  return new PullBasedJobRunner<
+    WhoCanExecutionResult,
+    MainThreadJobProperties,
+    TaggedWhoCanWorkItem
+  >(
+    concurrency,
     async () => {
-      return queue.dequeue()
+      return dequeueWork()
     },
-    (workItem) => {
-      return createJobForWhoCanWorkItem(workItem, collectClient, {
-        s3AbacOverride,
-        collectDenyDetails,
-        collectGrantDetails,
-        strictContextKeys
-      })
+    (taggedItem) => {
+      const { requestId, ...workItem } = taggedItem
+      return {
+        properties: { requestId, collectDenyDetails: workItem.collectDenyDetails },
+        execute: async (context) => {
+          return executeWhoCan(workItem, collectClient, {
+            s3AbacOverride,
+            collectDenyDetails: workItem.collectDenyDetails,
+            collectGrantDetails,
+            strictContextKeys: workItem.strictContextKeys
+          })
+        }
+      }
     },
     async (result) => {
+      const { requestId, collectDenyDetails } = result.properties
+
       if (result.status === 'fulfilled') {
         const executionResult = result.value
         if (executionResult.type === 'allowed') {
-          // Simulation was allowed - pass through to onComplete
-          onComplete({
+          onSimulationResult(requestId, {
             status: 'fulfilled',
             value: executionResult.allowed,
-            properties: result.properties
+            properties: {}
           })
         } else {
-          // Simulation was denied
-          onComplete({
-            status: 'fulfilled',
-            value: undefined,
-            properties: result.properties
-          })
+          // Denied — handle deny details BEFORE reporting the simulation result,
+          // because onSimulationResult may trigger request completion checks.
+          const hasDetails =
+            executionResult.type === 'denied_single' || executionResult.type === 'denied_wildcard'
 
-          // Check if we should include deny details
-          if (denyDetailsCallback && onDenyDetail) {
-            const hasDetails =
-              executionResult.type === 'denied_single' || executionResult.type === 'denied_wildcard'
+          if (collectDenyDetails && hasDetails) {
+            const lightAnalysis = toLightRequestAnalysis(executionResult)
+            const shouldInclude = onCheckDenyDetails(requestId, lightAnalysis)
 
-            if (hasDetails) {
-              const lightAnalysis = toLightRequestAnalysis(executionResult)
-              const shouldInclude = denyDetailsCallback(lightAnalysis)
-
-              if (shouldInclude) {
-                onDenyDetail(convertToDenialDetails(executionResult))
-              }
+            if (shouldInclude) {
+              onDenyDetail(requestId, convertToDenialDetails(executionResult))
             }
           }
+
+          // Now report the denied simulation result (may trigger completion check)
+          onSimulationResult(requestId, {
+            status: 'fulfilled',
+            value: undefined,
+            properties: {}
+          })
         }
       } else {
-        // Error case - pass through as rejected
-        onComplete({
+        // Error case
+        onSimulationResult(requestId, {
           status: 'rejected',
           reason: result.reason,
-          properties: result.properties
+          properties: {}
         })
       }
     }

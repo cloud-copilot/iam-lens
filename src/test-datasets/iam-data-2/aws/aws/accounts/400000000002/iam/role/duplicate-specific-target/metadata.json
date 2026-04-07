@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/duplicate-specific-target",
+  "name": "duplicate-specific-target",
+  "id": "AROA0000DUPSPECIFIC001",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}

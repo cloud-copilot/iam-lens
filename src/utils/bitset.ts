@@ -9,7 +9,7 @@ import BitSet from 'bitset'
 export function encodeBitSet(bitset: BitSet): any {
   const rawHex = bitset.toString(16)
   const compressedHex = compressHex(rawHex)
-  const sparseString = bitset.toArray().join(',')
+  const sparseString = ',' + bitset.toArray().join(',')
 
   if (sparseString.length < compressedHex.length && sparseString.length < rawHex.length) {
     return sparseString
@@ -35,9 +35,9 @@ export function decodeBitSet(encoded: any): BitSet {
     return bitset
   } else if (typeof encoded === 'string') {
     // Check if it's a sparse array (comma-separated numbers)
-    if (encoded.includes(',')) {
+    if (encoded.startsWith(',')) {
       // It's a sparse array - convert to BitSet
-      const positions = encoded.split(',').map(Number)
+      const positions = encoded.slice(1).split(',').map(Number)
       const bitset = new BitSet()
       positions.forEach((pos) => bitset.set(pos, 1))
       return bitset

@@ -19,7 +19,7 @@ describe('encodeBitSet', () => {
     const encoded = encodeBitSet(sparseBitset)
 
     //Then it should return a comma-separated string of positions
-    expect(encoded).toBe('6,16,43,87,119')
+    expect(encoded).toBe(',6,16,43,87,119')
   })
 
   it('should return compressed hex for bitsets with long zero runs', () => {
@@ -52,7 +52,7 @@ describe('encodeBitSet', () => {
 describe('decodeBitSet', () => {
   it('should decode sparse format correctly', () => {
     //Given a sparse encoded bitset string
-    const sparseString = '6,16,43,87,119'
+    const sparseString = ',6,16,43,87,119'
 
     //When decoding the bitset
     const decoded = decodeBitSet(sparseString)
@@ -411,6 +411,33 @@ describe('testBitSetRoundTrip', () => {
 
     //Then it should return true (maintaining data integrity)
     expect(success).toBe(true)
+  })
+
+  it('should roundtrip a single bit whose position is valid hex (position 14)', () => {
+    //Given a bitset with only bit 14 set — the sparse encoding produces "14"
+    //which is ambiguous with the hex string "14" (0x14 = bits 2 and 4)
+    const original = new BitSet()
+    original.set(14, 1)
+
+    //When we encode and decode it
+    const encoded = encodeBitSet(original)
+    const decoded = decodeBitSet(encoded)
+
+    //Then the decoded bitset should have exactly bit 14 set, not bits 2 and 4
+    expect(decoded.toArray()).toEqual([14])
+  })
+
+  it('should roundtrip a single bit at position 10', () => {
+    //Given a bitset with only bit 10 set — sparse encoding "10" is also valid hex
+    const original = new BitSet()
+    original.set(10, 1)
+
+    //When we encode and decode it
+    const encoded = encodeBitSet(original)
+    const decoded = decodeBitSet(encoded)
+
+    //Then the decoded bitset should have exactly bit 10 set
+    expect(decoded.toArray()).toEqual([10])
   })
 })
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { IamCollectClient } from '../collect/client.js'
+import { loadPolicy } from '@cloud-copilot/iam-policy'
 import {
   AccountsToCheck,
   accountsToCheckBasedOnResourcePolicy,
@@ -7,6 +8,7 @@ import {
   findResourceTypeForArn,
   ResourceAccessRequest,
   sortWhoCanResults,
+  statementRequiresAllFromResourceAccount,
   uniqueAccountsToCheck,
   WhoCanResponse
 } from './whoCan.js'
@@ -244,7 +246,9 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['123456789012'],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
     }
   },
   {
@@ -266,7 +270,9 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['000000000000', '111111111111'],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
   },
   {
@@ -288,7 +294,9 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['000000000000', '222222222222'],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
   },
   {
@@ -310,7 +318,9 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['000000000000', '222222222222'],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
   },
   {
@@ -333,7 +343,9 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['000000000000'],
       specificPrincipals: [],
       specificOrganizations: ['o-aaaaaaaaaa', 'o-bbbbbbbbbb'],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
     }
   },
   {
@@ -358,7 +370,104 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['000000000000'],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: ['o-aaa/r-bbb/ou-ccc']
+      specificOrganizationalUnits: ['o-aaa/r-bbb/ou-ccc'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Precedence: multiple narrowing keys in one statement ---
+  {
+    name: 'precedence: PrincipalAccount wins over PrincipalOrgID in same statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalAccount': '111111111111',
+              'aws:PrincipalOrgID': 'o-aaaaaaaaaa'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000', '111111111111'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'precedence: PrincipalAccount wins over PrincipalOrgPaths in same statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalAccount': '222222222222'
+            },
+            'ForAnyValue:StringEquals': {
+              'aws:PrincipalOrgPaths': ['o-aaa/r-bbb/ou-ccc']
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000', '222222222222'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'precedence: PrincipalOrgPaths wins over PrincipalOrgID in same statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            'ForAnyValue:StringEquals': {
+              'aws:PrincipalOrgPaths': ['o-aaa/r-bbb/ou-ccc']
+            },
+            StringEquals: {
+              'aws:PrincipalOrgID': 'o-aaaaaaaaaa'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: ['o-aaa/r-bbb/ou-ccc'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
     }
   },
   {
@@ -381,7 +490,316 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['000000000000', '444444444444'],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should pick up aws:PrincipalAccount with StringLike and literal value',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'kms:*',
+          Resource: '*',
+          Condition: { StringLike: { 'aws:PrincipalAccount': '018153356262' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000', '018153356262'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should pick up aws:PrincipalAccount with StringLike and multiple literal values',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringLike: { 'aws:PrincipalAccount': ['111111111111', '222222222222'] }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000', '111111111111', '222222222222'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should NOT pick up aws:PrincipalAccount with StringLike when value has wildcard',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: '*',
+          Resource: '*',
+          Condition: { StringLike: { 'aws:PrincipalAccount': '01815335*' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should NOT narrow when StringLike PrincipalAccount has mixed literal and wildcard values',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringLike: { 'aws:PrincipalAccount': ['111111111111', '2222*'] }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should NOT pick up aws:PrincipalAccount with StringLike when value has ? wildcard',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: '*',
+          Resource: '*',
+          Condition: { StringLike: { 'aws:PrincipalAccount': '01815335626?' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should NOT pick up aws:PrincipalAccount with StringLike when value has dynamic variable',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: '*',
+          Resource: '*',
+          Condition: { StringLike: { 'aws:PrincipalAccount': '${aws:PrincipalAccount}' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- kms:CallerAccount ---
+  {
+    name: 'should pick up kms:CallerAccount with StringEquals',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'kms:*',
+          Resource: '*',
+          Condition: { StringEquals: { 'kms:CallerAccount': '555555555555' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000', '555555555555'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should pick up kms:CallerAccount with StringLike and literal value',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'kms:*',
+          Resource: '*',
+          Condition: { StringLike: { 'kms:CallerAccount': '555555555555' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000', '555555555555'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should NOT pick up kms:CallerAccount with StringLike when value has wildcard',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'kms:*',
+          Resource: '*',
+          Condition: { StringLike: { 'kms:CallerAccount': '55555*' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should NOT pick up kms:CallerAccount with StringLike when value has ? wildcard',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'kms:*',
+          Resource: '*',
+          Condition: { StringLike: { 'kms:CallerAccount': '55555555555?' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should NOT pick up kms:CallerAccount with StringLike when value has dynamic variable',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'kms:*',
+          Resource: '*',
+          Condition: { StringLike: { 'kms:CallerAccount': '${aws:PrincipalAccount}' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should NOT narrow kms:CallerAccount StringLike with mixed literal and wildcard values',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'kms:*',
+          Resource: '*',
+          Condition: {
+            StringLike: { 'kms:CallerAccount': ['555555555555', '6666*'] }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
     }
   },
   {
@@ -403,7 +821,9 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['555555555555'],
       specificPrincipals: ['lambda.amazonaws.com'],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
   },
   {
@@ -425,7 +845,9 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['000000000000'],
       specificPrincipals: ['arn:aws:iam::666666666666:role/MyRole'],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
   },
   {
@@ -447,10 +869,1618 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificAccounts: ['000000000000'],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- aws:PrincipalArn: Exact match operators → specificPrincipals ---
+  {
+    name: 'PrincipalArn: StringEquals single ARN',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: { 'aws:PrincipalArn': 'arn:aws:iam::777777777777:role/SpecificRole' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/SpecificRole'],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: StringEquals multiple ARNs',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalArn': [
+                'arn:aws:iam::777777777777:role/RoleA',
+                'arn:aws:iam::888888888888:user/UserB'
+              ]
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: [
+        'arn:aws:iam::777777777777:role/RoleA',
+        'arn:aws:iam::888888888888:user/UserB'
+      ],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: StringEqualsIgnoreCase',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEqualsIgnoreCase: { 'aws:PrincipalArn': 'arn:aws:iam::777777777777:role/MyRole' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/MyRole'],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: Root ARN via StringEquals',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: { 'aws:PrincipalArn': 'arn:aws:iam::777777777777:root' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:root'],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- aws:PrincipalArn: Pattern operators without wildcards → specificPrincipals ---
+  {
+    name: 'PrincipalArn: ArnEquals exact ARN',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnEquals: { 'aws:PrincipalArn': 'arn:aws:iam::777777777777:role/ExactRole' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/ExactRole'],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: ArnLike exact ARN',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLike: { 'aws:PrincipalArn': 'arn:aws:iam::777777777777:role/ExactRole' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/ExactRole'],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: StringLike exact ARN',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringLike: { 'aws:PrincipalArn': 'arn:aws:iam::777777777777:role/ExactRole' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/ExactRole'],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- aws:PrincipalArn: Wildcards with specific account → specificAccounts ---
+  {
+    name: 'PrincipalArn: ArnLike wildcard resource',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLike: { 'aws:PrincipalArn': 'arn:aws:iam::999999999999:role/*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificAccounts: ['000000000000', '999999999999'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: StringLike wildcard resource path',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringLike: { 'aws:PrincipalArn': 'arn:aws:iam::999999999999:role/Admin*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificAccounts: ['000000000000', '999999999999'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: ArnLike ? wildcard',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLike: { 'aws:PrincipalArn': 'arn:aws:iam::999999999999:role/Role?' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificAccounts: ['000000000000', '999999999999'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- aws:PrincipalArn: Wildcards in account → allAccounts ---
+  {
+    name: 'PrincipalArn: ArnLike wildcard account',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLike: { 'aws:PrincipalArn': 'arn:aws:iam::*:role/MyRole' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: StringLike full wildcard',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringLike: { 'aws:PrincipalArn': 'arn:aws:iam::*:*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- aws:PrincipalArn: Dynamic variables ---
+  {
+    name: 'PrincipalArn: dynamic variable with no account',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: { 'aws:PrincipalArn': '${aws:PrincipalArn}' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: dynamic variable after specific account',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalArn': 'arn:aws:iam::999999999999:role/${aws:username}'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificAccounts: ['000000000000', '999999999999'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: dynamic variable in account portion',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalArn': 'arn:aws:iam::${aws:PrincipalAccount}:role/MyRole'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: dynamic variable in partition with specific account',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLike: { 'aws:PrincipalArn': 'arn:${aws:Partition}:iam::999999999999:role/*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificAccounts: ['000000000000', '999999999999'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- aws:PrincipalArn: IfExists (anonymous tracking) ---
+  {
+    name: 'PrincipalArn: StringEqualsIfExists with specific ARN',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEqualsIfExists: {
+              'aws:PrincipalArn': 'arn:aws:iam::777777777777:role/MyRole'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/MyRole'],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: true,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: ArnLikeIfExists with wildcard resource',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLikeIfExists: { 'aws:PrincipalArn': 'arn:aws:iam::999999999999:role/*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificAccounts: ['000000000000', '999999999999'],
+      checkAnonymous: true,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: ArnLikeIfExists with no extractable narrowing',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLikeIfExists: { 'aws:PrincipalArn': 'arn:aws:iam::*:role/*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: true,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- aws:PrincipalArn: Other edge cases ---
+  {
+    name: 'PrincipalArn: ForAnyValue set operator',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            'ForAnyValue:ArnLike': { 'aws:PrincipalArn': 'arn:aws:iam::888888888888:role/*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificAccounts: ['000000000000', '888888888888'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: coexists with PrincipalAccount',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalArn': 'arn:aws:iam::777777777777:role/MyRole',
+              'aws:PrincipalAccount': '888888888888'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/MyRole'],
+      specificAccounts: ['000000000000', '888888888888'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: mixed exact + wildcard values',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLike: {
+              'aws:PrincipalArn': [
+                'arn:aws:iam::777777777777:role/ExactRole',
+                'arn:aws:iam::888888888888:role/*'
+              ]
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/ExactRole'],
+      specificAccounts: ['000000000000', '888888888888'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: negative operator ignored',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringNotEquals: { 'aws:PrincipalArn': 'arn:aws:iam::777777777777:role/MyRole' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'PrincipalArn: case-insensitive key',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: { 'AWS:PRINCIPALARN': 'arn:aws:iam::777777777777:role/MyRole' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/MyRole'],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Service-principal-only: Unnamed keys (statement skipped) ---
+  {
+    name: 'Service-only: aws:SourceAccount StringEquals skips statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceAccount': '111111111111' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOwner StringEquals skips statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceOwner': '111111111111' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOrgID StringEquals skips statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceOrgID': 'o-abc123' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOrgPaths ForAnyValue:StringEquals skips statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            'ForAnyValue:StringEquals': { 'aws:SourceOrgPaths': 'o-abc/r-root/ou-dept' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: case-insensitive key detection',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringEquals: { 'AWS:SOURCEACCOUNT': '111111111111' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceAccount StringLike skips statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringLike: { 'aws:SourceAccount': '111*' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOrgID StringLike skips statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringLike: { 'aws:SourceOrgID': 'o-*' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOrgPaths ForAnyValue:StringLike skips statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { 'ForAnyValue:StringLike': { 'aws:SourceOrgPaths': 'o-abc/*' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Service-only: IfExists does NOT skip ---
+  {
+    name: 'Service-only: aws:SourceAccount IfExists does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringEqualsIfExists: { 'aws:SourceAccount': '111111111111' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOrgID IfExists does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringEqualsIfExists: { 'aws:SourceOrgID': 'o-abc123' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Service-only: Negative operators do NOT skip ---
+  {
+    name: 'Service-only: aws:SourceAccount StringNotEquals does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringNotEquals: { 'aws:SourceAccount': '111111111111' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOrgID StringNotEquals does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringNotEquals: { 'aws:SourceOrgID': 'o-abc123' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceAccount StringNotEqualsIgnoreCase does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringNotEqualsIgnoreCase: { 'aws:SourceAccount': '111111111111' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Service-only: aws:SourceOrgPaths operator restrictions ---
+  {
+    name: 'Service-only: aws:SourceOrgPaths ForAllValues:StringEquals does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            'ForAllValues:StringEquals': { 'aws:SourceOrgPaths': 'o-abc/r-root/ou-dept' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOrgPaths ForAllValues:StringLike does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { 'ForAllValues:StringLike': { 'aws:SourceOrgPaths': 'o-abc/*' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOrgPaths plain StringEquals does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceOrgPaths': 'o-abc/r-root/ou-dept' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: aws:SourceOrgPaths plain StringLike does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringLike: { 'aws:SourceOrgPaths': 'o-abc/*' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Service-only: aws:PrincipalIsAWSService ---
+  {
+    name: 'Service-only: Bool PrincipalIsAWSService true skips statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { Bool: { 'aws:PrincipalIsAWSService': 'true' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: StringEquals PrincipalIsAWSService true skips statement',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:PrincipalIsAWSService': 'true' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: Bool PrincipalIsAWSService false does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { Bool: { 'aws:PrincipalIsAWSService': 'false' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: BoolIfExists PrincipalIsAWSService true does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { BoolIfExists: { 'aws:PrincipalIsAWSService': 'true' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: StringNotEquals PrincipalIsAWSService true does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { StringNotEquals: { 'aws:PrincipalIsAWSService': 'true' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: PrincipalIsAWSService mixed true/false values does NOT skip',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: { Bool: { 'aws:PrincipalIsAWSService': ['true', 'false'] } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Service-only: Named service principal (aws:PrincipalServiceName) ---
+  {
+    name: 'Service-only: PrincipalServiceName extracts service principal',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: { 'aws:PrincipalServiceName': 'lambda.amazonaws.com' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: ['lambda.amazonaws.com'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: PrincipalServiceName multiple values',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalServiceName': ['lambda.amazonaws.com', 'sns.amazonaws.com']
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: ['lambda.amazonaws.com', 'sns.amazonaws.com'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: PrincipalServiceName IfExists does NOT extract',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEqualsIfExists: { 'aws:PrincipalServiceName': 'lambda.amazonaws.com' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: PrincipalServiceName with StringLike does NOT extract',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringLike: { 'aws:PrincipalServiceName': 'lambda.amazonaws.com' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: PrincipalServiceName with StringNotEquals does NOT extract',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringNotEquals: { 'aws:PrincipalServiceName': 'lambda.amazonaws.com' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: PrincipalServiceName with dynamic value does NOT extract',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: { 'aws:PrincipalServiceName': '${aws:PrincipalTag/service}' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Service-only: Mixed conditions ---
+  {
+    name: 'Service-only: unnamed key alongside PrincipalAccount — statement skipped',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:SourceAccount': '111111111111',
+              'aws:PrincipalAccount': '222222222222'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: unnamed key alongside named key — named wins (extract)',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:SourceAccount': '111111111111',
+              'aws:PrincipalServiceName': 'lambda.amazonaws.com'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: ['lambda.amazonaws.com'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Service-only: Multiple statements ---
+  {
+    name: 'Service-only: service-only + narrowed wildcard statements',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 's3:PutObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceAccount': '111111111111' } }
+        },
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 's3:GetObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:PrincipalAccount': '333333333333' } }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000', '333333333333'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: service-only + unscoped wildcard statements',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 's3:PutObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceAccount': '111111111111' } }
+        },
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 's3:GetObject',
+          Resource: '*'
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'Service-only: service-only + explicit principal statements',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 's3:PutObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceAccount': '111111111111' } }
+        },
+        {
+          Effect: 'Allow',
+          Principal: { AWS: 'arn:aws:iam::444444444444:role/R' },
+          Action: 's3:GetObject',
+          Resource: '*'
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: ['arn:aws:iam::444444444444:role/R'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  // --- Cross-statement composition ---
+  {
+    name: 'explicit account principal statement + wildcard PrincipalArn statement unions correctly',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '111111111111' },
+          Action: 'sts:AssumeRole',
+          Condition: {}
+        },
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'sts:AssumeRole',
+          Condition: {
+            ArnLike: { 'aws:PrincipalArn': 'arn:aws:iam::222222222222:role/deploy/*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000', '111111111111', '222222222222'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'service-only statement skipped + PrincipalArn-narrowed statement narrows correctly',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 's3:PutObject',
+          Resource: '*',
+          Condition: { StringEquals: { 'aws:SourceAccount': '111111111111' } }
+        },
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'sts:AssumeRole',
+          Resource: '*',
+          Condition: {
+            ArnLike: { 'aws:PrincipalArn': 'arn:aws:iam::333333333333:role/admin-*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000', '333333333333'],
+      specificPrincipals: [],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
     }
   }
 ]
+
+describe('statementRequiresAllFromResourceAccount', () => {
+  const statementRequiresTests: {
+    only?: true
+    name: string
+    policy: any
+    expected: boolean
+  }[] = [
+    {
+      name: 'Allow with wildcard * principal',
+      policy: {
+        Version: '2012-10-17',
+        Statement: [{ Effect: 'Allow', Principal: '*', Action: '*', Resource: '*' }]
+      },
+      expected: true
+    },
+    {
+      name: 'Allow with { AWS: * } principal',
+      policy: {
+        Version: '2012-10-17',
+        Statement: [{ Effect: 'Allow', Principal: { AWS: '*' }, Action: '*', Resource: '*' }]
+      },
+      expected: true
+    },
+    {
+      name: 'Allow with NotPrincipal',
+      policy: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            NotPrincipal: { AWS: 'arn:aws:iam::123456789012:role/Excluded' },
+            Action: '*',
+            Resource: '*'
+          }
+        ]
+      },
+      expected: true
+    },
+    {
+      name: 'Allow with specific account principal',
+      policy: {
+        Version: '2012-10-17',
+        Statement: [
+          { Effect: 'Allow', Principal: { AWS: '111111111111' }, Action: '*', Resource: '*' }
+        ]
+      },
+      expected: false
+    },
+    {
+      name: 'Allow with specific ARN principal',
+      policy: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { AWS: 'arn:aws:iam::123456789012:role/MyRole' },
+            Action: '*',
+            Resource: '*'
+          }
+        ]
+      },
+      expected: false
+    },
+    {
+      name: 'Allow with service principal',
+      policy: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { Service: 'lambda.amazonaws.com' },
+            Action: '*',
+            Resource: '*'
+          }
+        ]
+      },
+      expected: false
+    },
+    {
+      name: 'Allow with mixed wildcard + specific principal',
+      policy: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { AWS: ['*', 'arn:aws:iam::123456789012:role/MyRole'] },
+            Action: '*',
+            Resource: '*'
+          }
+        ]
+      },
+      expected: true
+    },
+    {
+      name: 'Deny with wildcard principal',
+      policy: {
+        Version: '2012-10-17',
+        Statement: [{ Effect: 'Deny', Principal: '*', Action: '*', Resource: '*' }]
+      },
+      expected: false
+    },
+    {
+      name: 'Deny with NotPrincipal',
+      policy: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Deny',
+            NotPrincipal: { AWS: 'arn:aws:iam::123456789012:role/Excluded' },
+            Action: '*',
+            Resource: '*'
+          }
+        ]
+      },
+      expected: false
+    }
+  ]
+
+  for (const test of statementRequiresTests) {
+    const func = test.only ? it.only : it
+    func(test.name, () => {
+      //Given a policy with a single statement
+      const policy = loadPolicy(test.policy)
+      const statement = policy.statements()[0]
+
+      //When we check if it requires all from resource account
+      const result = statementRequiresAllFromResourceAccount(statement)
+
+      //Then it should match the expected result
+      expect(result).toBe(test.expected)
+    })
+  }
+})
 
 describe('accountsToCheckBasedOnResourcePolicy', () => {
   for (const test of accountsToCheckBasedOnResourcePolicyTests) {
@@ -469,6 +2499,8 @@ describe('accountsToCheckBasedOnResourcePolicy', () => {
       expect(result.specificPrincipals).toEqual(expected.specificPrincipals || [])
       expect(result.specificOrganizations).toEqual(expected.specificOrganizations || [])
       expect(result.specificOrganizationalUnits).toEqual(expected.specificOrganizationalUnits || [])
+      expect(result.checkAnonymous).toEqual(!!expected.checkAnonymous)
+      expect(result.checkAllForCurrentAccount).toEqual(!!expected.checkAllForCurrentAccount)
     })
   }
 })
@@ -481,7 +2513,9 @@ describe('uniqueAccountsToCheck', () => {
       specificAccounts: [],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
 
     // And a client that returns a list of accounts
@@ -505,7 +2539,9 @@ describe('uniqueAccountsToCheck', () => {
       specificAccounts: ['100000000001', '100000000002', '100000000003'],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
 
     // And a client that returns which accounts exist
@@ -528,7 +2564,9 @@ describe('uniqueAccountsToCheck', () => {
       specificAccounts: [],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: ['o-aaa/r-bbb/ou-ccc']
+      specificOrganizationalUnits: ['o-aaa/r-bbb/ou-ccc'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
 
     // And a client that returns accounts for the OU path
@@ -552,7 +2590,9 @@ describe('uniqueAccountsToCheck', () => {
       specificAccounts: [],
       specificPrincipals: [],
       specificOrganizations: [],
-      specificOrganizationalUnits: ['o-aaa/r-bbb/ou-missing']
+      specificOrganizationalUnits: ['o-aaa/r-bbb/ou-missing'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
 
     // And a client that returns not found for the OU path
@@ -576,7 +2616,9 @@ describe('uniqueAccountsToCheck', () => {
       specificAccounts: [],
       specificPrincipals: [],
       specificOrganizations: ['o-xyz'],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
 
     // And a client that returns accounts for the organization
@@ -600,7 +2642,9 @@ describe('uniqueAccountsToCheck', () => {
       specificAccounts: [],
       specificPrincipals: [],
       specificOrganizations: ['o-missing'],
-      specificOrganizationalUnits: []
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
     }
 
     // And a client that returns not found for the organization

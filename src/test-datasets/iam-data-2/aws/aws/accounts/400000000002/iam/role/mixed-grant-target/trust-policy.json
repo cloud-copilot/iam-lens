@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "AWS": "400000000001" },
+      "Action": "sts:AssumeRole",
+      "Condition": {}
+    },
+    {
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "sts:AssumeRole",
+      "Condition": { "ArnLike": { "aws:PrincipalArn": "arn:aws:iam::400000000002:role/local-*" } }
+    }
+  ]
+}

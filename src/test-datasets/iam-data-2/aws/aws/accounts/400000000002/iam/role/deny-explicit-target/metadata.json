@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/deny-explicit-target",
+  "name": "deny-explicit-target",
+  "id": "AROA0000DENYEXPLICIT01",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}

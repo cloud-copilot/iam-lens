@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/mixed-grant-target",
+  "name": "mixed-grant-target",
+  "id": "AROA89ACD2AE1A18BF3D7",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}
