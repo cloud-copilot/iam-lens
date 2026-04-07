@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/not-principal-target",
+  "name": "not-principal-target",
+  "id": "AROAC35C43F72FA8E339A",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}

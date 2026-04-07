@@ -16,6 +16,8 @@ export interface WhoCanWorkItem {
   resourceAccount: string | undefined
   action: string
   principal: string
+  strictContextKeys: string[] | undefined
+  collectDenyDetails: boolean
 }
 
 /**

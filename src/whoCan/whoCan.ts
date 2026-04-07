@@ -1,5 +1,5 @@
 import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
-import { log } from '@cloud-copilot/log'
+import { IamCollectClient } from '../collect/client.js'
 import { type ClientFactoryPlugin } from '../collect/collect.js'
 import {
   iamActionDetails,
@@ -10,31 +10,19 @@ import {
   iamServiceExists,
   type ResourceType
 } from '@cloud-copilot/iam-data'
-import { loadPolicy } from '@cloud-copilot/iam-policy'
-import { type RequestDenial, type RequestGrant } from '@cloud-copilot/iam-simulate'
 import {
-  isAssumedRoleArn,
-  isIamRoleArn,
-  isIamUserArn,
-  isServicePrincipal,
-  splitArnParts
-} from '@cloud-copilot/iam-utils'
-import { type JobResult, numberOfCpus, StreamingJobQueue } from '@cloud-copilot/job'
-import { Worker } from 'worker_threads'
-import { IamCollectClient } from '../collect/client.js'
-import { getCollectClient } from '../collect/collect.js'
-import { getAccountIdForResource, getResourcePolicyForResource } from '../resources.js'
+  type Condition,
+  type ConditionOperation,
+  type Statement,
+  loadPolicy
+} from '@cloud-copilot/iam-policy'
+import { type RequestDenial, type RequestGrant } from '@cloud-copilot/iam-simulate'
+import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { Arn } from '../utils/arn.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'
-import { getWorkerScriptPath } from '../utils/workerScript.js'
-import { ArrayStreamingWorkQueue } from '../workers/ArrayStreamingWorkQueue.js'
-import { SharedArrayBufferMainCache } from '../workers/SharedArrayBufferMainCache.js'
-import { StreamingWorkQueue } from '../workers/StreamingWorkQueue.js'
-import { createMainThreadStreamingWorkQueue } from './WhoCanMainThreadWorker.js'
-import { type WhoCanWorkItem } from './WhoCanWorker.js'
-import { intersectWithPrincipalScope, resolvePrincipalScope } from './principalScope.js'
 import { type LightRequestAnalysis } from './requestAnalysis.js'
+import { WhoCanProcessor, type WhoCanSettledEvent } from './WhoCanProcessor.js'
 
 /**
  * Limits the set of principals that `whoCan` tests. The scope is a union of
@@ -113,6 +101,11 @@ export interface ResourceAccessRequest {
    * search space.
    */
   principalScope?: WhoCanPrincipalScope
+
+  /**
+   * Whether to ignore an existing principal index. This is for testing purposes.
+   */
+  ignorePrincipalIndex?: boolean
 }
 
 /**
@@ -265,319 +258,65 @@ export interface WhoCanResponse {
 }
 
 /**
- * Get the number of worker threads to use, defaulting to number of CPUs - 1
+ * Processes a single whoCan request by creating a temporary WhoCanProcessor,
+ * enqueuing the request, waiting for it to settle, and shutting down. This
+ * preserves the original one-shot behavior where workers and cache are created
+ * and destroyed per call.
  *
- * @param overrideValue the override value, if any
- * @returns the override value if provided, otherwise number of CPUs - 1
+ * For better performance when running multiple requests, use WhoCanProcessor
+ * directly to keep workers and cache alive across calls.
+ *
+ * @param collectConfigs the collect configurations for loading IAM data
+ * @param partition the AWS partition (e.g. 'aws', 'aws-cn')
+ * @param request the whoCan request parameters
+ * @returns the whoCan response with allowed principals and optional deny details
  */
-function getNumberOfWorkers(overrideValue: number | undefined): number {
-  if (typeof overrideValue === 'number' && overrideValue >= 0) {
-    return Math.floor(overrideValue)
-  }
-  return Math.max(0, numberOfCpus() - 1)
-}
-
 export async function whoCan(
   collectConfigs: TopLevelConfig[],
   partition: string,
   request: ResourceAccessRequest
 ): Promise<WhoCanResponse> {
-  const { resource } = request
+  let settledEvent: WhoCanSettledEvent | undefined
 
-  // Get the number of workers and the worker script path.
-  // It's possible in bundled environments that the worker script path may not be found, so handle that gracefully.
-  const numWorkers = getNumberOfWorkers(request.workerThreads)
-  const workerPath = getWorkerScriptPath('whoCan/WhoCanWorkerThreadWorker.js')
-  const collectDenyDetails = !!request.denyDetailsCallback
-  const collectGrantDetails = !!request.collectGrantDetails
-  const workers = !workerPath
-    ? []
-    : new Array(numWorkers).fill(undefined).map((val) => {
-        return new Worker(workerPath, {
-          workerData: {
-            collectConfigs: collectConfigs,
-            partition,
-            concurrency: 50,
-            s3AbacOverride: request.s3AbacOverride,
-            collectDenyDetails,
-            collectGrantDetails,
-            strictContextKeys: request.strictContextKeys,
-            clientFactoryPlugin: request.clientFactoryPlugin
-          }
-        })
-      })
-
-  const collectClient = await getCollectClient(collectConfigs, partition, {
-    cacheProvider: new SharedArrayBufferMainCache(workers),
-    clientFactoryPlugin: request.clientFactoryPlugin
+  const processor = await WhoCanProcessor.create({
+    collectConfigs,
+    partition,
+    tuning: {
+      workerThreads: request.workerThreads
+    },
+    ignorePrincipalIndex: request.ignorePrincipalIndex,
+    clientFactoryPlugin: request.clientFactoryPlugin,
+    s3AbacOverride: request.s3AbacOverride,
+    collectGrantDetails: !!request.collectGrantDetails,
+    onRequestSettled: async (event) => {
+      settledEvent = event
+    }
   })
 
-  if (!request.resourceAccount && !request.resource) {
-    throw new Error('Either resourceAccount or resource must be provided in the request.')
-  }
-
-  const resourceAccount =
-    request.resourceAccount || (await getAccountIdForResource(collectClient, resource!))
-
-  if (!resourceAccount) {
-    throw new Error(
-      `Could not determine account ID for resource ${resource}. Please use a different ARN or specify resourceAccount.`
-    )
-  }
-
-  const actions = await actionsForWhoCan(request)
-  if (!actions || actions.length === 0) {
-    throw new Error('No valid actions provided or found for the resource.')
-  }
-
-  let resourcePolicy: any = undefined
-  if (resource) {
-    resourcePolicy = await getResourcePolicyForResource(collectClient, resource, resourceAccount)
-    const resourceArn = new Arn(resource)
-    if (
-      (resourceArn.matches({ service: 'iam', resourceType: 'role' }) ||
-        resourceArn.matches({ service: 'kms', resourceType: 'key' })) &&
-      !resourcePolicy
-    ) {
-      throw new Error(
-        `Unable to find resource policy for ${resource}. Cannot determine who can access the resource.`
-      )
-    }
-  }
-
-  const accountsToCheck = await accountsToCheckBasedOnResourcePolicy(
-    resourcePolicy,
-    resourceAccount
-  )
-
-  const uniqueAccounts = await uniqueAccountsToCheck(collectClient, accountsToCheck)
-
-  let accountsForSearch = uniqueAccounts.accounts
-  let principalsForSearch = accountsToCheck.specificPrincipals
-  let scopeIncludesResourceAccount = true
-
-  if (request.principalScope) {
-    const resolved = await resolvePrincipalScope(collectClient, request.principalScope)
-    const intersection = intersectWithPrincipalScope(
-      uniqueAccounts.accounts,
-      accountsToCheck.specificPrincipals,
-      accountsToCheck.allAccounts,
-      resolved.accounts,
-      resolved.principals
-    )
-    accountsForSearch = intersection.accounts
-    principalsForSearch = intersection.principals
-    scopeIncludesResourceAccount = resolved.accounts.has(resourceAccount)
-  }
-
-  const whoCanResults: WhoCanAllowed[] = []
-
-  const concurrency = Math.min(50, Math.max(1, numberOfCpus() * 2))
-
-  let simulationCount = 0
-  const simulateQueue = new StreamingWorkQueue<WhoCanWorkItem>()
-
-  const simulationErrors: any[] = []
-  const denyDetails: WhoCanDenyDetail[] = []
-
-  const onComplete = (result: JobResult<WhoCanAllowed | undefined, Record<string, unknown>>) => {
-    simulationCount++
-    if (result.status === 'fulfilled' && result.value) {
-      whoCanResults.push(result.value)
-    } else if (result.status === 'rejected') {
-      log.error('Error running simulation', { error: result.reason })
-      simulationErrors.push(result)
-    }
-  }
-
-  const mainThreadWorker = createMainThreadStreamingWorkQueue(
-    simulateQueue,
-    collectClient,
-    request.s3AbacOverride,
-    onComplete,
-    request.denyDetailsCallback,
-    (detail) => denyDetails.push(detail),
-    collectGrantDetails,
-    request.strictContextKeys
-  )
-
-  workers.forEach((worker) => {
-    worker.on('message', (msg) => {
-      if (msg.type === 'requestTask') {
-        const task = simulateQueue.dequeue()
-        worker.postMessage({ type: 'task', workerId: msg.workerId, task })
-      }
-      if (msg.type === 'result') {
-        onComplete(msg.result)
-      }
-      if (msg.type === 'checkDenyDetails') {
-        // Run the callback on main thread to check if we should include deny details
-        const shouldInclude = request.denyDetailsCallback?.(msg.lightAnalysis) ?? false
-        worker.postMessage({
-          type: 'denyDetailsCheckResult',
-          checkId: msg.checkId,
-          shouldInclude
-        })
-      }
-      if (msg.type === 'denyDetailsResult') {
-        denyDetails.push(msg.denyDetail)
-      }
+  try {
+    processor.enqueueWhoCan({
+      resource: request.resource,
+      resourceAccount: request.resourceAccount,
+      actions: request.actions,
+      sort: request.sort,
+      denyDetailsCallback: request.denyDetailsCallback,
+      principalScope: request.principalScope,
+      strictContextKeys: request.strictContextKeys
     })
-  })
 
-  simulateQueue.setWorkAvailableCallback(() => {
-    mainThreadWorker.notifyWorkAvailable()
-    workers.forEach((w) => w.postMessage({ type: 'workAvailable' }))
-  })
+    await processor.waitForIdle()
 
-  const accountQueue = new StreamingJobQueue<void, Record<string, unknown>>(
-    concurrency,
-    console,
-    async (response) => {}
-  )
-
-  const principalIndexExists = await collectClient.principalIndexExists()
-  if (principalIndexExists) {
-    const allFromAccount = scopeIncludesResourceAccount ? resourceAccount : undefined
-    for (const action of actions) {
-      const indexedPrincipals = await collectClient.getPrincipalsWithActionAllowed(
-        allFromAccount,
-        accountsForSearch,
-        action
-      )
-      for (const principal of indexedPrincipals || []) {
-        simulateQueue.enqueue({
-          resource,
-          action,
-          principal,
-          resourceAccount
-        })
-      }
+    if (!settledEvent) {
+      throw new Error('whoCan request did not settle')
     }
-  } else {
-    for (const account of accountsForSearch) {
-      accountQueue.enqueue({
-        properties: {},
-        execute: async () => {
-          const principals = await collectClient.getAllPrincipalsInAccount(account)
-          for (const principal of principals) {
-            await runPrincipalForActions(
-              collectClient,
-              simulateQueue,
-              principal,
-              resource,
-              resourceAccount,
-              actions
-            )
-          }
-        }
-      })
+
+    if (settledEvent.status === 'rejected') {
+      throw settledEvent.error
     }
-  }
 
-  const principalsNotFound: string[] = []
-  for (const principal of principalsForSearch) {
-    accountQueue.enqueue({
-      properties: {},
-      execute: async () => {
-        if (isServicePrincipal(principal)) {
-          await runPrincipalForActions(
-            collectClient,
-            simulateQueue,
-            principal,
-            resource,
-            resourceAccount,
-            actions
-          )
-        } else if (
-          isIamUserArn(principal) ||
-          isIamRoleArn(principal) ||
-          isAssumedRoleArn(principal)
-        ) {
-          const principalExists = await collectClient.principalExists(principal)
-          if (!principalExists) {
-            principalsNotFound.push(principal)
-          } else {
-            await runPrincipalForActions(
-              collectClient,
-              simulateQueue,
-              principal,
-              resource,
-              resourceAccount,
-              actions
-            )
-          }
-        } else {
-          // TODO: Add a check for OIDC and SAML providers here
-          principalsNotFound.push(principal)
-        }
-      }
-    })
-  }
-
-  await accountQueue.finishAllWork()
-
-  const workerPromises = workers.map((worker) => {
-    return new Promise<void>((resolve, reject) => {
-      worker.on('message', (msg) => {
-        if (msg.type === 'finished') {
-          worker.terminate().then(() => resolve())
-        }
-      })
-      worker.on('error', (err) => {
-        log.error('Worker error', { error: err })
-        reject(err)
-      })
-      worker.postMessage({ type: 'finishWork' })
-    })
-  })
-
-  await Promise.all([
-    //
-    mainThreadWorker.finishAllWork(),
-    ...workerPromises
-  ])
-
-  if (simulationErrors.length > 0) {
-    log.error(`Completed with ${simulationErrors.length} simulation errors.`)
-    throw new Error(
-      `Completed with ${simulationErrors.length} simulation errors. See previous logs.`
-    )
-  }
-
-  const results = {
-    simulationCount,
-    allowed: whoCanResults,
-    allAccountsChecked: request.principalScope ? false : accountsToCheck.allAccounts,
-    accountsNotFound: uniqueAccounts.accountsNotFound,
-    organizationsNotFound: uniqueAccounts.organizationsNotFound,
-    organizationalUnitsNotFound: uniqueAccounts.organizationalUnitsNotFound,
-    principalsNotFound: principalsNotFound,
-    denyDetails: request.denyDetailsCallback ? denyDetails : undefined
-  }
-
-  if (request.sort) {
-    sortWhoCanResults(results)
-  }
-
-  return results
-}
-
-async function runPrincipalForActions(
-  collectClient: IamCollectClient,
-  simulationQueue: StreamingWorkQueue<WhoCanWorkItem> | ArrayStreamingWorkQueue<WhoCanWorkItem>,
-  principal: string,
-  resource: string | undefined,
-  resourceAccount: string,
-  actions: string[]
-): Promise<void> {
-  for (const action of actions) {
-    simulationQueue.enqueue({
-      resource,
-      action,
-      principal,
-      resourceAccount
-    })
+    return settledEvent.result
+  } finally {
+    await processor.shutdown()
   }
 }
 
@@ -646,6 +385,195 @@ export interface AccountsToCheck {
   specificPrincipals: string[]
   specificOrganizations: string[]
   specificOrganizationalUnits: string[]
+  /** Tracking flag indicating that an IfExists condition was found, meaning anonymous (unsigned) requests could match. */
+  checkAnonymous: boolean
+  /** Whether any Allow statement has a wildcard principal or NotPrincipal, requiring all principals from the resource account to be checked. */
+  checkAllForCurrentAccount: boolean
+}
+
+/**
+ * Splits an ARN-like string on `:` while treating `${...}` blocks as opaque.
+ * Colons inside `${...}` dynamic variable references are not used as split points.
+ *
+ * For example, `arn:${aws:Partition}:iam::999999999999:role/*` splits into
+ * `['arn', '${aws:Partition}', 'iam', '', '999999999999', 'role/*']`.
+ *
+ * @param value - The raw ARN string, possibly containing `${...}` references.
+ * @returns An array of colon-delimited segments.
+ */
+function splitArnIgnoringDynamicVars(value: string): string[] {
+  const segments: string[] = []
+  let current = ''
+  let depth = 0
+
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i]
+    if (ch === '$' && i + 1 < value.length && value[i + 1] === '{') {
+      depth++
+      current += '${'
+      i++ // skip the '{'
+    } else if (ch === '}' && depth > 0) {
+      depth--
+      current += '}'
+    } else if (ch === ':' && depth === 0) {
+      segments.push(current)
+      current = ''
+    } else {
+      current += ch
+    }
+  }
+  segments.push(current)
+  return segments
+}
+
+const PRINCIPAL_ARN_PATTERN_OPERATORS = new Set(['stringlike', 'arnequals', 'arnlike'])
+
+/**
+ * Checks whether a string contains any wildcard or dynamic variable characters
+ * (`*`, `?`, or `$`).
+ *
+ * @param value - The string to check.
+ * @returns `true` if the string contains `*`, `?`, or `$`.
+ */
+function hasWildcardOrDynamic(value: string): boolean {
+  return value.includes('*') || value.includes('?') || value.includes('$')
+}
+
+/**
+ * Classification of a wildcard-principal statement's service-principal conditions.
+ *
+ * - `not-service-only`: the statement does not require a service principal.
+ * - `unnamed-service-only`: the statement requires a service principal but doesn't name which one.
+ * - `named-service-only`: the statement names specific service principals that can be simulated.
+ */
+type ServicePrincipalCheck =
+  | { type: 'not-service-only' }
+  | { type: 'unnamed-service-only' }
+  | { type: 'named-service-only'; principals: string[] }
+
+/** The 3 scalar condition keys that are only populated for service principal requests. */
+const UNNAMED_SERVICE_SCALAR_KEYS = new Set([
+  'aws:sourceaccount',
+  'aws:sourceowner',
+  'aws:sourceorgid'
+])
+
+/**
+ * Checks whether a positive operator is used on a scalar service-principal-only key.
+ * Accepts `StringEquals` family and `StringLike`.
+ *
+ * @param op - The condition operation to check.
+ * @returns `true` if the operator is a positive match for a scalar key.
+ */
+function isPositiveScalarOperator(op: ConditionOperation): boolean {
+  return (
+    op.value().toLowerCase().startsWith('stringequals') ||
+    op.baseOperator().toLowerCase() === 'stringlike'
+  )
+}
+
+/**
+ * Checks whether a positive operator is used on the `aws:SourceOrgPaths` array key.
+ * Only `ForAnyValue:StringEquals*` and `ForAnyValue:StringLike` qualify.
+ * `ForAllValues` and plain operators without a set operator do not.
+ *
+ * @param op - The condition operation to check.
+ * @returns `true` if the operator is a valid positive match for the array key.
+ */
+function isPositiveOrgPathsOperator(op: ConditionOperation): boolean {
+  if (op.setOperator() !== 'ForAnyValue') return false
+  const base = op.baseOperator().toLowerCase()
+  return base.startsWith('stringequals') || base === 'stringlike'
+}
+
+/**
+ * Inspects a statement's conditions to determine if the statement effectively
+ * requires an AWS service principal. Used for wildcard-principal Allow statements
+ * to avoid unnecessarily widening the whoCan search scope.
+ *
+ * @param conditions - The conditions from the statement to inspect.
+ * @returns A classification indicating whether the statement is not service-only,
+ *   requires an unnamed service principal (skip entirely), or names specific
+ *   service principals (extract for simulation).
+ */
+function checkForServicePrincipalConditions(conditions: Condition[]): ServicePrincipalCheck {
+  let hasUnnamedServiceKey = false
+  const namedServicePrincipals: string[] = []
+
+  for (const cond of conditions) {
+    const key = cond.conditionKey().toLowerCase()
+    const op = cond.operation()
+
+    if (op.isIfExists()) continue
+
+    // Category 1a: Scalar unnamed keys (aws:SourceAccount, aws:SourceOwner, aws:SourceOrgID)
+    if (UNNAMED_SERVICE_SCALAR_KEYS.has(key) && isPositiveScalarOperator(op)) {
+      hasUnnamedServiceKey = true
+    }
+
+    // Category 1b: Array unnamed key (aws:SourceOrgPaths) — requires ForAnyValue
+    if (key === 'aws:sourceorgpaths' && isPositiveOrgPathsOperator(op)) {
+      hasUnnamedServiceKey = true
+    }
+
+    // Category 1c: aws:PrincipalIsAWSService with Bool or StringEquals and value 'true'
+    // Multiple condition values are ORed, so mixed ['true', 'false'] is NOT service-only.
+    // All values must be 'true' for the condition to exclusively require a service principal.
+    if (key === 'aws:principalisawsservice') {
+      const baseOp = op.baseOperator().toLowerCase()
+      const opVal = op.value().toLowerCase()
+      const isBoolOrStringEquals = baseOp === 'bool' || opVal.startsWith('stringequals')
+      const values = cond.conditionValues()
+      if (
+        isBoolOrStringEquals &&
+        values.length > 0 &&
+        values.every((v) => v.toLowerCase() === 'true')
+      ) {
+        hasUnnamedServiceKey = true
+      }
+    }
+
+    // Category 2: aws:PrincipalServiceName — extract named service principals
+    if (
+      key === 'aws:principalservicename' &&
+      op.value().toLowerCase().startsWith('stringequals') &&
+      !cond.conditionValues().some((v: string) => v.includes('$'))
+    ) {
+      namedServicePrincipals.push(...cond.conditionValues())
+    }
+  }
+
+  // Named takes priority — the simulator fills aws:SourceAccount etc. for service principals
+  if (namedServicePrincipals.length > 0) {
+    return { type: 'named-service-only', principals: namedServicePrincipals }
+  }
+  if (hasUnnamedServiceKey) {
+    return { type: 'unnamed-service-only' }
+  }
+  return { type: 'not-service-only' }
+}
+
+/**
+ * Determines whether a policy statement requires checking all principals from
+ * the resource account. This is true when the statement is an Allow with a
+ * wildcard principal (`*` or `{ AWS: "*" }`) or a `NotPrincipal` element,
+ * since either form could grant access to any principal in the resource account.
+ *
+ * @param statement - The policy statement to check.
+ * @returns `true` if the statement could allow any principal from the resource account.
+ */
+export function statementRequiresAllFromResourceAccount(statement: Statement): boolean {
+  if (!statement.isAllow()) return false
+
+  if (statement.isNotPrincipalStatement()) return true
+
+  if (statement.isPrincipalStatement()) {
+    for (const principal of statement.principals()) {
+      if (principal.isWildcardPrincipal()) return true
+    }
+  }
+
+  return false
 }
 
 export async function accountsToCheckBasedOnResourcePolicy(
@@ -657,7 +585,9 @@ export async function accountsToCheckBasedOnResourcePolicy(
     specificAccounts: [],
     specificPrincipals: [],
     specificOrganizations: [],
-    specificOrganizationalUnits: []
+    specificOrganizationalUnits: [],
+    checkAnonymous: false,
+    checkAllForCurrentAccount: false
   }
   if (resourceAccount) {
     accountsToCheck.specificAccounts.push(resourceAccount)
@@ -668,6 +598,9 @@ export async function accountsToCheckBasedOnResourcePolicy(
 
   const policy = loadPolicy(resourcePolicy)
   for (const statement of policy.statements()) {
+    if (statementRequiresAllFromResourceAccount(statement)) {
+      accountsToCheck.checkAllForCurrentAccount = true
+    }
     if (statement.isAllow() && statement.isNotPrincipalStatement()) {
       accountsToCheck.allAccounts = true
     }
@@ -685,33 +618,101 @@ export async function accountsToCheckBasedOnResourcePolicy(
       }
 
       if (hasWildcardPrincipal) {
-        const specificOrgs = []
-        const specificOus = []
-        const specificAccounts = []
+        const serviceCheck = checkForServicePrincipalConditions(statement.conditions())
+
+        if (serviceCheck.type === 'unnamed-service-only') {
+          continue
+        }
+
+        if (serviceCheck.type === 'named-service-only') {
+          accountsToCheck.specificPrincipals.push(...serviceCheck.principals)
+          continue
+        }
+
+        const specificOrgs: string[] = []
+        const specificOus: string[] = []
+        const specificAccounts: string[] = []
+        const specificPrincipals: string[] = []
 
         const conditions = statement.conditions()
         for (const cond of conditions) {
+          const condKey = cond.conditionKey().toLowerCase()
           if (
-            cond.conditionKey().toLowerCase() === 'aws:principalorgid' &&
+            condKey === 'aws:principalorgid' &&
             cond.operation().value().toLowerCase().startsWith('stringequals') &&
-            !cond.conditionValues().some((v: string) => v.includes('$')) // Ignore dynamic values for now
+            !cond.conditionValues().some((v: string) => v.includes('$'))
           ) {
             specificOrgs.push(...cond.conditionValues())
           }
           if (
-            cond.conditionKey().toLowerCase() === 'aws:principalorgpaths' &&
+            condKey === 'aws:principalorgpaths' &&
             cond.operation().baseOperator().toLowerCase().startsWith('stringequals') &&
-            !cond.conditionValues().some((v: string) => v.includes('$')) // Ignore dynamic values for now
+            !cond.conditionValues().some((v: string) => v.includes('$'))
           ) {
             specificOus.push(...cond.conditionValues())
           }
-          if (
-            cond.conditionKey().toLowerCase() === 'aws:principalaccount' &&
-            cond.operation().value().toLowerCase().startsWith('stringequals') &&
-            !cond.conditionValues().some((v: string) => v.includes('$')) // Ignore dynamic values for now
-          ) {
-            specificAccounts.push(...cond.conditionValues())
+          if (condKey === 'aws:principalaccount' || condKey === 'kms:calleraccount') {
+            const opVal = cond.operation().value().toLowerCase()
+            const baseOp = cond.operation().baseOperator().toLowerCase()
+            const values = cond.conditionValues()
+            const hasDynamic = values.some((v: string) => v.includes('$'))
+
+            if (opVal.startsWith('stringequals') && !hasDynamic) {
+              // StringEquals family — all values are literal account IDs
+              specificAccounts.push(...values)
+            } else if (
+              baseOp === 'stringlike' &&
+              !hasDynamic &&
+              values.every((v: string) => !v.includes('*') && !v.includes('?'))
+            ) {
+              // StringLike where ALL values are literal (no wildcards or dynamic vars)
+              specificAccounts.push(...values)
+            }
           }
+
+          if (condKey === 'aws:principalarn') {
+            const opValue = cond.operation().value().toLowerCase()
+            const baseOp = cond.operation().baseOperator().toLowerCase()
+            const isExactOperator = opValue.startsWith('stringequals')
+            const isPatternOperator = PRINCIPAL_ARN_PATTERN_OPERATORS.has(baseOp)
+
+            if (!isExactOperator && !isPatternOperator) {
+              continue
+            }
+
+            if (cond.operation().isIfExists()) {
+              accountsToCheck.checkAnonymous = true
+            }
+
+            for (const value of cond.conditionValues()) {
+              if (!hasWildcardOrDynamic(value)) {
+                // Exact literal — push as a specific principal
+                specificPrincipals.push(value)
+              } else if (isExactOperator && !value.includes('*') && !value.includes('?')) {
+                // Exact operator with a dynamic variable but no wildcards — try account extraction
+                const segments = splitArnIgnoringDynamicVars(value)
+                if (segments.length >= 6 && segments[0].toLowerCase() === 'arn') {
+                  const account = segments[4]
+                  if (account && !hasWildcardOrDynamic(account)) {
+                    specificAccounts.push(account)
+                  }
+                }
+              } else {
+                // Pattern operator or value with wildcards — try account extraction
+                const segments = splitArnIgnoringDynamicVars(value)
+                if (segments.length >= 6 && segments[0].toLowerCase() === 'arn') {
+                  const account = segments[4]
+                  if (account && !hasWildcardOrDynamic(account)) {
+                    specificAccounts.push(account)
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if (specificPrincipals.length > 0) {
+          accountsToCheck.specificPrincipals.push(...specificPrincipals)
         }
         if (specificAccounts.length > 0) {
           accountsToCheck.specificAccounts.push(...specificAccounts)
@@ -719,7 +720,7 @@ export async function accountsToCheckBasedOnResourcePolicy(
           accountsToCheck.specificOrganizationalUnits.push(...specificOus)
         } else if (specificOrgs.length > 0) {
           accountsToCheck.specificOrganizations.push(...specificOrgs)
-        } else {
+        } else if (specificPrincipals.length === 0) {
           accountsToCheck.allAccounts = true
         }
       }
@@ -728,7 +729,9 @@ export async function accountsToCheckBasedOnResourcePolicy(
   return accountsToCheck
 }
 
-export async function actionsForWhoCan(request: ResourceAccessRequest): Promise<string[]> {
+export async function actionsForWhoCan(
+  request: Pick<ResourceAccessRequest, 'actions' | 'resource'>
+): Promise<string[]> {
   const { actions } = request
 
   if (actions && actions.length > 0) {

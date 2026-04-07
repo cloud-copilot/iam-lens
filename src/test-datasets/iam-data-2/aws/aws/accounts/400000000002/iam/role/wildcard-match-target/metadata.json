@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/wildcard-match-target",
+  "name": "wildcard-match-target",
+  "id": "AROA35F71AE2AD4F782F2",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}

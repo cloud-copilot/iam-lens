@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/service-name-target",
+  "name": "service-name-target",
+  "id": "AROA373D82A2462CCA684",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}

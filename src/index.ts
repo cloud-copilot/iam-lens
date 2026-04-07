@@ -30,3 +30,18 @@ export {
   type WhoCanAllowed,
   type WhoCanResponse
 } from './whoCan/whoCan.js'
+export {
+  WhoCanProcessor,
+  type WhoCanProcessorConfig,
+  type WhoCanProcessorRequest,
+  type WhoCanSettledEvent,
+  type WhoCanSettledSuccess,
+  type WhoCanSettledError
+} from './whoCan/WhoCanProcessor.js'
+export {
+  type LightRequestAnalysis,
+  type LightResourceAnalysis,
+  type LightResourceAnalysisWithPattern,
+  type SingleResourceLightRequestAnalysis,
+  type WildcardResourceLightRequestAnalysis
+} from './whoCan/requestAnalysis.js'

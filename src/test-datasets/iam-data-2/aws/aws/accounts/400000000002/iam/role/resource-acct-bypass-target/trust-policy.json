@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GrantResourceAccount",
+      "Effect": "Allow",
+      "Principal": { "AWS": "400000000002" },
+      "Action": "sts:AssumeRole",
+      "Condition": {}
+    },
+    {
+      "Sid": "CrossAccountPrincipalArnPattern",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "ArnLike": { "aws:PrincipalArn": "arn:aws:iam::400000000001:role/alpha-*" }
+      }
+    }
+  ]
+}

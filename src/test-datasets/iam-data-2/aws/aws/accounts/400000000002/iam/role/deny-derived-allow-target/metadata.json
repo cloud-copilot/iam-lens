@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/deny-derived-allow-target",
+  "name": "deny-derived-allow-target",
+  "id": "AROA0000DENYDERIVED001",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}

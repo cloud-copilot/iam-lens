@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/no-condition-target",
+  "name": "no-condition-target",
+  "id": "AROAA4A82BF69F767ECC6",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}
