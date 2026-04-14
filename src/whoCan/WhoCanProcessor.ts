@@ -30,6 +30,10 @@ import {
   isServicePrincipal
 } from '@cloud-copilot/iam-utils'
 import { buildPrincipalArnFilter, principalMatchesFilter } from './principalArnFilter.js'
+import { type WorkerBootstrapPlugin } from './workerBootstrapPlugin.js'
+import { log } from '@cloud-copilot/log'
+
+export type { WorkerBootstrapPlugin } from './workerBootstrapPlugin.js'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -81,6 +85,14 @@ export interface WhoCanProcessorConfig {
   /** Optional plugin to wrap the collect client with a custom implementation. */
   clientFactoryPlugin?: ClientFactoryPlugin
 
+  /**
+   * Optional plugin that runs once per worker thread at startup before any work
+   * is processed. Use this for loading instrumentation, initializing logging
+   * context, or other worker-lifetime setup. If the bootstrap function throws,
+   * the worker fails and the processor surfaces the error.
+   */
+  workerBootstrapPlugin?: WorkerBootstrapPlugin
+
   /** An override for S3 ABAC being enabled when checking access to S3 Bucket resources. */
   s3AbacOverride?: S3AbacOverride
 
@@ -96,6 +108,16 @@ export interface WhoCanProcessorConfig {
    *   status, and either the result or the error.
    */
   onRequestSettled: (event: WhoCanSettledEvent) => Promise<void>
+
+  /**
+   * Optional async callback invoked when an `onRequestSettled` callback throws or rejects.
+   * If this callback itself throws, the error is silently ignored. If not provided, a
+   * warning is logged indicating that a settlement callback failed with no handler defined.
+   *
+   * @param event - The settlement event that was being delivered when the error occurred.
+   * @param error - The error thrown by the `onRequestSettled` callback.
+   */
+  onSettlementFailure?: (event: WhoCanSettledEvent, error: Error) => Promise<void>
 
   /**
    * Whether the processor should ignore an existing principal index. Use this with testing.
@@ -287,10 +309,6 @@ function getNumberOfWorkers(overrideValue: number | undefined): number {
   return Math.max(0, numberOfCpus() - 1)
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Processor
-// ──────────────────────────────────────────────────────────────────────────────
-
 /**
  * A queue-first bulk processor that accepts many whoCan requests, expands
  * scenarios on the main thread, and feeds a shared simulation scheduler used
@@ -322,7 +340,6 @@ export class WhoCanProcessor {
 
   // Idle / drain tracking
   private idleWaiters: { resolve: () => void; reject: (error: Error) => void }[] = []
-  private settledCallbackErrors: Error[] = []
 
   // Main thread simulation runner
   private mainThreadWorker: ReturnType<typeof createMainThreadStreamingWorkQueue> | undefined
@@ -346,6 +363,58 @@ export class WhoCanProcessor {
   }
 
   /**
+   * Waits for every worker to post a `{ type: 'ready' }` message. If any
+   * worker fails (error, non-zero exit, or explicit `startupError` message)
+   * the remaining workers are terminated and the returned promise rejects.
+   *
+   * @param workers - The worker instances to wait on.
+   */
+  private static async awaitWorkersReady(workers: Worker[]): Promise<void> {
+    // Each entry resolves on 'ready' or rejects on failure.
+    const perWorker = workers.map(
+      (worker) =>
+        new Promise<void>((resolve, reject) => {
+          const onMessage = (msg: any) => {
+            if (msg.type === 'ready') {
+              cleanup()
+              resolve()
+            } else if (msg.type === 'startupError') {
+              cleanup()
+              reject(new Error(`Worker startup failed: ${msg.error}`))
+            }
+          }
+          const onError = (err: Error) => {
+            cleanup()
+            reject(new Error(`Worker error during startup: ${err.message}`))
+          }
+          const onExit = (code: number) => {
+            cleanup()
+            if (code !== 0) {
+              reject(new Error(`Worker exited with code ${code} during startup`))
+            }
+          }
+          const cleanup = () => {
+            worker.off('message', onMessage)
+            worker.off('error', onError)
+            worker.off('exit', onExit)
+          }
+          worker.on('message', onMessage)
+          worker.on('error', onError)
+          worker.on('exit', onExit)
+        })
+    )
+
+    try {
+      await Promise.all(perWorker)
+    } catch (err) {
+      // At least one worker failed — terminate all workers so none are
+      // left orphaned (no processor instance will be returned to the caller).
+      await Promise.allSettled(workers.map((w) => w.terminate()))
+      throw err
+    }
+  }
+
+  /**
    * Creates a new WhoCanProcessor with worker threads, a shared cache, and
    * lifetime-scoped message routing. The processor is ready to accept requests
    * immediately after creation.
@@ -357,7 +426,14 @@ export class WhoCanProcessor {
   static async create(config: WhoCanProcessorConfig): Promise<WhoCanProcessor> {
     const numWorkers = getNumberOfWorkers(config.tuning?.workerThreads)
     const perWorkerConcurrency = config.tuning?.perWorkerConcurrency ?? 50
+    const mainThreadConcurrency = config.tuning?.mainThreadConcurrency ?? 50
     const workerPath = getWorkerScriptPath('whoCan/WhoCanWorkerThreadWorker.js')
+
+    if ((!workerPath || numWorkers === 0) && mainThreadConcurrency <= 0) {
+      throw new Error(
+        'WhoCanProcessor: no worker script found and mainThreadConcurrency is 0 — no work can be processed'
+      )
+    }
 
     const workers = !workerPath
       ? []
@@ -369,13 +445,28 @@ export class WhoCanProcessor {
               concurrency: perWorkerConcurrency,
               s3AbacOverride: config.s3AbacOverride,
               collectGrantDetails: config.collectGrantDetails,
-              clientFactoryPlugin: config.clientFactoryPlugin
+              clientFactoryPlugin: config.clientFactoryPlugin,
+              workerBootstrapPlugin: config.workerBootstrapPlugin
             }
           })
         })
 
+    // Install the shared-cache bridge before waiting for workers to become
+    // ready. Workers may issue getCache messages during their getCollectClient()
+    // call, which runs concurrently with the ready handshake. If the cache
+    // listeners are not installed yet those messages are dropped and the worker
+    // deadlocks waiting for a cache response.
+    const sharedCache = new SharedArrayBufferMainCache(workers)
+
+    // Wait for all workers to complete bootstrap and signal ready before
+    // proceeding. This ensures bootstrap failures are caught reliably and
+    // all workers are fully initialized before work is dispatched.
+    if (workers.length > 0) {
+      await WhoCanProcessor.awaitWorkersReady(workers)
+    }
+
     const collectClient = await getCollectClient(config.collectConfigs, config.partition, {
-      cacheProvider: new SharedArrayBufferMainCache(workers),
+      cacheProvider: sharedCache,
       clientFactoryPlugin: config.clientFactoryPlugin
     })
 
@@ -390,6 +481,15 @@ export class WhoCanProcessor {
 
     const processor = new WhoCanProcessor(workers, collectClient, config, preparationQueue)
     processor.installLifetimeWorkerListeners()
+
+    // Signal workers to start pulling tasks. This must happen after
+    // installLifetimeWorkerListeners() so the main thread's requestTask
+    // handler is installed before the workers begin emitting requestTask
+    // messages.
+    for (const worker of workers) {
+      worker.postMessage({ type: 'start' })
+    }
+
     processor.createMainThreadRunner()
     return processor
   }
@@ -426,8 +526,7 @@ export class WhoCanProcessor {
    * While draining, new calls to {@link enqueueWhoCan} will throw. Once
    * the drain completes, the processor re-opens for new enqueues.
    *
-   * @returns a promise that resolves when idle, or rejects if a worker crashes
-   *   or an onRequestSettled callback throws/rejects.
+   * @returns a promise that resolves when idle, or rejects if a worker crashes.
    */
   async waitForIdle(): Promise<void> {
     if (this.isShutdown) {
@@ -436,7 +535,6 @@ export class WhoCanProcessor {
 
     // If already idle, return immediately
     if (this.isIdle()) {
-      this.rejectIfSettledCallbackErrors()
       return
     }
 
@@ -446,8 +544,6 @@ export class WhoCanProcessor {
       await new Promise<void>((resolve, reject) => {
         this.idleWaiters.push({ resolve, reject })
       })
-
-      this.rejectIfSettledCallbackErrors()
     } finally {
       // Only clear draining when the last waiter has been notified
       if (this.idleWaiters.length === 0) {
@@ -482,15 +578,16 @@ export class WhoCanProcessor {
     // Reject all pending requests that haven't been admitted
     while (this.pendingRequests.length > 0) {
       const submitted = this.pendingRequests.shift()!
+      const event: WhoCanSettledEvent = {
+        status: 'rejected',
+        requestId: submitted.requestId,
+        request: submitted.request,
+        error: new Error('WhoCanProcessor was shut down before this request was processed')
+      }
       try {
-        await this.config.onRequestSettled({
-          status: 'rejected',
-          requestId: submitted.requestId,
-          request: submitted.request,
-          error: new Error('WhoCanProcessor was shut down before this request was processed')
-        })
+        await this.config.onRequestSettled(event)
       } catch (err) {
-        this.settledCallbackErrors.push(err instanceof Error ? err : new Error(String(err)))
+        await this.handleSettlementFailure(event, err)
       }
     }
 
@@ -1050,7 +1147,7 @@ export class WhoCanProcessor {
     if (result.status === 'fulfilled' && result.value) {
       state.allowed.push(result.value)
     } else if (result.status === 'rejected') {
-      console.error('Error running simulation:', result.reason)
+      log.error('Error running simulation', { error: result.reason })
       state.simulationErrors.push(result)
     }
 
@@ -1206,8 +1303,8 @@ export class WhoCanProcessor {
   }
 
   /**
-   * Invokes the onRequestSettled callback and accumulates any errors for
-   * later surfacing via waitForIdle.
+   * Invokes the onRequestSettled callback and routes any errors through
+   * {@link handleSettlementFailure}.
    *
    * @param event - The settlement event to deliver.
    */
@@ -1215,7 +1312,7 @@ export class WhoCanProcessor {
     try {
       await this.config.onRequestSettled(event)
     } catch (err) {
-      this.settledCallbackErrors.push(err instanceof Error ? err : new Error(String(err)))
+      await this.handleSettlementFailure(event, err)
     }
   }
 
@@ -1304,20 +1401,29 @@ export class WhoCanProcessor {
   }
 
   /**
-   * If any onRequestSettled callbacks threw, throws the first error.
-   * Called after waitForIdle resolves to surface callback errors.
+   * Handles an error thrown by the `onRequestSettled` callback. If the
+   * `onSettlementFailure` callback is defined, it is invoked with the event
+   * and error; any error it throws is silently ignored. If not defined, a
+   * warning is logged.
+   *
+   * @param event - The settlement event that was being delivered.
+   * @param err - The raw error thrown by the `onRequestSettled` callback.
    */
-  private rejectIfSettledCallbackErrors(): void {
-    if (this.settledCallbackErrors.length > 0) {
-      const error = this.settledCallbackErrors[0]
-      this.settledCallbackErrors = []
-      throw error
+  private async handleSettlementFailure(event: WhoCanSettledEvent, err: unknown): Promise<void> {
+    const error = err instanceof Error ? err : new Error(String(err))
+    if (this.config.onSettlementFailure) {
+      try {
+        await this.config.onSettlementFailure(event, error)
+      } catch {
+        // onSettlementFailure itself failed — silently ignored
+      }
+    } else {
+      log.warn('onRequestSettled callback failed and no onSettlementFailure handler is defined', {
+        requestId: event.requestId,
+        error
+      })
     }
   }
-
-  // ──────────────────────────────────────────────────────────────────────────
-  // Worker failure handling
-  // ──────────────────────────────────────────────────────────────────────────
 
   /**
    * Handles an unexpected worker failure by marking the processor as dead,
@@ -1346,13 +1452,15 @@ export class WhoCanProcessor {
     // Reject all pending requests
     while (this.pendingRequests.length > 0) {
       const submitted = this.pendingRequests.shift()!
+      const event: WhoCanSettledEvent = {
+        status: 'rejected',
+        requestId: submitted.requestId,
+        request: submitted.request,
+        error
+      }
       void this.config
-        .onRequestSettled({
-          status: 'rejected',
-          requestId: submitted.requestId,
-          request: submitted.request,
-          error
-        })
+        .onRequestSettled(event)
+        .catch((err) => this.handleSettlementFailure(event, err))
         .catch(() => {})
     }
 

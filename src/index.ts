@@ -36,7 +36,8 @@ export {
   type WhoCanProcessorRequest,
   type WhoCanSettledEvent,
   type WhoCanSettledSuccess,
-  type WhoCanSettledError
+  type WhoCanSettledError,
+  type WorkerBootstrapPlugin
 } from './whoCan/WhoCanProcessor.js'
 export {
   type LightRequestAnalysis,

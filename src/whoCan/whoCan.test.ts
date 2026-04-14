@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { IamCollectClient } from '../collect/client.js'
 import { loadPolicy } from '@cloud-copilot/iam-policy'
 import {
-  AccountsToCheck,
+  type AccountsToCheck,
   accountsToCheckBasedOnResourcePolicy,
   actionsForWhoCan,
   findResourceTypeForArn,
-  ResourceAccessRequest,
+  type ResourceAccessRequest,
   sortWhoCanResults,
   statementRequiresAllFromResourceAccount,
   uniqueAccountsToCheck,
-  WhoCanResponse
+  type WhoCanResponse
 } from './whoCan.js'
 
 const findResourceTypeForArnTests: {
