@@ -1,15 +1,12 @@
-import { createStorageClient, TopLevelConfig } from '@cloud-copilot/iam-collect'
-import { existsSync, rmSync } from 'fs'
 import { assert, beforeAll, describe, expect, it } from 'vitest'
-import { IamCollectClient } from '../collect/client.js'
 import { makePrincipalIndex } from '../principalIndex/makePrincipalIndex.js'
 import { getTestDatasetClient, getTestDatasetConfigs } from '../test-datasets/testClient.js'
 import {
-  ResourceAccessRequest,
+  type ResourceAccessRequest,
   whoCan,
-  WhoCanAllowed,
-  WhoCanDenyDetail,
-  WhoCanResponse
+  type WhoCanAllowed,
+  type WhoCanDenyDetail,
+  type WhoCanResponse
 } from './whoCan.js'
 import { WhoCanProcessor } from './WhoCanProcessor.js'
 
@@ -2127,7 +2124,6 @@ describe('whoCan Integration Tests', () => {
       func(testName, async () => {
         //Given a client
         const configs = getTestDatasetConfigs(data)
-        // await createOrDestroyIndex(configs, withIndex)
 
         //When we call whoCan
         const requestCopy = { ...request }
@@ -2145,7 +2141,7 @@ function removeExpectedGrantDetails(
   expected: WhoCanIntegrationTest['expected']
 ): WhoCanIntegrationTest['expected'] {
   // This is used for snapshot testing where we want to exclude the deny details from the snapshot but still test them in the test itself
-  const copy = JSON.parse(JSON.stringify(expected))
+  const copy = structuredClone(expected)
   for (const who of copy.who) {
     if (who.allowedPatterns) {
       for (const pattern of who.allowedPatterns) {

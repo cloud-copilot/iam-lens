@@ -22,7 +22,11 @@ import { Arn } from '../utils/arn.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'
 import { type LightRequestAnalysis } from './requestAnalysis.js'
-import { WhoCanProcessor, type WhoCanSettledEvent } from './WhoCanProcessor.js'
+import {
+  WhoCanProcessor,
+  type WhoCanSettledEvent,
+  type WorkerBootstrapPlugin
+} from './WhoCanProcessor.js'
 
 /**
  * Limits the set of principals that `whoCan` tests. The scope is a union of
@@ -94,6 +98,13 @@ export interface ResourceAccessRequest {
    * Used for scenario testing where a layered client needs to be used in worker threads.
    */
   clientFactoryPlugin?: ClientFactoryPlugin
+
+  /**
+   * Optional plugin that runs once per worker thread at startup before any work
+   * is processed. Use this for loading instrumentation, initializing logging
+   * context, or other worker-lifetime setup.
+   */
+  workerBootstrapPlugin?: WorkerBootstrapPlugin
 
   /**
    * Optional scope to limit the set of principals tested. When provided, the
@@ -286,6 +297,7 @@ export async function whoCan(
     },
     ignorePrincipalIndex: request.ignorePrincipalIndex,
     clientFactoryPlugin: request.clientFactoryPlugin,
+    workerBootstrapPlugin: request.workerBootstrapPlugin,
     s3AbacOverride: request.s3AbacOverride,
     collectGrantDetails: !!request.collectGrantDetails,
     onRequestSettled: async (event) => {
