@@ -1,3 +1,10 @@
+## [0.1.111](https://github.com/cloud-copilot/iam-lens/compare/v0.1.110...v0.1.111) (2026-04-14)
+
+
+### Features
+
+* Allow customization of worker bootstrap ([856b6db](https://github.com/cloud-copilot/iam-lens/commit/856b6db7176b885e3a42143e07efed4e7e2f8539))
+
 ## [0.1.110](https://github.com/cloud-copilot/iam-lens/compare/v0.1.109...v0.1.110) (2026-04-11)
 
 ## [0.1.109](https://github.com/cloud-copilot/iam-lens/compare/v0.1.108...v0.1.109) (2026-04-07)
