@@ -27,7 +27,7 @@ export const knownContextKeys: readonly string[] = [
   'aws:PrincipalOrgId',
   'aws:PrincipalOrgPaths',
   'aws:PrincipalType',
-  'aws:userid',
+  // 'aws:userid',
   'aws:username',
 
   'aws:ResourceAccount',
@@ -46,6 +46,7 @@ export const knownContextKeys: readonly string[] = [
 
 export const CONTEXT_KEYS = {
   assumedRoot: 'aws:AssumedRoot',
+  userId: 'aws:userid',
   vpc: 'aws:SourceVpc',
   vpcEndpointId: 'aws:SourceVpce',
   vpcEndpointAccount: 'aws:VpceAccount',
@@ -101,8 +102,12 @@ export async function createContextKeys(
   }
 
   if (isArnPrincipal(simulationRequest.principal)) {
-    contextKeys['aws:PrincipalArn'] = simulationRequest.principal
     const arnParts = splitArnParts(simulationRequest.principal)
+    const principalArnForContext =
+      arnParts.resourceType === 'assumed-role'
+        ? convertAssumedRoleArnToRoleArn(simulationRequest.principal)
+        : simulationRequest.principal
+    contextKeys['aws:PrincipalArn'] = principalArnForContext
     const principalAccountId = arnParts.accountId!
     contextKeys['aws:PrincipalAccount'] = arnParts.accountId || ''
 
@@ -143,14 +148,16 @@ export async function createContextKeys(
     } else if (arnParts.resourceType === 'federated-user') {
       contextKeys['aws:PrincipalType'] = 'FederatedUser'
       contextKeys['aws:userid'] = `${arnParts.accountId}:${arnParts.resourcePath}`
-    } else if (arnParts.resourceType === 'assumed-role') {
+    } else if (arnParts.resourceType === 'assumed-role' || arnParts.resourceType === 'role') {
       contextKeys['aws:PrincipalType'] = 'AssumedRole'
 
       //TODO: Set aws:userId for role principals
-      const sessionName = arnParts.resourcePath?.split('/').at(-1)!
-      const roleArn = convertAssumedRoleArnToRoleArn(simulationRequest.principal)
-      const roleUniqueId = await collectClient.getUniqueIdForIamResource(roleArn)
-      contextKeys['aws:userid'] = `${roleUniqueId || 'UNKNOWN'}:${sessionName}`
+      if (arnParts.resourceType === 'assumed-role') {
+        const sessionName = arnParts.resourcePath?.split('/').at(-1)!
+        const roleArn = convertAssumedRoleArnToRoleArn(simulationRequest.principal)
+        const roleUniqueId = await collectClient.getUniqueIdForIamResource(roleArn)
+        contextKeys['aws:userid'] = `${roleUniqueId || 'UNKNOWN'}:${sessionName}`
+      }
     }
   }
 

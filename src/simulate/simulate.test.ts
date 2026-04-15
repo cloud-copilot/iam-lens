@@ -1,6 +1,7 @@
 import { EvaluationResult } from '@cloud-copilot/iam-simulate'
-import { describe, expect, it } from 'vitest'
+import { assert, describe, expect, it, vi } from 'vitest'
 import { testStore } from '../collect/inMemoryClient.js'
+import { saveRole, saveUser } from '../utils/testUtils.js'
 import { resultMatchesExpectation, simulateRequest, SimulationRequest } from './simulate.js'
 
 describe('simulateRequest', () => {
@@ -54,6 +55,182 @@ describe('simulateRequest', () => {
     await expect(simulateRequest(req, client)).rejects.toThrow(
       /Unable to find action details for s3:fakeaction/
     )
+  })
+})
+
+describe('aws:userid strict context key behavior', () => {
+  const useridConditionPolicy = [
+    {
+      PolicyName: 'ConditionalAccess',
+      PolicyDocument: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: 'dynamodb:GetItem',
+            Resource: '*',
+            Condition: {
+              StringLike: { 'aws:userid': '*:expected-session' }
+            }
+          }
+        ]
+      }
+    }
+  ]
+
+  it('should not treat aws:userid as strict for role principals in Discovery mode', async () => {
+    //Given a role whose only Allow is gated by an aws:userid condition
+    const { store, client } = testStore()
+    const roleArn = 'arn:aws:iam::123456789012:role/TestRole'
+    await saveRole(store, {
+      arn: roleArn,
+      inlinePolicies: useridConditionPolicy
+    })
+
+    //When simulating in Discovery mode as the role
+    const { result } = await simulateRequest(
+      {
+        simulationMode: 'Discovery',
+        principal: roleArn,
+        resourceArn: 'arn:aws:dynamodb:us-east-1:123456789012:table/my-table',
+        resourceAccount: '123456789012',
+        action: 'dynamodb:GetItem',
+        customContextKeys: {}
+      },
+      client
+    )
+
+    //Then access should be allowed because aws:userid is not strict for roles
+    if (result.resultType === 'error') {
+      assert.fail(`Simulation resulted in error: ${result.errors.message}`)
+    }
+    expect(result.overallResult).toBe('Allowed')
+
+    //And aws:userid should be reported as an ignored condition on the identity allow
+    if (result.resultType === 'single') {
+      const ignoredConditions = result.result.analysis.ignoredConditions
+      expect(ignoredConditions?.identity?.allow).toEqual(
+        expect.arrayContaining([expect.objectContaining({ key: 'aws:userid' })])
+      )
+    } else {
+      assert.fail(`Expected single result type, got ${result.resultType}`)
+    }
+  })
+
+  it('should treat aws:userid as strict for user principals in Discovery mode', async () => {
+    //Given a user whose only Allow is gated by an aws:userid condition
+    const { store, client } = testStore()
+    const userArn = 'arn:aws:iam::123456789012:user/TestUser'
+    await saveUser(store, {
+      arn: userArn,
+      inlinePolicies: useridConditionPolicy
+    })
+
+    //When simulating in Discovery mode as the user
+    const { result } = await simulateRequest(
+      {
+        simulationMode: 'Discovery',
+        principal: userArn,
+        resourceArn: 'arn:aws:dynamodb:us-east-1:123456789012:table/my-table',
+        resourceAccount: '123456789012',
+        action: 'dynamodb:GetItem',
+        customContextKeys: {}
+      },
+      client
+    )
+
+    if (result.resultType === 'error') {
+      assert.fail(`Simulation resulted in error: ${result.errors.message}`)
+    }
+    //Then access should be denied because aws:userid is strict and the value doesn't match
+    expect(result.overallResult).toBe('ImplicitlyDenied')
+  })
+
+  it('should treat aws:userid as strict for assumed-role session principals in Discovery mode', async () => {
+    //Given a role whose only Allow is gated by an aws:userid condition
+    const { store, client } = testStore()
+    const roleArn = 'arn:aws:iam::123456789012:role/TestRole'
+    await saveRole(store, { arn: roleArn, inlinePolicies: useridConditionPolicy })
+
+    //And an assumed-role session ARN whose session name does not match the condition
+    const sessionArn = 'arn:aws:sts::123456789012:assumed-role/TestRole/wrong-session'
+
+    //When simulating in Discovery mode as the session
+    const { result } = await simulateRequest(
+      {
+        simulationMode: 'Discovery',
+        principal: sessionArn,
+        resourceArn: 'arn:aws:dynamodb:us-east-1:123456789012:table/my-table',
+        resourceAccount: '123456789012',
+        action: 'dynamodb:GetItem',
+        customContextKeys: {},
+        ignoreMissingPrincipal: true
+      },
+      client
+    )
+    if (result.resultType === 'error') {
+      assert.fail(`Simulation resulted in error: ${result.errors.message}`)
+    }
+    //Then access should be denied because aws:userid is strict for sessions and the value doesn't match
+    expect(result.overallResult).toBe('ImplicitlyDenied')
+  })
+
+  it('should allow assumed-role session when aws:userid condition matches in Discovery mode', async () => {
+    //Given a role whose only Allow is gated by an aws:userid condition
+    const { store, client } = testStore()
+    const roleArn = 'arn:aws:iam::123456789012:role/TestRole'
+    await saveRole(store, { arn: roleArn, inlinePolicies: useridConditionPolicy })
+
+    //And an assumed-role session ARN whose session name matches the condition
+    const sessionArn = 'arn:aws:sts::123456789012:assumed-role/TestRole/expected-session'
+
+    //When simulating in Discovery mode as the session
+    const { result } = await simulateRequest(
+      {
+        simulationMode: 'Discovery',
+        principal: sessionArn,
+        resourceArn: 'arn:aws:dynamodb:us-east-1:123456789012:table/my-table',
+        resourceAccount: '123456789012',
+        action: 'dynamodb:GetItem',
+        customContextKeys: {},
+        ignoreMissingPrincipal: true
+      },
+      client
+    )
+    if (result.resultType === 'error') {
+      assert.fail(`Simulation resulted in error: ${result.errors.message}`)
+    }
+    //Then access should be allowed because the userid matches
+    expect(result.overallResult).toBe('Allowed')
+  })
+
+  it('should allow assumed-role session when aws:userid condition matches in Strict mode', async () => {
+    //Given a role whose only Allow is gated by an aws:userid condition
+    const { store, client } = testStore()
+    const roleArn = 'arn:aws:iam::123456789012:role/TestRole'
+    await saveRole(store, { arn: roleArn, inlinePolicies: useridConditionPolicy })
+
+    //And an assumed-role session ARN whose session name matches the condition
+    const sessionArn = 'arn:aws:sts::123456789012:assumed-role/TestRole/expected-session'
+
+    //When simulating in Strict mode as the session
+    const { result } = await simulateRequest(
+      {
+        simulationMode: 'Strict',
+        principal: sessionArn,
+        resourceArn: 'arn:aws:dynamodb:us-east-1:123456789012:table/my-table',
+        resourceAccount: '123456789012',
+        action: 'dynamodb:GetItem',
+        customContextKeys: {},
+        ignoreMissingPrincipal: true
+      },
+      client
+    )
+    if (result.resultType === 'error') {
+      assert.fail(`Simulation resulted in error: ${result.errors.message}`)
+    }
+    //Then access should be allowed because the userid matches the condition
+    expect(result.overallResult).toBe('Allowed')
   })
 })
 
