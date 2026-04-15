@@ -1,3 +1,10 @@
+## [0.1.112](https://github.com/cloud-copilot/iam-lens/compare/v0.1.111...v0.1.112) (2026-04-15)
+
+
+### Bug Fixes
+
+* who-can now correctly finds session ARNs in resource policies and returns the underlying role in the results ([f07affa](https://github.com/cloud-copilot/iam-lens/commit/f07affa86033ee49c8d3738f2f49d2a7f4504fa2))
+
 ## [0.1.111](https://github.com/cloud-copilot/iam-lens/compare/v0.1.110...v0.1.111) (2026-04-14)
 
 
