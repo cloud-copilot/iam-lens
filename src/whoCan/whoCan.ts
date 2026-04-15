@@ -17,7 +17,11 @@ import {
   loadPolicy
 } from '@cloud-copilot/iam-policy'
 import { type RequestDenial, type RequestGrant } from '@cloud-copilot/iam-simulate'
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import {
+  convertAssumedRoleArnToRoleArn,
+  isAssumedRoleArn,
+  splitArnParts
+} from '@cloud-copilot/iam-utils'
 import { Arn } from '../utils/arn.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'
@@ -625,7 +629,7 @@ export async function accountsToCheckBasedOnResourcePolicy(
         } else if (principal.isAccountPrincipal()) {
           accountsToCheck.specificAccounts.push(principal.accountId())
         } else {
-          accountsToCheck.specificPrincipals.push(principal.value())
+          accountsToCheck.specificPrincipals.push(convertSessionArnToRoleArn(principal.value()))
         }
       }
 
@@ -739,6 +743,20 @@ export async function accountsToCheckBasedOnResourcePolicy(
     }
   }
   return accountsToCheck
+}
+
+/**
+ * If the princpal arn is a session, converts it to the ARN of the assumed role.
+ * Otherwise returns the principal ARN as is.
+ *
+ * @param principalArn The principal ARN to convert.
+ * @returns The ARN of the assumed role if the principal ARN is a session, otherwise the original principal ARN.
+ */
+function convertSessionArnToRoleArn(principalArn: string): string {
+  if (!isAssumedRoleArn(principalArn)) {
+    return principalArn
+  }
+  return convertAssumedRoleArnToRoleArn(principalArn)
 }
 
 export async function actionsForWhoCan(

@@ -224,6 +224,10 @@ export async function simulateRequest(
     ...(simulationRequest.additionalStrictContextKeys ?? [])
   ]
 
+  if (!isIamRoleArn(simulationRequest.principal)) {
+    strictContextKeys.push(CONTEXT_KEYS.userId)
+  }
+
   if (!simulationRequest.principal.endsWith(':root')) {
     // Treat this as strict unless it is a root principal
     strictContextKeys.push(CONTEXT_KEYS.assumedRoot)

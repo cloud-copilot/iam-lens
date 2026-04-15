@@ -39,6 +39,18 @@
     "accountId": "200000000002",
     "region": "us-west-2"
   },
+  "who-can-session": {
+    "accountId": "200000000002",
+    "region": "us-west-2"
+  },
+  "who-can-session-userid": {
+    "accountId": "200000000002",
+    "region": "us-west-2"
+  },
+  "who-can-session-xacct": {
+    "accountId": "200000000002",
+    "region": "us-west-2"
+  },
   "wildcard-bucket": {
     "accountId": "100000000001",
     "region": "us-west-2"

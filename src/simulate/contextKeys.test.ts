@@ -14,9 +14,8 @@ const defaultSimulationRequest: SimulationRequest = {
 
 describe('createContextKeys', () => {
   describe('aws:PrincipalArn', () => {
-    it('should set aws:PrincipalArn from the simulation request', async () => {
-      //Given a simulation request with a principal ARN
-
+    it('should set aws:PrincipalArn to the principal ARN for IAM users', async () => {
+      // Given a simulation request with an IAM user principal ARN
       const principalArn = 'arn:aws:iam::123456789012:user/test-user'
       const simulationRequest: SimulationRequest = {
         ...defaultSimulationRequest,
@@ -31,12 +30,32 @@ describe('createContextKeys', () => {
         {}
       )
 
-      //Then aws:PrincipalArn should be set to the principal ARN
+      // Then aws:PrincipalArn should be set to the IAM user ARN
       expect(contextKeys['aws:PrincipalArn']).toBe(principalArn)
     })
 
+    it('should set aws:PrincipalArn to the role ARN for assumed-role principals', async () => {
+      // Given a simulation request with an assumed-role session ARN
+      const principalArn = 'arn:aws:sts::123456789012:assumed-role/MyRole/MySession'
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        principal: principalArn
+      }
+
+      // When creating context keys
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
+
+      // Then aws:PrincipalArn should be set to the base role ARN
+      expect(contextKeys['aws:PrincipalArn']).toBe('arn:aws:iam::123456789012:role/MyRole')
+    })
+
     it('should not set aws:PrincipalArn for service principal', async () => {
-      //Given a simulation request with a service principal
+      // Given a simulation request with a service principal
       const simulationRequest: SimulationRequest = {
         ...defaultSimulationRequest,
         principal: 'lambda.amazonaws.com'
@@ -50,7 +69,7 @@ describe('createContextKeys', () => {
         {}
       )
 
-      //Then aws:PrincipalArn should not be set
+      // Then aws:PrincipalArn should not be set
       expect(contextKeys['aws:PrincipalArn']).toBeUndefined()
     })
   })
@@ -449,6 +468,25 @@ describe('createContextKeys', () => {
       expect(contextKeys['aws:PrincipalType']).toBe('AssumedRole')
     })
 
+    it('should set aws:PrincipalType to AssumedRole for IAM roles', async () => {
+      // Given a simulation request with an assumed role principal
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        principal: 'arn:aws:iam::123456789012:role/MyRole'
+      }
+
+      // When creating context keys
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
+
+      // Then aws:PrincipalType should be 'AssumedRole'
+      expect(contextKeys['aws:PrincipalType']).toBe('AssumedRole')
+    })
+
     it('should set aws:PrincipalType to FederatedUser for federated user ARNs', async () => {
       // Given a simulation request with a federated user principal
       const simulationRequest: SimulationRequest = {
@@ -581,6 +619,44 @@ describe('createContextKeys', () => {
 
       // Then aws:userid should be 'AROAROLEID:MySession'
       expect(contextKeys['aws:userid']).toBe('AROAROLEID:MySession')
+    })
+
+    it('should not set aws:userid for IAM role principals', async () => {
+      //Given a simulation request with a bare role ARN
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        principal: 'arn:aws:iam::123456789012:role/MyRole'
+      }
+
+      //When creating context keys
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
+
+      //Then aws:userid should not be set
+      expect(contextKeys['aws:userid']).toBeUndefined()
+    })
+
+    it('should not set aws:userid for IAM role principals with a path', async () => {
+      //Given a simulation request with a role ARN that includes a path
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        principal: 'arn:aws:iam::123456789012:role/path/to/MyRole'
+      }
+
+      //When creating context keys
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
+
+      //Then aws:userid should not be set
+      expect(contextKeys['aws:userid']).toBeUndefined()
     })
 
     it('should not set aws:userid for service principals', async () => {

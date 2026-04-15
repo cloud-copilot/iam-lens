@@ -2279,6 +2279,143 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       checkAllForCurrentAccount: true
     }
   },
+  // --- Session ARN conversion (assumed-role) ---
+  {
+    name: 'should convert assumed-role session ARN to role ARN in Principal',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:sts::666666666666:assumed-role/MyRole/my-session'
+          },
+          Action: '*',
+          Resource: '*'
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: ['arn:aws:iam::666666666666:role/MyRole'],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
+    }
+  },
+  {
+    name: 'should convert assumed-role session ARN with path to role ARN in Principal',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:sts::666666666666:assumed-role/path/to/MyRole/my-session'
+          },
+          Action: '*',
+          Resource: '*'
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: ['arn:aws:iam::666666666666:role/path/to/MyRole'],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
+    }
+  },
+  {
+    name: 'should NOT convert assumed-role session ARN in PrincipalArn condition',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalArn': 'arn:aws:sts::777777777777:assumed-role/SpecificRole/session-123'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:sts::777777777777:assumed-role/SpecificRole/session-123'],
+      specificAccounts: ['000000000000'],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: true
+    }
+  },
+  {
+    name: 'should pass through non-session ARN unchanged in Principal',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:iam::666666666666:role/RegularRole'
+          },
+          Action: '*',
+          Resource: '*'
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: ['arn:aws:iam::666666666666:role/RegularRole'],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
+    }
+  },
+  {
+    name: 'should handle mix of session ARN and regular ARN in Principal',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: [
+              'arn:aws:sts::666666666666:assumed-role/RoleA/session-1',
+              'arn:aws:iam::777777777777:role/RoleB'
+            ]
+          },
+          Action: '*',
+          Resource: '*'
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['000000000000'],
+      specificPrincipals: [
+        'arn:aws:iam::666666666666:role/RoleA',
+        'arn:aws:iam::777777777777:role/RoleB'
+      ],
+      specificOrganizations: [],
+      specificOrganizationalUnits: [],
+      checkAnonymous: false,
+      checkAllForCurrentAccount: false
+    }
+  },
   // --- Cross-statement composition ---
   {
     name: 'explicit account principal statement + wildcard PrincipalArn statement unions correctly',

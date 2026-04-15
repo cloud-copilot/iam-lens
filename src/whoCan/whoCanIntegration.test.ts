@@ -92,6 +92,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:role/DynamoDbRole',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
           principal: 'arn:aws:iam::200000000002:role/S3AbacRole',
           service: 's3',
           level: 'list',
@@ -193,6 +200,126 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
       principalsNotFound: [
         'arn:aws:iam::999999999999:role/missing-role',
         'arn:aws:sts::999999999999:federated-user/Bob'
+      ]
+    }
+  },
+  {
+    name: 'same-account session ARN grants access via resource policy only',
+    description:
+      'DynamoDbRole has no S3 identity permissions. It only gets access because the resource policy grants to its session ARN.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-session',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/DynamoDbRole',
+          service: 's3',
+          resourceType: 'bucket',
+          dependsOnSessionName: true
+        },
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        }
+      ]
+    }
+  },
+  {
+    name: 'session ARN principal with aws:userid condition surfaces both flags',
+    description:
+      'Resource policy grants via a session ARN principal and has an aws:userid condition. ' +
+      'DynamoDbRole has no S3 identity permissions, so access comes entirely from the resource policy. ' +
+      'The result should carry dependsOnSessionName and surface the aws:userid condition.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-session-userid',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/DynamoDbRole',
+          service: 's3',
+          resourceType: 'bucket',
+          dependsOnSessionName: true,
+          conditions: {
+            resource: {
+              allow: [
+                {
+                  key: 'aws:userid',
+                  op: 'StringLike',
+                  values: ['*:my-session']
+                }
+              ]
+            }
+          }
+        },
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        }
+      ]
+    }
+  },
+  {
+    name: 'cross-account session ARN principal converts to role',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-session-xacct',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket',
+          dependsOnSessionName: true
+        }
       ]
     }
   },

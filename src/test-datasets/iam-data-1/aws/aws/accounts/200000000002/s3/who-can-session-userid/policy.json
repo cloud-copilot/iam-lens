@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SessionWithUserIdCondition",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": ["arn:aws:sts::200000000002:assumed-role/DynamoDbRole/my-session"]
+      },
+      "Action": ["s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::who-can-session-userid"],
+      "Condition": {
+        "StringLike": {
+          "aws:userid": "*:my-session"
+        }
+      }
+    }
+  ]
+}

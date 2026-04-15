@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SharingWithCrossAccountSessionArn",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": [
+          "arn:aws:sts::100000000001:assumed-role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5/session-abc"
+        ]
+      },
+      "Action": ["s3:ListBucket", "s3:GetObject"],
+      "Resource": ["arn:aws:s3:::who-can-session-xacct/*", "arn:aws:s3:::who-can-session-xacct"]
+    }
+  ]
+}

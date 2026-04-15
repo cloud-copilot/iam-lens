@@ -1,0 +1,5 @@
+{
+  "name": "who-can-session",
+  "region": "us-west-2",
+  "arn": "arn:aws:s3:::who-can-session"
+}
