@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/mixed-service-iam-target",
+  "name": "mixed-service-iam-target",
+  "id": "AROA0000MIXEDSVCIAM001",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}
