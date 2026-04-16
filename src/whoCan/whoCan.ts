@@ -10,12 +10,7 @@ import {
   iamServiceExists,
   type ResourceType
 } from '@cloud-copilot/iam-data'
-import {
-  type Condition,
-  type ConditionOperation,
-  type Statement,
-  loadPolicy
-} from '@cloud-copilot/iam-policy'
+import { type Condition, type ConditionOperation, loadPolicy } from '@cloud-copilot/iam-policy'
 import { type RequestDenial, type RequestGrant } from '@cloud-copilot/iam-simulate'
 import {
   convertAssumedRoleArnToRoleArn,
@@ -401,10 +396,16 @@ export interface AccountsToCheck {
   specificPrincipals: string[]
   specificOrganizations: string[]
   specificOrganizationalUnits: string[]
-  /** Tracking flag indicating that an IfExists condition was found, meaning anonymous (unsigned) requests could match. */
   checkAnonymous: boolean
-  /** Whether any Allow statement has a wildcard principal or NotPrincipal, requiring all principals from the resource account to be checked. */
-  checkAllForCurrentAccount: boolean
+  /**
+   * Whether the resource policy explicitly grants access to principals in the
+   * resource account. This is true when:
+   * - The policy has no narrowing conditions (open wildcard or NotPrincipal), or
+   * - The policy conditions explicitly reference the resource account, or
+   * - The policy narrows to orgs/OUs (which may include the resource account).
+   *
+   */
+  resourceAccountTrustedByPolicy: boolean
 }
 
 /**
@@ -569,29 +570,6 @@ function checkForServicePrincipalConditions(conditions: Condition[]): ServicePri
   return { type: 'not-service-only' }
 }
 
-/**
- * Determines whether a policy statement requires checking all principals from
- * the resource account. This is true when the statement is an Allow with a
- * wildcard principal (`*` or `{ AWS: "*" }`) or a `NotPrincipal` element,
- * since either form could grant access to any principal in the resource account.
- *
- * @param statement - The policy statement to check.
- * @returns `true` if the statement could allow any principal from the resource account.
- */
-export function statementRequiresAllFromResourceAccount(statement: Statement): boolean {
-  if (!statement.isAllow()) return false
-
-  if (statement.isNotPrincipalStatement()) return true
-
-  if (statement.isPrincipalStatement()) {
-    for (const principal of statement.principals()) {
-      if (principal.isWildcardPrincipal()) return true
-    }
-  }
-
-  return false
-}
-
 export async function accountsToCheckBasedOnResourcePolicy(
   resourcePolicy: any,
   resourceAccount: string | undefined
@@ -603,10 +581,7 @@ export async function accountsToCheckBasedOnResourcePolicy(
     specificOrganizations: [],
     specificOrganizationalUnits: [],
     checkAnonymous: false,
-    checkAllForCurrentAccount: false
-  }
-  if (resourceAccount) {
-    accountsToCheck.specificAccounts.push(resourceAccount)
+    resourceAccountTrustedByPolicy: false
   }
   if (!resourcePolicy) {
     return accountsToCheck
@@ -614,11 +589,9 @@ export async function accountsToCheckBasedOnResourcePolicy(
 
   const policy = loadPolicy(resourcePolicy)
   for (const statement of policy.statements()) {
-    if (statementRequiresAllFromResourceAccount(statement)) {
-      accountsToCheck.checkAllForCurrentAccount = true
-    }
     if (statement.isAllow() && statement.isNotPrincipalStatement()) {
       accountsToCheck.allAccounts = true
+      accountsToCheck.resourceAccountTrustedByPolicy = true
     }
     if (statement.isAllow() && statement.isPrincipalStatement()) {
       const principals = statement.principals()
@@ -628,6 +601,9 @@ export async function accountsToCheckBasedOnResourcePolicy(
           hasWildcardPrincipal = true
         } else if (principal.isAccountPrincipal()) {
           accountsToCheck.specificAccounts.push(principal.accountId())
+          if (principal.accountId() === resourceAccount) {
+            accountsToCheck.resourceAccountTrustedByPolicy = true
+          }
         } else {
           accountsToCheck.specificPrincipals.push(convertSessionArnToRoleArn(principal.value()))
         }
@@ -732,16 +708,25 @@ export async function accountsToCheckBasedOnResourcePolicy(
         }
         if (specificAccounts.length > 0) {
           accountsToCheck.specificAccounts.push(...specificAccounts)
+          if (resourceAccount && specificAccounts.includes(resourceAccount)) {
+            accountsToCheck.resourceAccountTrustedByPolicy = true
+          }
         } else if (specificOus.length > 0) {
           accountsToCheck.specificOrganizationalUnits.push(...specificOus)
+          // The resource account may be in these OUs; conservatively assume trusted
+          accountsToCheck.resourceAccountTrustedByPolicy = true
         } else if (specificOrgs.length > 0) {
           accountsToCheck.specificOrganizations.push(...specificOrgs)
+          // The resource account may be in these orgs; conservatively assume trusted
+          accountsToCheck.resourceAccountTrustedByPolicy = true
         } else if (specificPrincipals.length === 0) {
           accountsToCheck.allAccounts = true
+          accountsToCheck.resourceAccountTrustedByPolicy = true
         }
       }
     }
   }
+
   return accountsToCheck
 }
 

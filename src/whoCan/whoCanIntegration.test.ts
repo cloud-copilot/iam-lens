@@ -861,19 +861,22 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
             },
             {
               orgIdentifier: 'r-dh2e',
-              policyIdentifier: 'RCPFullAWSAccess',
+              policyIdentifier:
+                'arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess',
               policyType: 'rcp',
               statementIndex: 1
             },
             {
               orgIdentifier: 'ou-dh2e-aps19rip',
-              policyIdentifier: 'RCPFullAWSAccess',
+              policyIdentifier:
+                'arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess',
               policyType: 'rcp',
               statementIndex: 1
             },
             {
               orgIdentifier: '200000000002',
-              policyIdentifier: 'RCPFullAWSAccess',
+              policyIdentifier:
+                'arn:aws:organizations::aws:policy/resource_control_policy/p-RCPFullAWSAccess',
               policyType: 'rcp',
               statementIndex: 1
             },
@@ -1333,6 +1336,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/kms-user',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/local-alpha',
           service: 'sts',
           level: 'write',
@@ -1347,7 +1357,21 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/mixed-service-iam-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/no-condition-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/org-trust-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1389,6 +1413,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-only-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/service-name-target',
           service: 'sts',
           level: 'write',
@@ -1404,6 +1435,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/tagged-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/unnamed-service-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1474,6 +1512,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/kms-user',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/local-alpha',
           service: 'sts',
           level: 'write',
@@ -1495,7 +1540,21 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/mixed-service-iam-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/no-condition-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/org-trust-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1537,6 +1596,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-only-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/service-name-target',
           service: 'sts',
           level: 'write',
@@ -1558,6 +1624,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/unnamed-service-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/wildcard-match-target',
           service: 'sts',
           level: 'write',
@@ -1565,6 +1638,28 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         }
       ],
       allAccountsChecked: true
+    }
+  },
+
+  {
+    name: 'service-only trust policy returns no IAM principals',
+    description:
+      'Trust policy with only a Service principal (s3.amazonaws.com). No IAM principals should be checked because the trust policy does not trust the resource account.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:iam::400000000002:role/service-only-target',
+      actions: ['sts:AssumeRole']
+    },
+    expected: {
+      who: [
+        {
+          action: 'AssumeRole',
+          principal: 's3.amazonaws.com',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        }
+      ]
     }
   },
 
@@ -1647,6 +1742,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/kms-user',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/local-beta',
           service: 'sts',
           level: 'write',
@@ -1661,7 +1763,21 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/mixed-service-iam-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/no-condition-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/org-trust-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1703,6 +1819,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-only-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/service-name-target',
           service: 'sts',
           level: 'write',
@@ -1718,6 +1841,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/tagged-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/unnamed-service-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1860,6 +1990,54 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
+    name: 'wildcard principal with unnamed service-only condition returns no principals',
+    description:
+      'Trust policy with Principal:"*" and Bool aws:PrincipalIsAWSService=true (no PrincipalServiceName). The unnamed-service-only branch continues without setting resourceAccountTrustedByPolicy, so no IAM principals or named service principals are found.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:iam::400000000002:role/unnamed-service-target',
+      actions: ['sts:AssumeRole']
+    },
+    expected: {
+      who: []
+    }
+  },
+  {
+    name: 'mixed service-only statement plus IAM account grant returns union',
+    description:
+      'Trust policy with two statements: one wildcard + named PrincipalServiceName (service-only) and one explicit cross-account root principal. Expected: union of the named service principal and the cross-account IAM principals, with no accidental same-account IAM roles.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:iam::400000000002:role/mixed-service-iam-target',
+      actions: ['sts:AssumeRole']
+    },
+    expected: {
+      who: [
+        {
+          action: 'AssumeRole',
+          principal: 'lambda.amazonaws.com',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000001:role/alpha-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000001:role/beta-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        }
+      ]
+    }
+  },
+  {
     name: 'literal PrincipalAccount via StringLike narrows to matching account',
     description:
       'Trust policy with StringLike aws:PrincipalAccount = "400000000001" (literal value, no wildcards). The StringLike-with-literal narrowing is new and was previously only unit-tested. Expected: only principals in account 400000000001 with sts:AssumeRole permission.',
@@ -1930,6 +2108,372 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
+    name: 'KMS same-account CallerAccount — all same-account principals allowed by key policy',
+    description:
+      'KMS key policy with kms:CallerAccount = resource account. resourceAccountTrustedByPolicy is true, so allFromAccount is set and all same-account principals are enumerated. The key policy grants access to the entire account, so all same-account principals are allowed regardless of identity-side kms:Decrypt permission.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:kms:us-east-1:400000000002:key/test-key-same-account',
+      actions: ['kms:Decrypt']
+    },
+    expected: {
+      who: [
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/deny-derived-allow-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/deny-explicit-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/duplicate-specific-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/exact-match-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/kms-user',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/local-alpha',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/local-beta',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/mixed-grant-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/mixed-service-iam-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/no-condition-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/not-principal-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/org-trust-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/principal-account-stringlike-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/replacement-var-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/resource-acct-bypass-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/s3-reader',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/service-name-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/service-name-wins-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/service-only-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/tagged-role',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/unnamed-service-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/wildcard-match-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        }
+      ]
+    }
+  },
+  {
+    name: 'org trust — PrincipalOrgID conservative trust includes same-account principals',
+    description:
+      'Trust policy with Principal:"*" and aws:PrincipalOrgID = o-44444444. resourceAccountTrustedByPolicy is conservatively true (org may include the resource account). allFromAccount is set, so all same-account principals are enumerated. Both accounts (400000000001, 400000000002) are in the org, so cross-account principals with identity-side sts:AssumeRole are also included.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:iam::400000000002:role/org-trust-target',
+      actions: ['sts:AssumeRole']
+    },
+    expected: {
+      who: [
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000001:role/alpha-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000001:role/beta-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/deny-derived-allow-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/deny-explicit-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/duplicate-specific-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/exact-match-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/kms-user',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/local-alpha',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/local-beta',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/mixed-grant-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/mixed-service-iam-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/no-condition-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/not-principal-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/org-trust-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/principal-account-stringlike-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/replacement-var-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/resource-acct-bypass-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/s3-reader',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-name-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-name-wins-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-only-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/tagged-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/unnamed-service-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/wildcard-match-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        }
+      ]
+    }
+  },
+  {
+    name: 'principalScope aimed at same-account principal with service-only trust returns empty',
+    description:
+      'Scope to a same-account IAM principal against a role whose trust policy only allows a service principal. The scoped principal is enqueued but the simulation denies it because the trust policy does not match. The service principal is not in the scope so it is also excluded.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:iam::400000000002:role/service-only-target',
+      actions: ['sts:AssumeRole'],
+      principalScope: {
+        principals: ['arn:aws:iam::400000000002:role/local-alpha']
+      }
+    },
+    expected: {
+      who: []
+    }
+  },
+  {
     name: 'duplicate specific principal from explicit principal + PrincipalArn condition',
     description:
       'Trust policy where the same principal appears in specificPrincipals twice: once from an explicit Principal element (stmt1) and once from a StringEquals aws:PrincipalArn condition (stmt2). The result must contain the principal exactly once.',
@@ -1953,7 +2497,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   {
     name: 'S3 bucket with no bucket policy — same-account identity-based access found',
     description:
-      'S3 bucket with no bucket policy. Same-account principals with identity-based s3:ListBucket permission should still be found. Without checkAllForCurrentAccount the index path may miss same-account principals that only have identity-based access.',
+      'S3 bucket with no bucket policy. Same-account principals with identity-based s3:ListBucket permission should still be found because the resource account is always included in the search for non-untrusting actions.',
     data: '2',
     request: {
       resource: 'arn:aws:s3:::no-policy-bucket',

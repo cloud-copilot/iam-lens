@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/service-only-target",
+  "name": "service-only-target",
+  "id": "AROA0000SVCONLY0000001",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}

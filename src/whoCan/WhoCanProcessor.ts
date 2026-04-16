@@ -30,6 +30,7 @@ import {
   isServicePrincipal
 } from '@cloud-copilot/iam-utils'
 import { buildPrincipalArnFilter, principalMatchesFilter } from './principalArnFilter.js'
+import { actionsThatDoNotAutomaticallyTrustTheCurrentAccount } from './untrustingActions.js'
 import { type WorkerBootstrapPlugin } from './workerBootstrapPlugin.js'
 import { log } from '@cloud-copilot/log'
 
@@ -890,6 +891,8 @@ export class WhoCanProcessor {
       throw new Error('No valid actions provided or found for the resource.')
     }
 
+    const untrustingActions = await actionsThatDoNotAutomaticallyTrustTheCurrentAccount()
+
     let resourcePolicy: any = undefined
     if (resource) {
       resourcePolicy = await getResourcePolicyForResource(collectClient, resource, resourceAccount)
@@ -919,14 +922,21 @@ export class WhoCanProcessor {
     state.organizationalUnitsNotFound = uniqueAccounts.organizationalUnitsNotFound
     state.allAccountsChecked = request.principalScope ? false : accountsToCheck.allAccounts
 
-    let accountsForSearch = uniqueAccounts.accounts
+    // The resource account is always a candidate for search — for non-untrusting
+    // actions same-account principals can access via identity policy alone. Include
+    // it in the base accounts list so the principalScope intersection can see it.
+    const baseAccounts = uniqueAccounts.accounts.includes(resourceAccount)
+      ? uniqueAccounts.accounts
+      : [...uniqueAccounts.accounts, resourceAccount]
+
+    let accountsForSearch = baseAccounts
     let principalsForSearch = accountsToCheck.specificPrincipals
     let scopeIncludesResourceAccount = true
 
     if (request.principalScope) {
       const resolved = await resolvePrincipalScope(collectClient, request.principalScope)
       const intersection = intersectWithPrincipalScope(
-        uniqueAccounts.accounts,
+        baseAccounts,
         accountsToCheck.specificPrincipals,
         accountsToCheck.allAccounts,
         resolved.accounts,
@@ -956,15 +966,27 @@ export class WhoCanProcessor {
           try {
             if (state.settled) return
 
-            const allFromAccount =
-              scopeIncludesResourceAccount && accountsToCheck.checkAllForCurrentAccount
-                ? resourceAccount
-                : undefined
+            // Pre-compute an accounts list without the resource account for
+            // untrusting actions where the policy does not trust it.
+            const accountsWithoutResourceAccount =
+              scopeIncludesResourceAccount && !accountsToCheck.resourceAccountTrustedByPolicy
+                ? accountsForSearch.filter((a) => a !== resourceAccount)
+                : accountsForSearch
 
             for (const action of actions) {
+              const isUntrusting = untrustingActions.has(action.toLowerCase())
+              const allFromAccount =
+                scopeIncludesResourceAccount && accountsToCheck.resourceAccountTrustedByPolicy
+                  ? resourceAccount
+                  : undefined
+
+              const actionAccountsForSearch = isUntrusting
+                ? accountsWithoutResourceAccount
+                : accountsForSearch
+
               const indexedPrincipals = await collectClient.getPrincipalsWithActionAllowed(
                 allFromAccount,
-                accountsForSearch,
+                actionAccountsForSearch,
                 action
               )
               for (const principal of indexedPrincipals || []) {
