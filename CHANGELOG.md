@@ -1,3 +1,10 @@
+## [0.1.113](https://github.com/cloud-copilot/iam-lens/compare/v0.1.112...v0.1.113) (2026-04-16)
+
+
+### Features
+
+* Improved performance for whoCan on roles and keys ([e0aadfc](https://github.com/cloud-copilot/iam-lens/commit/e0aadfc8b4d22a1d2e0881c70d3bfbdfbb845ace))
+
 ## [0.1.112](https://github.com/cloud-copilot/iam-lens/compare/v0.1.111...v0.1.112) (2026-04-15)
 
 
