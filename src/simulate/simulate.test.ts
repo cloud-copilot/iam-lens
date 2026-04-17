@@ -1,8 +1,8 @@
-import { EvaluationResult } from '@cloud-copilot/iam-simulate'
-import { assert, describe, expect, it, vi } from 'vitest'
+import { type EvaluationResult } from '@cloud-copilot/iam-simulate'
+import { assert, describe, expect, it } from 'vitest'
 import { testStore } from '../collect/inMemoryClient.js'
 import { saveRole, saveUser } from '../utils/testUtils.js'
-import { resultMatchesExpectation, simulateRequest, SimulationRequest } from './simulate.js'
+import { resultMatchesExpectation, simulateRequest, type SimulationRequest } from './simulate.js'
 
 describe('simulateRequest', () => {
   it('should throw an error if the resource account id cannot be determined', async () => {
