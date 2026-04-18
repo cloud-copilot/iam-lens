@@ -1,0 +1,5 @@
+{
+  "arn": "arn:aws:kms:us-east-1:400000000002:key/test-key-account-root",
+  "name": "test-key-account-root",
+  "region": "us-east-1"
+}

@@ -976,7 +976,7 @@ export class WhoCanProcessor {
             for (const action of actions) {
               const isUntrusting = untrustingActions.has(action.toLowerCase())
               const allFromAccount =
-                scopeIncludesResourceAccount && accountsToCheck.resourceAccountTrustedByPolicy
+                scopeIncludesResourceAccount && accountsToCheck.checkAllFromResourceAccount
                   ? resourceAccount
                   : undefined
 
