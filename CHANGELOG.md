@@ -1,3 +1,10 @@
+## [0.1.115](https://github.com/cloud-copilot/iam-lens/compare/v0.1.114...v0.1.115) (2026-04-20)
+
+
+### Features
+
+* Improve performance for KMS and STS in the same account. Add tests to detect performance scoping regressions ([2901bf4](https://github.com/cloud-copilot/iam-lens/commit/2901bf42f27205169cecfa875748a5f5b2575f11))
+
 ## [0.1.114](https://github.com/cloud-copilot/iam-lens/compare/v0.1.113...v0.1.114) (2026-04-17)
 
 ## [0.1.113](https://github.com/cloud-copilot/iam-lens/compare/v0.1.112...v0.1.113) (2026-04-16)
