@@ -26,11 +26,16 @@ interface WhoCanIntegrationTest {
     principalsNotFound?: string[]
   }
   expectedDenyDetails?: WhoCanDenyDetail[]
+  simulationCounts?: {
+    withIndex: number
+    withoutIndex: number
+  }
 }
 
 const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   {
     name: 'within account and no resource policy',
+    simulationCounts: { withoutIndex: 3, withIndex: 1 },
     data: '1',
     request: {
       actions: ['ec2:TerminateInstances'],
@@ -51,6 +56,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'within account wildcard action',
+    simulationCounts: { withoutIndex: 5, withIndex: 2 },
     data: '1',
     request: {
       resourceAccount: '100000000002',
@@ -76,6 +82,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'within an organization',
+    simulationCounts: { withoutIndex: 7, withIndex: 7 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::who-can-org',
@@ -132,6 +139,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'shared with an account',
+    simulationCounts: { withoutIndex: 11, withIndex: 5 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::who-can-acct',
@@ -167,6 +175,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'shared with specific principals',
+    simulationCounts: { withoutIndex: 7, withIndex: 5 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::who-can-principal',
@@ -205,6 +214,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'same-account session ARN grants access via resource policy only',
+    simulationCounts: { withoutIndex: 6, withIndex: 5 },
     description:
       'DynamoDbRole has no S3 identity permissions. It only gets access because the resource policy grants to its session ARN.',
     data: '1',
@@ -241,6 +251,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'session ARN principal with aws:userid condition surfaces both flags',
+    simulationCounts: { withoutIndex: 6, withIndex: 5 },
     description:
       'Resource policy grants via a session ARN principal and has an aws:userid condition. ' +
       'DynamoDbRole has no S3 identity permissions, so access comes entirely from the resource policy. ' +
@@ -290,6 +301,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'cross-account session ARN principal converts to role',
+    simulationCounts: { withoutIndex: 7, withIndex: 5 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::who-can-session-xacct',
@@ -325,6 +337,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'S3 object wildcard (prefix)',
+    simulationCounts: { withoutIndex: 3, withIndex: 3 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::wildcard-bucket/reports/*',
@@ -366,6 +379,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'S3 object wildcard (different prefix)',
+    simulationCounts: { withoutIndex: 3, withIndex: 3 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::wildcard-bucket/other/*',
@@ -391,6 +405,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'S3 object wildcard (explicit deny subset)',
+    simulationCounts: { withoutIndex: 3, withIndex: 3 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::wildcard-bucket/reports/private/*',
@@ -462,6 +477,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'S3 object wildcard (explicit deny subset) with grant details',
+    simulationCounts: { withoutIndex: 3, withIndex: 3 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::wildcard-bucket/reports/private/*',
@@ -501,6 +517,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'S3 object single resource (explicit deny)',
+    simulationCounts: { withoutIndex: 3, withIndex: 3 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::wildcard-bucket/reports/private/report.pdf',
@@ -555,6 +572,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'trust policy with service principal',
+    simulationCounts: { withoutIndex: 7, withIndex: 1 },
     data: '1',
     request: {
       resource: 'arn:aws:iam::200000000002:role/LambdaRole',
@@ -574,6 +592,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'ListBucket with condition',
+    simulationCounts: { withoutIndex: 6, withIndex: 4 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::vpc-bucket',
@@ -604,6 +623,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'ListBucket with condition and no strictContextKeys',
+    simulationCounts: { withoutIndex: 6, withIndex: 4 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::vpc-bucket',
@@ -634,6 +654,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'ListBucket with condition and strictContextKeys aws:SourceVpc',
+    simulationCounts: { withoutIndex: 6, withIndex: 4 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::vpc-bucket',
@@ -665,6 +686,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'ListBucket with tags and ABAC',
+    simulationCounts: { withoutIndex: 6, withIndex: 4 },
     description:
       'This checks against a bucket with tags that has ABAC enabled so the ABAC role should have access',
     data: '1',
@@ -700,6 +722,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'ListBucket with tags and ABAC but no matching users',
+    simulationCounts: { withoutIndex: 6, withIndex: 4 },
     description:
       'This checks against a bucket with tags that has ABAC enabled but with different tags, so the ABAC role should not have access',
     data: '1',
@@ -728,6 +751,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'ListBucket with tags and ABAC, override s3Abac to disabled',
+    simulationCounts: { withoutIndex: 6, withIndex: 4 },
     description:
       'This checks against a bucket with tags that has ABAC enabled but the override is set to disabled, so the ABAC role should not have access',
     data: '1',
@@ -757,6 +781,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'ListBucket with tags and no ABAC, override s3Abac to enabled',
+    simulationCounts: { withoutIndex: 6, withIndex: 4 },
     description:
       'This checks against a bucket with tags that has ABAC disabled, but override is set to enabled, so the ABAC role should have access',
     data: '1',
@@ -793,6 +818,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'single resource with grant details',
+    simulationCounts: { withoutIndex: 3, withIndex: 1 },
     data: '1',
     request: {
       actions: ['ec2:TerminateInstances'],
@@ -828,6 +854,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'single resource with grant details (s3 list bucket)',
+    simulationCounts: { withoutIndex: 6, withIndex: 4 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::vpc-bucket',
@@ -908,6 +935,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'wildcard resource with grant details',
+    simulationCounts: { withoutIndex: 3, withIndex: 3 },
     data: '1',
     request: {
       resource: 'arn:aws:s3:::wildcard-bucket/reports/*',
@@ -979,6 +1007,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope with matching account limits results',
+    simulationCounts: { withoutIndex: 6, withIndex: 4 },
     description:
       'Same as "shared with an account" but with principalScope limiting to only account 200000000002',
     data: '1',
@@ -1009,6 +1038,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope with specific principals limits to those principals',
+    simulationCounts: { withoutIndex: 1, withIndex: 1 },
     description:
       'Same as "shared with specific principals" but scope limits to just one of the cross-account principals. Missing principals from the resource policy are filtered out by the scope intersection.',
     data: '1',
@@ -1033,6 +1063,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope with no overlap returns empty allowed',
+    simulationCounts: { withoutIndex: 0, withIndex: 0 },
     description: 'When scope accounts do not overlap with resource policy accounts, no results',
     data: '1',
     request: {
@@ -1046,6 +1077,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope with same-account principal only does not widen to whole account',
+    simulationCounts: { withoutIndex: 1, withIndex: 1 },
     description:
       'When scope contains only a specific principal ARN, only that principal is tested — the account is not searched broadly',
     data: '1',
@@ -1073,6 +1105,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope with account and principal for same account does not duplicate results',
+    simulationCounts: { withoutIndex: 5, withIndex: 1 },
     description:
       'When scope has both accounts and principals for the same account, the principal is covered by the account loop and should not appear twice',
     data: '1',
@@ -1102,6 +1135,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope with service principal when resource policy names it',
+    simulationCounts: { withoutIndex: 1, withIndex: 1 },
     description:
       'LambdaRole trust policy names lambda.amazonaws.com. Scoping to that service principal should find it.',
     data: '1',
@@ -1126,6 +1160,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope with service principal when resource policy does not name it',
+    simulationCounts: { withoutIndex: 0, withIndex: 0 },
     description:
       'The who-can-acct bucket policy does not name any service principal. Scoping to lambda.amazonaws.com should find nothing.',
     data: '1',
@@ -1143,6 +1178,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope with bad OU path returns empty results',
+    simulationCounts: { withoutIndex: 0, withIndex: 0 },
     description:
       'When the scope contains an OU path that does not exist, it resolves to no accounts and produces no results',
     data: '1',
@@ -1160,6 +1196,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope with empty scope returns empty results',
+    simulationCounts: { withoutIndex: 0, withIndex: 0 },
     description:
       'An empty principalScope ({}) resolves to no accounts and no principals, so nothing is tested',
     data: '1',
@@ -1178,6 +1215,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
 
   {
     name: 'same-account exact PrincipalArn trust policy',
+    simulationCounts: { withoutIndex: 24, withIndex: 1 },
     description:
       'Trust policy with Principal:"*" and StringEquals aws:PrincipalArn narrows to exactly one same-account principal. Duplicate canary: the principal must appear exactly once.',
     data: '2',
@@ -1199,6 +1237,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'cross-account wildcard PrincipalArn trust policy',
+    simulationCounts: { withoutIndex: 25, withIndex: 1 },
     description:
       'Trust policy with Principal:"*" and ArnLike aws:PrincipalArn narrows to cross-account principals matching the wildcard pattern.',
     data: '2',
@@ -1220,6 +1259,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'wildcard trust policy with PrincipalServiceName condition',
+    simulationCounts: { withoutIndex: 25, withIndex: 1 },
     description:
       'Trust policy with Principal:"*" and StringEquals aws:PrincipalServiceName extracts the named service principal. Functional delta from main branch.',
     data: '2',
@@ -1241,6 +1281,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'mixed explicit account grant plus wildcard PrincipalArn',
+    simulationCounts: { withoutIndex: 26, withIndex: 26 },
     description:
       'Trust policy with two statements: one granting an explicit account, another with wildcard + ArnLike PrincipalArn. Expected: union of account-granted principals and pattern-matched principals. Index/non-index divergence canary.',
     data: '2',
@@ -1283,6 +1324,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'NotPrincipal trust policy excludes named principal',
+    simulationCounts: { withoutIndex: 26, withIndex: 26 },
     description:
       'Trust policy with Allow + NotPrincipal excludes the named principal. PrincipalArn filter is not built (safety: NotPrincipal). All eligible principals except the excluded one should appear. Same-account roles can assume without identity-side sts:AssumeRole permission.',
     data: '2',
@@ -1302,6 +1344,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000001:role/beta-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/account-root-trust-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1364,6 +1413,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/negative-arnnotlike-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/no-condition-target',
           service: 'sts',
           level: 'write',
@@ -1413,13 +1469,6 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
-          principal: 'arn:aws:iam::400000000002:role/service-only-target',
-          service: 'sts',
-          level: 'write',
-          resourceType: 'role'
-        },
-        {
-          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/service-name-target',
           service: 'sts',
           level: 'write',
@@ -1428,6 +1477,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/service-name-wins-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-only-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1459,6 +1515,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'wildcard trust policy with no conditions (safety valve)',
+    simulationCounts: { withoutIndex: 26, withIndex: 26 },
     description:
       'Trust policy with Principal:"*" and no conditions. PrincipalArn filter is not built. All principals with sts:AssumeRole permission are checked. Same-account roles can assume without identity-side sts:AssumeRole permission.',
     data: '2',
@@ -1478,6 +1535,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000001:role/beta-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/account-root-trust-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1547,6 +1611,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/negative-arnnotlike-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/no-condition-target',
           service: 'sts',
           level: 'write',
@@ -1554,14 +1625,14 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
-          principal: 'arn:aws:iam::400000000002:role/org-trust-target',
+          principal: 'arn:aws:iam::400000000002:role/not-principal-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
         },
         {
           action: 'AssumeRole',
-          principal: 'arn:aws:iam::400000000002:role/not-principal-target',
+          principal: 'arn:aws:iam::400000000002:role/org-trust-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1596,13 +1667,6 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
-          principal: 'arn:aws:iam::400000000002:role/service-only-target',
-          service: 'sts',
-          level: 'write',
-          resourceType: 'role'
-        },
-        {
-          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/service-name-target',
           service: 'sts',
           level: 'write',
@@ -1611,6 +1675,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/service-name-wins-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-only-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1643,6 +1714,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
 
   {
     name: 'service-only trust policy returns no IAM principals',
+    simulationCounts: { withoutIndex: 25, withIndex: 1 },
     description:
       'Trust policy with only a Service principal (s3.amazonaws.com). No IAM principals should be checked because the trust policy does not trust the resource account.',
     data: '2',
@@ -1667,6 +1739,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
 
   {
     name: 'deny-derived allow via StringNotLike narrows to matching principals',
+    simulationCounts: { withoutIndex: 1, withIndex: 1 },
     description:
       'Trust policy with Allow (broad PrincipalArn) + Deny with StringNotLike PrincipalArn. The deny blocks everyone NOT matching the pattern, creating an effective allow-list. Only principals matching the deny pattern survive. Deny-derived filtering applies to ALL principals including resource-account.',
     data: '2',
@@ -1689,6 +1762,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'explicit deny via StringLike blocks matching principal including resource-account',
+    simulationCounts: { withoutIndex: 25, withIndex: 25 },
     description:
       'Trust policy with Allow (broad PrincipalArn) + Deny with StringLike PrincipalArn targeting local-alpha. Verifies that resource-account principals are NOT exempt from deny-side filtering (asymmetry with allow-side exemption). local-alpha should be denied even though it is in the resource account.',
     data: '2',
@@ -1708,6 +1782,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000001:role/beta-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/account-root-trust-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1770,6 +1851,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/negative-arnnotlike-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/no-condition-target',
           service: 'sts',
           level: 'write',
@@ -1819,13 +1907,6 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         },
         {
           action: 'AssumeRole',
-          principal: 'arn:aws:iam::400000000002:role/service-only-target',
-          service: 'sts',
-          level: 'write',
-          resourceType: 'role'
-        },
-        {
-          action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/service-name-target',
           service: 'sts',
           level: 'write',
@@ -1834,6 +1915,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/service-name-wins-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-only-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -1865,6 +1953,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'replacement variable in PrincipalArn prevents filter from being built',
+    simulationCounts: { withoutIndex: 26, withIndex: 26 },
     description:
       'Trust policy has two wildcard-Allow statements: one with a replacement variable in PrincipalArn (unusable for static filtering) and one with a literal pattern. Because the first statement lacks a usable filter, buildPrincipalArnFilter returns undefined and no pre-filtering occurs. All principals are simulated; alpha-role matches stmt2 literal pattern, tagged-role matches stmt1 because its team tag resolves to its own ARN.',
     data: '2',
@@ -1894,6 +1983,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope intersects with PrincipalArn filter',
+    simulationCounts: { withoutIndex: 2, withIndex: 2 },
     description:
       'Mixed-grant trust policy (account grant for 400000000001 + wildcard ArnLike for local-*) combined with principalScope limiting to account 400000000001. Only the intersection is returned: principals in 400000000001 that the trust policy allows. The pattern-matched local-* principals in 400000000002 are excluded by scope.',
     data: '2',
@@ -1928,6 +2018,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
 
   {
     name: 'resource-account principals bypass allow-side PrincipalArn filter',
+    simulationCounts: { withoutIndex: 25, withIndex: 4 },
     description:
       'Trust policy grants the resource account explicitly (stmt1) and has a wildcard PrincipalArn pattern matching only cross-account roles (stmt2). Resource-account principals do not match the PrincipalArn pattern but must still appear because (a) they bypass the allow-side filter via the resource-account / exemptAccounts exemption and (b) the account grant in stmt1 allows them in simulation. Note: Principal:{"AWS":"ACCOUNT"} (unlike Principal:"*") requires identity-side sts:AssumeRole — only roles with that permission appear.',
     data: '2',
@@ -1970,6 +2061,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'named service principal wins over unnamed service-only keys',
+    simulationCounts: { withoutIndex: 25, withIndex: 1 },
     description:
       'Trust policy with both aws:PrincipalIsAWSService=true and aws:PrincipalServiceName=lambda.amazonaws.com in the same statement. The named service key (PrincipalServiceName) takes precedence over the unnamed service-only key (PrincipalIsAWSService) and the statement is treated as granting the named service principal, not as an unnamed service-only statement to skip.',
     data: '2',
@@ -1991,6 +2083,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'wildcard principal with unnamed service-only condition returns no principals',
+    simulationCounts: { withoutIndex: 24, withIndex: 0 },
     description:
       'Trust policy with Principal:"*" and Bool aws:PrincipalIsAWSService=true (no PrincipalServiceName). The unnamed-service-only branch continues without setting resourceAccountTrustedByPolicy, so no IAM principals or named service principals are found.',
     data: '2',
@@ -2004,6 +2097,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'mixed service-only statement plus IAM account grant returns union',
+    simulationCounts: { withoutIndex: 27, withIndex: 3 },
     description:
       'Trust policy with two statements: one wildcard + named PrincipalServiceName (service-only) and one explicit cross-account root principal. Expected: union of the named service principal and the cross-account IAM principals, with no accidental same-account IAM roles.',
     data: '2',
@@ -2039,6 +2133,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'literal PrincipalAccount via StringLike narrows to matching account',
+    simulationCounts: { withoutIndex: 26, withIndex: 2 },
     description:
       'Trust policy with StringLike aws:PrincipalAccount = "400000000001" (literal value, no wildcards). The StringLike-with-literal narrowing is new and was previously only unit-tested. Expected: only principals in account 400000000001 with sts:AssumeRole permission.',
     data: '2',
@@ -2067,6 +2162,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'KMS kms:CallerAccount positive — principals in matching account are allowed',
+    simulationCounts: { withoutIndex: 26, withIndex: 2 },
     description:
       'KMS key policy with kms:CallerAccount = 400000000001. Only principals in that account with kms:Decrypt identity permission should be allowed. This is the first end-to-end KMS coverage for the CallerAccount narrowing logic.',
     data: '2',
@@ -2095,6 +2191,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'KMS kms:CallerAccount negative — non-existent account returns empty',
+    simulationCounts: { withoutIndex: 24, withIndex: 0 },
     description:
       'KMS key policy with kms:CallerAccount = 999999999999 (account not in dataset). Expected: no principals found, account reported as not found.',
     data: '2',
@@ -2109,6 +2206,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'KMS same-account CallerAccount — all same-account principals allowed by key policy',
+    simulationCounts: { withoutIndex: 24, withIndex: 24 },
     description:
       'KMS key policy with kms:CallerAccount = resource account. resourceAccountTrustedByPolicy is true, so allFromAccount is set and all same-account principals are enumerated. The key policy grants access to the entire account, so all same-account principals are allowed regardless of identity-side kms:Decrypt permission.',
     data: '2',
@@ -2118,6 +2216,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     },
     expected: {
       who: [
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/account-root-trust-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
         {
           action: 'Decrypt',
           principal: 'arn:aws:iam::400000000002:role/deny-derived-allow-target',
@@ -2177,6 +2282,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'Decrypt',
           principal: 'arn:aws:iam::400000000002:role/mixed-service-iam-target',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        },
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/negative-arnnotlike-target',
           service: 'kms',
           level: 'write',
           resourceType: 'key'
@@ -2276,15 +2388,78 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
-    name: 'org trust — PrincipalOrgID conservative trust includes same-account principals',
+    name: 'KMS account-root principal — only principals with identity-side kms:Decrypt are checked',
+    simulationCounts: { withoutIndex: 24, withIndex: 1 },
     description:
-      'Trust policy with Principal:"*" and aws:PrincipalOrgID = o-44444444. resourceAccountTrustedByPolicy is conservatively true (org may include the resource account). allFromAccount is set, so all same-account principals are enumerated. Both accounts (400000000001, 400000000002) are in the org, so cross-account principals with identity-side sts:AssumeRole are also included.',
+      'KMS key policy with Principal set to the resource account root (arn:aws:iam::400000000002:root), not a wildcard. Only principals with the permission in their identity policy should be tested on the principal index path.',
     data: '2',
     request: {
-      resource: 'arn:aws:iam::400000000002:role/org-trust-target',
+      resource: 'arn:aws:kms:us-east-1:400000000002:key/test-key-account-root',
+      actions: ['kms:Decrypt']
+    },
+    expected: {
+      who: [
+        {
+          action: 'Decrypt',
+          principal: 'arn:aws:iam::400000000002:role/kms-user',
+          service: 'kms',
+          level: 'write',
+          resourceType: 'key'
+        }
+      ]
+    }
+  },
+  {
+    name: 'STS account-root trust — only principals with identity-side sts:AssumeRole are checked',
+    simulationCounts: { withoutIndex: 24, withIndex: 3 },
+    description:
+      'Trust policy with Principal set to the resource account root (arn:aws:iam::400000000002:root), should only return principals with identity policies that grant access.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:iam::400000000002:role/account-root-trust-target',
       actions: ['sts:AssumeRole']
     },
     expected: {
+      who: [
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/local-alpha',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/local-beta',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/tagged-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        }
+      ]
+    }
+  },
+  {
+    name: 'negative ArnNotLike PrincipalArn — same-account principals still found',
+    simulationCounts: { withoutIndex: 26, withIndex: 26 },
+    description:
+      'Trust policy with Principal:"*" and ArnNotLike aws:PrincipalArn excluding a cross-account pattern. ' +
+      'The negative operator does not narrow, so checkAllFromResourceAccount is true and all same-account ' +
+      'principals are enumerated. Same-account principals with sts:AssumeRole identity permissions are allowed. ' +
+      'This guards against negative PrincipalArn operators being incorrectly treated as narrowing conditions.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:iam::400000000002:role/negative-arnnotlike-target',
+      actions: ['sts:AssumeRole']
+    },
+    expected: {
+      allAccountsChecked: true,
       who: [
         {
           action: 'AssumeRole',
@@ -2296,6 +2471,13 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000001:role/beta-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/account-root-trust-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -2359,6 +2541,210 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         {
           action: 'AssumeRole',
           principal: 'arn:aws:iam::400000000002:role/mixed-service-iam-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/negative-arnnotlike-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/no-condition-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/not-principal-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/org-trust-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/principal-account-stringlike-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/replacement-var-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/resource-acct-bypass-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/s3-reader',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-name-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-name-wins-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/service-only-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/tagged-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/unnamed-service-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/wildcard-match-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        }
+      ]
+    }
+  },
+  {
+    name: 'org trust — PrincipalOrgID conservative trust includes same-account principals',
+    simulationCounts: { withoutIndex: 26, withIndex: 26 },
+    description:
+      'Trust policy with Principal:"*" and aws:PrincipalOrgID = o-44444444. resourceAccountTrustedByPolicy is conservatively true (org may include the resource account). allFromAccount is set, so all same-account principals are enumerated. Both accounts (400000000001, 400000000002) are in the org, so cross-account principals with identity-side sts:AssumeRole are also included.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:iam::400000000002:role/org-trust-target',
+      actions: ['sts:AssumeRole']
+    },
+    expected: {
+      who: [
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000001:role/alpha-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000001:role/beta-role',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/account-root-trust-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/deny-derived-allow-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/deny-explicit-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/duplicate-specific-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/exact-match-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/kms-user',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/local-alpha',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/local-beta',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/mixed-grant-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/mixed-service-iam-target',
+          service: 'sts',
+          level: 'write',
+          resourceType: 'role'
+        },
+        {
+          action: 'AssumeRole',
+          principal: 'arn:aws:iam::400000000002:role/negative-arnnotlike-target',
           service: 'sts',
           level: 'write',
           resourceType: 'role'
@@ -2459,6 +2845,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'principalScope aimed at same-account principal with service-only trust returns empty',
+    simulationCounts: { withoutIndex: 1, withIndex: 1 },
     description:
       'Scope to a same-account IAM principal against a role whose trust policy only allows a service principal. The scoped principal is enqueued but the simulation denies it because the trust policy does not match. The service principal is not in the scope so it is also excluded.',
     data: '2',
@@ -2475,6 +2862,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'duplicate specific principal from explicit principal + PrincipalArn condition',
+    simulationCounts: { withoutIndex: 24, withIndex: 1 },
     description:
       'Trust policy where the same principal appears in specificPrincipals twice: once from an explicit Principal element (stmt1) and once from a StringEquals aws:PrincipalArn condition (stmt2). The result must contain the principal exactly once.',
     data: '2',
@@ -2496,6 +2884,7 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
   },
   {
     name: 'S3 bucket with no bucket policy — same-account identity-based access found',
+    simulationCounts: { withoutIndex: 24, withIndex: 1 },
     description:
       'S3 bucket with no bucket policy. Same-account principals with identity-based s3:ListBucket permission should still be found because the resource account is always included in the search for non-untrusting actions.',
     data: '2',
@@ -2648,13 +3037,11 @@ function compareGrantDetails(a: GrantDetail, b: GrantDetail) {
  *
  * @param datasetId - The test dataset to use.
  * @param withIndex - Whether to use the principal index.
- * @param tuningLabel - Human-readable label for the tuning configuration.
  * @param tuning - Processor tuning overrides.
  */
 async function runParallelProcessorTest(
   datasetId: string,
   withIndex: boolean,
-  tuningLabel: string,
   tuning: {
     workerThreads?: number
     mainThreadConcurrency?: number
@@ -2736,6 +3123,20 @@ async function runParallelProcessorTest(
           expectedDenyDetails,
           message
         )
+        if (test.simulationCounts !== undefined && !test.request.s3AbacOverride && !withIndex) {
+          expect(result.simulationCount, `simulation count mismatch for "${testName}"`).toBe(
+            test.simulationCounts.withoutIndex
+          )
+        } else if (
+          test.simulationCounts !== undefined &&
+          !test.request.s3AbacOverride &&
+          withIndex
+        ) {
+          expect(
+            result.simulationCount,
+            `simulation count (withIndex) mismatch for "${testName}"`
+          ).toBe(test.simulationCounts.withIndex)
+        }
       }
     }
   } finally {
@@ -2779,7 +3180,7 @@ describe('whoCan Integration Tests', () => {
       for (const datasetId of uniqueDatasetIds) {
         for (const { label, tuning } of processorTuningConfigs) {
           it(`dataset ${datasetId}, ${label} (withIndex: ${withIndex})`, async () => {
-            await runParallelProcessorTest(datasetId, withIndex, label, tuning)
+            await runParallelProcessorTest(datasetId, withIndex, tuning)
           })
         }
       }
@@ -2802,6 +3203,17 @@ describe('whoCan Integration Tests', () => {
         const result = await whoCan(configs, 'aws', requestCopy)
 
         //Then we expect the result to match the expected output
+        if (test.simulationCounts !== undefined && !withIndex) {
+          expect(result.simulationCount, `simulation count mismatch for "${name}"`).toBe(
+            test.simulationCounts.withoutIndex
+          )
+        }
+        if (test.simulationCounts !== undefined && withIndex) {
+          expect(
+            result.simulationCount,
+            `simulation count (withIndex) mismatch for "${name}"`
+          ).toBe(test.simulationCounts.withIndex)
+        }
         assertWhoCanResponse(result, expected, expectedDenyDetails)
       })
     }

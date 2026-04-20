@@ -27,7 +27,6 @@ export const knownContextKeys: readonly string[] = [
   'aws:PrincipalOrgId',
   'aws:PrincipalOrgPaths',
   'aws:PrincipalType',
-  // 'aws:userid',
   'aws:username',
 
   'aws:ResourceAccount',

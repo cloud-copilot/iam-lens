@@ -398,12 +398,15 @@ export interface AccountsToCheck {
   specificOrganizationalUnits: string[]
   checkAnonymous: boolean
   /**
+   * Whether every principal from the resource account should be checked.
+   */
+  checkAllFromResourceAccount: boolean
+  /**
    * Whether the resource policy explicitly grants access to principals in the
    * resource account. This is true when:
    * - The policy has no narrowing conditions (open wildcard or NotPrincipal), or
    * - The policy conditions explicitly reference the resource account, or
    * - The policy narrows to orgs/OUs (which may include the resource account).
-   *
    */
   resourceAccountTrustedByPolicy: boolean
 }
@@ -581,6 +584,7 @@ export async function accountsToCheckBasedOnResourcePolicy(
     specificOrganizations: [],
     specificOrganizationalUnits: [],
     checkAnonymous: false,
+    checkAllFromResourceAccount: false,
     resourceAccountTrustedByPolicy: false
   }
   if (!resourcePolicy) {
@@ -591,6 +595,7 @@ export async function accountsToCheckBasedOnResourcePolicy(
   for (const statement of policy.statements()) {
     if (statement.isAllow() && statement.isNotPrincipalStatement()) {
       accountsToCheck.allAccounts = true
+      accountsToCheck.checkAllFromResourceAccount = true
       accountsToCheck.resourceAccountTrustedByPolicy = true
     }
     if (statement.isAllow() && statement.isPrincipalStatement()) {
@@ -710,18 +715,22 @@ export async function accountsToCheckBasedOnResourcePolicy(
           accountsToCheck.specificAccounts.push(...specificAccounts)
           if (resourceAccount && specificAccounts.includes(resourceAccount)) {
             accountsToCheck.resourceAccountTrustedByPolicy = true
+            accountsToCheck.checkAllFromResourceAccount = true
           }
         } else if (specificOus.length > 0) {
           accountsToCheck.specificOrganizationalUnits.push(...specificOus)
           // The resource account may be in these OUs; conservatively assume trusted
           accountsToCheck.resourceAccountTrustedByPolicy = true
+          accountsToCheck.checkAllFromResourceAccount = true
         } else if (specificOrgs.length > 0) {
           accountsToCheck.specificOrganizations.push(...specificOrgs)
           // The resource account may be in these orgs; conservatively assume trusted
           accountsToCheck.resourceAccountTrustedByPolicy = true
+          accountsToCheck.checkAllFromResourceAccount = true
         } else if (specificPrincipals.length === 0) {
           accountsToCheck.allAccounts = true
           accountsToCheck.resourceAccountTrustedByPolicy = true
+          accountsToCheck.checkAllFromResourceAccount = true
         }
       }
     }

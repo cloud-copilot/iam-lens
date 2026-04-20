@@ -246,6 +246,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -343,6 +344,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: ['o-aaaaaaaaaa', 'o-bbbbbbbbbb'],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -370,6 +372,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: ['o-aaa/r-bbb/ou-ccc'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -401,6 +404,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -433,6 +437,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -465,6 +470,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: ['o-aaa/r-bbb/ou-ccc'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -490,6 +496,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -515,6 +522,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -542,6 +550,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -567,6 +576,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -594,6 +604,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -619,6 +630,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -644,6 +656,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -670,6 +683,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -695,6 +709,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -720,6 +735,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -745,6 +761,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -770,6 +787,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -797,6 +815,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -869,6 +888,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -894,6 +914,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:role/SpecificRole'],
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -926,6 +947,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       ],
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -950,6 +972,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:role/MyRole'],
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -974,6 +997,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:root'],
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -999,6 +1023,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:role/ExactRole'],
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1023,6 +1048,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:role/ExactRole'],
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1047,6 +1073,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:role/ExactRole'],
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1071,6 +1098,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: ['999999999999'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1094,6 +1122,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: ['999999999999'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1117,6 +1146,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: ['999999999999'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1142,6 +1172,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1166,6 +1197,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1191,6 +1223,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1216,6 +1249,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: ['999999999999'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1242,6 +1276,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1265,6 +1300,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: ['999999999999'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1292,6 +1328,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:role/MyRole'],
       specificAccounts: [],
       checkAnonymous: true,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1315,6 +1352,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: ['999999999999'],
       checkAnonymous: true,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1339,6 +1377,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: true,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1363,6 +1402,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: ['888888888888'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1390,6 +1430,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:role/MyRole'],
       specificAccounts: ['888888888888'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1419,6 +1460,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:role/ExactRole'],
       specificAccounts: ['888888888888'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1443,6 +1485,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1467,6 +1510,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:iam::777777777777:role/MyRole'],
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -1669,6 +1713,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1691,6 +1736,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1714,6 +1760,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1736,6 +1783,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1758,6 +1806,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1783,6 +1832,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1805,6 +1855,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1827,6 +1878,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1849,6 +1901,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1916,6 +1969,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1938,6 +1992,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1960,6 +2015,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -1982,6 +2038,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2059,6 +2116,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2083,6 +2141,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2107,6 +2166,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2131,6 +2191,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2217,6 +2278,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: false,
       specificAccounts: ['333333333333'],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -2245,6 +2307,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: true,
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2353,6 +2416,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificPrincipals: ['arn:aws:sts::777777777777:assumed-role/SpecificRole/session-123'],
       specificAccounts: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -2444,6 +2508,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -2478,6 +2543,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -2503,6 +2569,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       allAccounts: true,
       specificAccounts: [],
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2516,6 +2583,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       allAccounts: true,
       specificAccounts: [],
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2555,6 +2623,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     resourceAccountId: '000000000000',
     expected: {
       specificAccounts: ['000000000000'],
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2575,6 +2644,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     resourceAccountId: '000000000000',
     expected: {
       specificAccounts: ['000000000000'],
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2597,6 +2667,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     resourceAccountId: '000000000000',
     expected: {
       specificAccounts: ['000000000000'],
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2618,6 +2689,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: [],
       specificOrganizations: ['o-myorg'],
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2641,6 +2713,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: [],
       specificOrganizationalUnits: ['o-aaa/r-bbb/ou-ccc'],
+      checkAllFromResourceAccount: true,
       resourceAccountTrustedByPolicy: true
     }
   },
@@ -2683,6 +2756,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     resourceAccountId: '000000000000',
     expected: {
       specificAccounts: ['111111111111'],
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -2705,7 +2779,37 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     resourceAccountId: '000000000000',
     expected: {
       specificAccounts: ['111111111111'],
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
+    }
+  },
+  {
+    name: 'checkAllFromResourceAccount: false when same-account explicit grant is combined with unrelated wildcard PrincipalArn narrowing',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: '000000000000' },
+          Action: '*',
+          Resource: '*'
+        },
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLike: { 'aws:PrincipalArn': 'arn:aws:iam::111111111111:role/*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificAccounts: ['000000000000', '111111111111'],
+      checkAllFromResourceAccount: false,
+      resourceAccountTrustedByPolicy: true
     }
   },
   {
@@ -2792,6 +2896,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: [],
       specificPrincipals: ['arn:aws:iam::000000000000:role/SpecificRole'],
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   },
@@ -2812,6 +2917,104 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       specificAccounts: [],
       specificPrincipals: ['s3.amazonaws.com'],
+      resourceAccountTrustedByPolicy: false
+    }
+  },
+
+  // --- negative PrincipalArn operators (should not narrow) ---
+
+  {
+    name: 'checkAllFromResourceAccount: true for wildcard + ArnNotLike PrincipalArn (negative operator does not narrow)',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 'sts:AssumeRole',
+          Resource: '*',
+          Condition: {
+            ArnNotLike: { 'aws:PrincipalArn': 'arn:aws:iam::999999999999:role/Blocked' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      checkAllFromResourceAccount: true,
+      resourceAccountTrustedByPolicy: true
+    }
+  },
+  {
+    name: 'checkAllFromResourceAccount: true for wildcard + StringNotEquals PrincipalArn (negative operator does not narrow)',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 'sts:AssumeRole',
+          Resource: '*',
+          Condition: {
+            StringNotEquals: {
+              'aws:PrincipalArn': 'arn:aws:iam::000000000000:role/SpecificRole'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      checkAllFromResourceAccount: true,
+      resourceAccountTrustedByPolicy: true
+    }
+  },
+  {
+    name: 'checkAllFromResourceAccount: true for wildcard + StringNotLike PrincipalArn (negative operator does not narrow)',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 'kms:Decrypt',
+          Resource: '*',
+          Condition: {
+            StringNotLike: { 'aws:PrincipalArn': 'arn:aws:iam::*:role/Blocked*' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: true,
+      checkAllFromResourceAccount: true,
+      resourceAccountTrustedByPolicy: true
+    }
+  },
+  {
+    name: 'negative PrincipalArn combined with positive PrincipalAccount narrows to the account only',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 'sts:AssumeRole',
+          Resource: '*',
+          Condition: {
+            ArnNotLike: { 'aws:PrincipalArn': 'arn:aws:iam::111111111111:role/Blocked' },
+            StringEquals: { 'aws:PrincipalAccount': '111111111111' }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificAccounts: ['111111111111'],
+      checkAllFromResourceAccount: false,
       resourceAccountTrustedByPolicy: false
     }
   }
@@ -2835,6 +3038,7 @@ describe('accountsToCheckBasedOnResourcePolicy', () => {
       expect(result.specificOrganizations).toEqual(expected.specificOrganizations || [])
       expect(result.specificOrganizationalUnits).toEqual(expected.specificOrganizationalUnits || [])
       expect(result.checkAnonymous).toEqual(!!expected.checkAnonymous)
+      expect(result.checkAllFromResourceAccount).toEqual(!!expected.checkAllFromResourceAccount)
       expect(result.resourceAccountTrustedByPolicy).toEqual(
         !!expected.resourceAccountTrustedByPolicy
       )

@@ -1,0 +1,7 @@
+{
+  "arn": "arn:aws:iam::400000000002:role/negative-arnnotlike-target",
+  "name": "negative-arnnotlike-target",
+  "id": "AROAA4A82BF69F767ECNL",
+  "path": "/",
+  "created": "2025-01-01T00:00:00.000Z"
+}
