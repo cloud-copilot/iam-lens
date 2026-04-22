@@ -1,6 +1,8 @@
 import { iamActionDetails, iamActionExists, iamServiceExists } from '@cloud-copilot/iam-data'
+import { type ValidatedPolicy } from '@cloud-copilot/iam-policy'
 import {
   type EvaluationResult,
+  type RunSimulationResults,
   runSimulation,
   type Simulation,
   type SimulationMode
@@ -85,6 +87,21 @@ export interface SimulationRequest {
 }
 
 /**
+ * The result of a simulation request, containing the original request and the simulation result.
+ */
+export interface SimulateRequestResult {
+  /**
+   * The simulation request that was evaluated.
+   */
+  request: Simulation['request']
+
+  /**
+   * The result of the simulation, which may be an error, a single result, or a wildcard result.
+   */
+  result: RunSimulationResults
+}
+
+/**
  * Simulate an IAM request against the collected IAM data.
  *
  * @param simulationRequest the simulation request details.
@@ -94,7 +111,7 @@ export interface SimulationRequest {
 export async function simulateRequest(
   simulationRequest: SimulationRequest,
   collectClient: IamCollectClient
-) {
+): Promise<SimulateRequestResult> {
   const actionParts = simulationRequest.action.split(':')
   const service = actionParts[0]
   const serviceAction = actionParts[1]
@@ -128,6 +145,16 @@ export async function simulateRequest(
     throw new Error(
       `Principal ${simulationRequest.principal} does not exist. Use --ignore-missing-principal to ignore this.`
     )
+  }
+
+  const request: Simulation['request'] = {
+    action: simulationRequest.action,
+    resource: {
+      resource: simulationRequest.resourceArn || '*',
+      accountId: simulationRequest.resourceAccount
+    },
+    principal: simulationRequest.principal,
+    contextVariables: {}
   }
 
   //Lookup the principal policies
@@ -175,15 +202,7 @@ export async function simulateRequest(
     ? []
     : principalPolicies.scps
 
-  const request: Simulation['request'] = {
-    action: simulationRequest.action,
-    resource: {
-      resource: simulationRequest.resourceArn || '*',
-      accountId: simulationRequest.resourceAccount
-    },
-    principal: simulationRequest.principal,
-    contextVariables: contextKeys
-  }
+  request.contextVariables = contextKeys
 
   const simulation: Simulation = {
     request,
@@ -272,7 +291,7 @@ async function getResourcePolicies(
   resourceArn: string | undefined,
   resourceAccount: string | undefined
 ): Promise<{
-  resourcePolicy: any | undefined
+  resourcePolicy: ValidatedPolicy<{ name: string }> | undefined
   resourceRcps: SimulationOrgPolicies[]
 }> {
   if (!resourceArn) {

@@ -1,3 +1,4 @@
+import { type ValidatedPolicy } from '@cloud-copilot/iam-policy'
 import { type Simulation } from '@cloud-copilot/iam-simulate'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient } from './collect/client.js'
@@ -62,8 +63,7 @@ export async function getResourcePolicyForResource(
   collectClient: IamCollectClient,
   resourceArn: string,
   resourceAccount: string | undefined
-): Promise<any | undefined> {
-  //TODO: Should this return a policy object?
+): Promise<ValidatedPolicy<{ name: string }> | undefined> {
   const accountId = resourceAccount || (await getAccountIdForResource(collectClient, resourceArn))
   if (!accountId) {
     throw new Error(`Unable to determine account ID for resource ARN: ${resourceArn}`)

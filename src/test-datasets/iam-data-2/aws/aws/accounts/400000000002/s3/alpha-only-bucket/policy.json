@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowAlphaRolesExceptPrivatePrefix",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "NotResource": "arn:aws:s3:::alpha-only-bucket/private/*",
+      "Condition": {
+        "StringLike": {
+          "aws:PrincipalArn": "arn:aws:iam::*:role/alpha-*"
+        }
+      }
+    }
+  ]
+}

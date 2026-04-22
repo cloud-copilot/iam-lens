@@ -1,7 +1,18 @@
 import { type AwsIamStore } from '@cloud-copilot/iam-collect'
 import { log } from '@cloud-copilot/log'
 import { actionMatchesPattern } from '@cloud-copilot/iam-expand'
-import { loadPolicy, type Policy } from '@cloud-copilot/iam-policy'
+import {
+  createValidatedPolicy,
+  loadPolicy,
+  type Policy,
+  type ValidatedPolicy,
+  validateIdentityPolicy,
+  validateResourceControlPolicy,
+  validateResourcePolicy,
+  validateServiceControlPolicy,
+  validateEndpointPolicy,
+  validateTrustPolicy
+} from '@cloud-copilot/iam-policy'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 import BitSet from 'bitset'
 import { gunzipSync, gzipSync } from 'zlib'
@@ -10,7 +21,7 @@ import { decodeBitSet, decompressPrincipalString } from '../utils/bitset.js'
 //TODO: Import this from iam-simulate
 export interface SimulationOrgPolicies {
   orgIdentifier: string
-  policies: { name: string; policy: any }[]
+  policies: { name: string; policy: ValidatedPolicy<{ name: string }> }[]
 }
 
 interface IamUserMetadata {
@@ -34,7 +45,7 @@ interface InlinePolicyMetadata {
 export interface OrgPolicy {
   arn: string
   name: string
-  policy: any
+  policy: ValidatedPolicy<{ name: string }>
 }
 
 interface ManagedPolicyMetadata {
@@ -45,12 +56,12 @@ interface ManagedPolicyMetadata {
 export interface ManagedPolicy {
   arn: string
   name: string
-  policy: any
+  policy: ValidatedPolicy<{ name: string }>
 }
 
 export interface InlinePolicy {
   name: string
-  policy: any
+  policy: ValidatedPolicy<{ name: string }>
 }
 
 interface OrgAccount {
@@ -465,10 +476,12 @@ export class IamCollectClient {
         log.warn(`Policy document not found for ${policyArn} in org ${orgId}`)
       }
 
+      const validateFn =
+        policyType === 'scps' ? validateServiceControlPolicy : validateResourceControlPolicy
       return {
         arn: policyData.arn,
         name: policyData.name,
-        policy: policyDocument
+        policy: createValidatedPolicy(policyDocument, validateFn, { name: policyData.arn })
       }
     })
   }
@@ -648,7 +661,9 @@ export class IamCollectClient {
       return {
         arn: policyMetadata.arn,
         name: policyMetadata.name,
-        policy: policyDocument
+        policy: createValidatedPolicy(policyDocument, validateIdentityPolicy, {
+          name: policyArn
+        })
       }
     })
   }
@@ -669,7 +684,9 @@ export class IamCollectClient {
 
       return inlinePolicies.map((p) => ({
         name: p.PolicyName,
-        policy: p.PolicyDocument
+        policy: createValidatedPolicy(p.PolicyDocument, validateIdentityPolicy, {
+          name: `${userArn}#${p.PolicyName}`
+        })
       }))
     })
   }
@@ -781,7 +798,9 @@ export class IamCollectClient {
 
       return inlinePolicies.map((p) => ({
         name: p.PolicyName,
-        policy: p.PolicyDocument
+        policy: createValidatedPolicy(p.PolicyDocument, validateIdentityPolicy, {
+          name: `${groupArn}#${p.PolicyName}`
+        })
       }))
     })
   }
@@ -829,7 +848,9 @@ export class IamCollectClient {
 
       return inlinePolicies.map((p) => ({
         name: p.PolicyName,
-        policy: p.PolicyDocument
+        policy: createValidatedPolicy(p.PolicyDocument, validateIdentityPolicy, {
+          name: `${roleArn}#${p.PolicyName}`
+        })
       }))
     })
   }
@@ -881,7 +902,10 @@ export class IamCollectClient {
    * @param accountId The ID of the account.
    * @returns The resource policy, or undefined if not found.
    */
-  async getResourcePolicyForArn(resourceArn: string, accountId: string): Promise<any | undefined> {
+  async getResourcePolicyForArn(
+    resourceArn: string,
+    accountId: string
+  ): Promise<ValidatedPolicy<{ name: string }> | undefined> {
     const arnParts = splitArnParts(resourceArn)
     if (arnParts.service === 's3' && arnParts.region === '' && arnParts.accountId === '') {
       resourceArn = resourceArn.split('/')[0]
@@ -889,18 +913,18 @@ export class IamCollectClient {
 
     const cacheKey = `resourcePolicy:${accountId}:${resourceArn}`
     return this.withCache(cacheKey, async () => {
-      let metadataKey = 'policy'
+      const isTrustPolicy = arnParts.service === 'iam' && arnParts.resourceType === 'role'
+      const metadataKey = isTrustPolicy ? 'trust-policy' : 'policy'
+      const validateFn = isTrustPolicy ? validateTrustPolicy : validateResourcePolicy
 
-      if (arnParts.service === 'iam' && arnParts.resourceType === 'role') {
-        metadataKey = 'trust-policy'
-      }
-
-      const resourcePolicy = await this.storageClient.getResourceMetadata<string, string>(
+      const rawPolicy = await this.storageClient.getResourceMetadata<string, string>(
         accountId,
         resourceArn,
         metadataKey
       )
-      return resourcePolicy
+      if (!rawPolicy) return undefined
+
+      return createValidatedPolicy(rawPolicy, validateFn, { name: resourceArn })
     })
   }
 
@@ -911,14 +935,20 @@ export class IamCollectClient {
    * @param accountId The ID of the account.
    * @returns The RAM share policy, or undefined if not found.
    */
-  async getRamSharePolicyForArn(resourceArn: string, accountId: string): Promise<any | undefined> {
+  async getRamSharePolicyForArn(
+    resourceArn: string,
+    accountId: string
+  ): Promise<ValidatedPolicy<{ name: string }> | undefined> {
     const cacheKey = `ramSharePolicy:${accountId}:${resourceArn}`
     return this.withCache(cacheKey, async () => {
       const armSharePolicy = await this.storageClient.getRamResource<RAMShare, RAMShare>(
         accountId,
         resourceArn
       )
-      return armSharePolicy?.policy
+      if (!armSharePolicy?.policy) return undefined
+      return createValidatedPolicy(armSharePolicy.policy, validateResourcePolicy, {
+        name: resourceArn
+      })
     })
   }
 
@@ -1085,16 +1115,19 @@ export class IamCollectClient {
    * @param vpcEndpointArn the ARN of the VPC endpoint
    * @returns the VPC endpoint policy, or undefined if not found
    */
-  async getVpcEndpointPolicyForArn(vpcEndpointArn: string): Promise<any | undefined> {
+  async getVpcEndpointPolicyForArn(
+    vpcEndpointArn: string
+  ): Promise<ValidatedPolicy<{ name: string }> | undefined> {
     const cacheKey = `vpcEndpointPolicy:${vpcEndpointArn}`
     return this.withCache(cacheKey, async () => {
       const accountId = splitArnParts(vpcEndpointArn).accountId!
-      const vpcEndpointPolicy = await this.storageClient.getResourceMetadata<any, any>(
+      const rawPolicy = await this.storageClient.getResourceMetadata<any, any>(
         accountId,
         vpcEndpointArn,
         'endpoint-policy'
       )
-      return vpcEndpointPolicy
+      if (!rawPolicy) return undefined
+      return createValidatedPolicy(rawPolicy, validateEndpointPolicy, { name: vpcEndpointArn })
     })
   }
 

@@ -2,5 +2,9 @@
   "no-policy-bucket": {
     "accountId": "400000000002",
     "region": "us-east-1"
+  },
+  "alpha-only-bucket": {
+    "accountId": "400000000002",
+    "region": "us-east-1"
   }
 }

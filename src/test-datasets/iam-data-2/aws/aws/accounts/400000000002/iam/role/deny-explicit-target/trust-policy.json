@@ -15,7 +15,6 @@
       "Effect": "Deny",
       "Principal": "*",
       "Action": "sts:AssumeRole",
-      "Resource": "*",
       "Condition": {
         "StringLike": {
           "aws:PrincipalArn": "arn:aws:iam::400000000002:role/local-alpha"

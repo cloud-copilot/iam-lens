@@ -56,6 +56,59 @@ describe('simulateRequest', () => {
       /Unable to find action details for s3:fakeaction/
     )
   })
+
+  it('should return structured validation errors for invalid trust policies', async () => {
+    const { store, client } = testStore()
+    const principalArn = 'arn:aws:iam::123456789012:user/test-user'
+    const roleArn = 'arn:aws:iam::123456789012:role/TestRole'
+
+    await saveUser(store, { arn: principalArn })
+    await saveRole(store, {
+      arn: roleArn,
+      trustPolicy: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: 'sts:AssumeRole'
+          }
+        ]
+      }
+    })
+
+    const { request, result } = await simulateRequest(
+      {
+        simulationMode: 'Strict',
+        principal: principalArn,
+        resourceArn: roleArn,
+        resourceAccount: '123456789012',
+        action: 'sts:AssumeRole',
+        customContextKeys: {}
+      },
+      client
+    )
+
+    expect(request).toMatchObject({
+      action: 'sts:AssumeRole',
+      principal: principalArn,
+      resource: {
+        resource: roleArn,
+        accountId: '123456789012'
+      }
+    })
+    expect(result.resultType).toBe('error')
+    if (result.resultType !== 'error') {
+      assert.fail(`Expected error result type, got ${result.resultType}`)
+    }
+
+    expect(result.errors.message).toBe('policy.errors')
+    expect(result.errors.resourcePolicyErrors).toEqual([
+      {
+        path: 'Statement[0]',
+        message: 'One of Principal or NotPrincipal is required in a trust policy'
+      }
+    ])
+  })
 })
 
 describe('aws:userid strict context key behavior', () => {
