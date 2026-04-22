@@ -1,3 +1,10 @@
+## [0.1.116](https://github.com/cloud-copilot/iam-lens/compare/v0.1.115...v0.1.116) (2026-04-22)
+
+
+### Features
+
+* whoCan now validates policies only once at load time ([f221edb](https://github.com/cloud-copilot/iam-lens/commit/f221edb385baff9c9a1dee00ccb4b94797258ce2))
+
 ## [0.1.115](https://github.com/cloud-copilot/iam-lens/compare/v0.1.114...v0.1.115) (2026-04-20)
 
 
