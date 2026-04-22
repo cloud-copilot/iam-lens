@@ -1,5 +1,5 @@
 import { expandIamActions } from '@cloud-copilot/iam-expand'
-import { loadPolicy } from '@cloud-copilot/iam-policy'
+import { isValidatedPolicy, loadPolicy } from '@cloud-copilot/iam-policy'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { IamCollectClient } from '../../../collect/client.js'
 import { Permission } from '../../permission.js'
@@ -125,10 +125,11 @@ export async function iamRolesSameAccount(
 }
 
 function addRoleArnToStatements(policy: any, roleArn: string) {
-  const statement = policy.Statement
+  const policyDoc = isValidatedPolicy(policy) ? policy.policyDocument : policy
+  const statement = policyDoc.Statement
   if (Array.isArray(statement)) {
-    for (const statement of policy.Statement) {
-      statement.Resource = [roleArn]
+    for (const stmt of statement) {
+      stmt.Resource = [roleArn]
     }
   } else if (statement) {
     statement.Resource = [roleArn]

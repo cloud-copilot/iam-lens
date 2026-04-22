@@ -202,7 +202,7 @@ export function buildPrincipalArnFilter(resourcePolicy: any): PrincipalArnFilter
   for (const statement of policy.statements()) {
     if (statement.isAllow()) continue
     if (!statement.isActionStatement()) continue
-    if (!statement.isResourceStatement()) continue
+    if (statement.isNotResourceStatement()) continue
     if (statement.isNotPrincipalStatement()) continue
 
     // Must have a wildcard principal
@@ -217,8 +217,10 @@ export function buildPrincipalArnFilter(resourcePolicy: any): PrincipalArnFilter
     }
     if (!hasWildcardPrincipal) continue
 
-    // Resource must include '*'
-    if (!statement.resources().some((r) => r.isAllResources())) continue
+    // Resource must include '*' or be non-existent
+    if (statement.isResourceStatement()) {
+      if (!statement.resources().some((r) => r.isAllResources())) continue
+    }
 
     // Must have exactly one condition and it must be aws:PrincipalArn
     const conditions = statement.conditions()

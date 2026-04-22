@@ -23,5 +23,9 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*"],
-  "exclude": ["**/*.test.ts", "src/principalCan/permissionSetTestUtils.ts"]
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test-d.ts",
+    "src/principalCan/permissionSetTestUtils.ts"
+  ]
 }

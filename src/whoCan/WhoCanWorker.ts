@@ -10,6 +10,7 @@ import { IamCollectClient } from '../collect/client.js'
 import { simulateRequest } from '../simulate/simulate.js'
 import type { S3AbacOverride } from '../utils/s3Abac.js'
 import type { WhoCanAllowed, WhoCanAllowedResourcePattern } from './whoCan.js'
+import { log } from '@cloud-copilot/log'
 
 export interface WhoCanWorkItem {
   resource: string | undefined
@@ -140,6 +141,12 @@ export async function executeWhoCan(
   )
 
   if (discoveryResult.result.resultType === 'error') {
+    log.error({
+      mode: 'discovery',
+      simulationErrors: true,
+      errors: discoveryResult.result.errors,
+      resource
+    })
     throw new Error('Discovery simulation failed: ' + JSON.stringify(discoveryResult.result.errors))
   }
 
@@ -160,6 +167,12 @@ export async function executeWhoCan(
     )
 
     if (strictResult.result.resultType === 'error') {
+      log.error({
+        mode: 'strict',
+        simulationErrors: true,
+        errors: strictResult.result.errors,
+        resource
+      })
       throw new Error('Strict simulation failed: ' + JSON.stringify(strictResult.result.errors))
     }
 

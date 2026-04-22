@@ -2903,6 +2903,59 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
         }
       ]
     }
+  },
+  {
+    name: 'bucket policy Allow with NotResource — PrincipalArn filter narrows on resource outside excluded prefix',
+    simulationCounts: { withoutIndex: 25, withIndex: 25 },
+    description:
+      'Bucket policy has a wildcard-Allow with NotResource on a private prefix and a StringLike PrincipalArn pattern. For an object outside the excluded prefix the Allow applies; the filter narrows cross-account candidates to the pattern match and alpha-role is granted via the bucket policy while s3-reader is granted via same-account identity.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:s3:::alpha-only-bucket/public/report.txt',
+      actions: ['s3:GetObject']
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          principal: 'arn:aws:iam::400000000001:role/alpha-role',
+          service: 's3',
+          level: 'read',
+          resourceType: 'object'
+        },
+        {
+          action: 'GetObject',
+          principal: 'arn:aws:iam::400000000002:role/s3-reader',
+          service: 's3',
+          level: 'read',
+          resourceType: 'object'
+        }
+      ],
+      allAccountsChecked: true
+    }
+  },
+  {
+    name: 'bucket policy Allow with NotResource — simulation denies cross-account on resource inside excluded prefix',
+    simulationCounts: { withoutIndex: 25, withIndex: 25 },
+    description:
+      'Same bucket policy as the previous test but whoCan queries an object inside the excluded prefix; the filter still admits alpha-role as a candidate but the simulator correctly denies it, while same-account s3-reader remains allowed via its identity grant.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:s3:::alpha-only-bucket/private/secret.txt',
+      actions: ['s3:GetObject']
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          principal: 'arn:aws:iam::400000000002:role/s3-reader',
+          service: 's3',
+          level: 'read',
+          resourceType: 'object'
+        }
+      ],
+      allAccountsChecked: true
+    }
   }
 ]
 

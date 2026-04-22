@@ -248,18 +248,31 @@ describe('IamCollectClient', () => {
       const scps = await client.getScpHierarchyForAccount(accountId)
 
       // Then it should return the SCPs
-      expect(scps).toEqual([
+      expect(scps).toMatchObject([
         {
           orgIdentifier: rootOu,
           policies: [
             {
-              // name: 'FullAWSAccess',
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
-              policy: fullAccessPolicy
+              policy: {
+                __validated: true,
+                policyDocument: fullAccessPolicy,
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess'
+                },
+                errors: []
+              }
             },
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-r7dber7',
-              policy: extraSCPs[0]
+              policy: {
+                __validated: true,
+                policyDocument: extraSCPs[0],
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-r7dber7'
+                },
+                errors: []
+              }
             }
           ]
         },
@@ -268,11 +281,25 @@ describe('IamCollectClient', () => {
           policies: [
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
-              policy: fullAccessPolicy
+              policy: {
+                __validated: true,
+                policyDocument: fullAccessPolicy,
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess'
+                },
+                errors: []
+              }
             },
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-j48dn38',
-              policy: extraSCPs[1]
+              policy: {
+                __validated: true,
+                policyDocument: extraSCPs[1],
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-j48dn38'
+                },
+                errors: []
+              }
             }
           ]
         },
@@ -281,11 +308,25 @@ describe('IamCollectClient', () => {
           policies: [
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
-              policy: fullAccessPolicy
+              policy: {
+                __validated: true,
+                policyDocument: fullAccessPolicy,
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess'
+                },
+                errors: []
+              }
             },
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-tj39dy7',
-              policy: extraSCPs[2]
+              policy: {
+                __validated: true,
+                policyDocument: extraSCPs[2],
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-tj39dy7'
+                },
+                errors: []
+              }
             }
           ]
         },
@@ -295,19 +336,33 @@ describe('IamCollectClient', () => {
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
               policy: {
-                Version: '2012-10-17',
-                Statement: [
-                  {
-                    Effect: 'Allow',
-                    Action: 's3:*',
-                    Resource: '*'
-                  }
-                ]
+                __validated: true,
+                policyDocument: {
+                  Version: '2012-10-17',
+                  Statement: [
+                    {
+                      Effect: 'Allow',
+                      Action: 's3:*',
+                      Resource: '*'
+                    }
+                  ]
+                },
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678'
+                },
+                errors: []
               }
             },
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
-              policy: fullAccessPolicy
+              policy: {
+                __validated: true,
+                policyDocument: fullAccessPolicy,
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess'
+                },
+                errors: []
+              }
             }
           ]
         }
@@ -481,25 +536,39 @@ describe('IamCollectClient', () => {
       const scps = await client.getScpsForAccount(accountId)
 
       // Then it should return the SCPs
-      expect(scps).toEqual([
+      expect(scps).toMatchObject([
         {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
           name: 'TestPolicy1',
           policy: {
-            Version: '2012-10-17',
-            Statement: [
-              {
-                Effect: 'Allow',
-                Action: 's3:*',
-                Resource: '*'
-              }
-            ]
+            __validated: true,
+            policyDocument: {
+              Version: '2012-10-17',
+              Statement: [
+                {
+                  Effect: 'Allow',
+                  Action: 's3:*',
+                  Resource: '*'
+                }
+              ]
+            },
+            metadata: {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678'
+            },
+            errors: []
           }
         },
         {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
           name: 'FullAWSAccess',
-          policy: fullAccessPolicy
+          policy: {
+            __validated: true,
+            policyDocument: fullAccessPolicy,
+            metadata: {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess'
+            },
+            errors: []
+          }
         }
       ])
     })
@@ -583,16 +652,28 @@ describe('IamCollectClient', () => {
       const rcps = await client.getRcpsForAccount(accountId)
 
       // Then it should return the SCPs
-      expect(rcps).toEqual([
+      expect(rcps).toMatchObject([
         {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
           name: 'TestPolicy1',
-          policy: s3Scp
+          policy: {
+            __validated: true,
+            policyDocument: s3Scp,
+            metadata: {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678'
+            }
+          }
         },
         {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
           name: 'FullAWSAccess',
-          policy: fullAccessPolicy
+          policy: {
+            __validated: true,
+            policyDocument: fullAccessPolicy,
+            metadata: {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess'
+            }
+          }
         }
       ])
     })
@@ -709,18 +790,29 @@ describe('IamCollectClient', () => {
       const scps = await client.getRcpHierarchyForAccount(accountId)
 
       // Then it should return the SCPs
-      expect(scps).toEqual([
+      expect(scps).toMatchObject([
         {
           orgIdentifier: rootOu,
           policies: [
             {
-              // name: 'FullAWSAccess',
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
-              policy: fullAccessPolicy
+              policy: {
+                __validated: true,
+                policyDocument: fullAccessPolicy,
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess'
+                }
+              }
             },
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-r7dber7',
-              policy: extraSCPs[0]
+              policy: {
+                __validated: true,
+                policyDocument: extraSCPs[0],
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-r7dber7'
+                }
+              }
             }
           ]
         },
@@ -729,11 +821,23 @@ describe('IamCollectClient', () => {
           policies: [
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
-              policy: fullAccessPolicy
+              policy: {
+                __validated: true,
+                policyDocument: fullAccessPolicy,
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess'
+                }
+              }
             },
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-j48dn38',
-              policy: extraSCPs[1]
+              policy: {
+                __validated: true,
+                policyDocument: extraSCPs[1],
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-j48dn38'
+                }
+              }
             }
           ]
         },
@@ -742,11 +846,23 @@ describe('IamCollectClient', () => {
           policies: [
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
-              policy: fullAccessPolicy
+              policy: {
+                __validated: true,
+                policyDocument: fullAccessPolicy,
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess'
+                }
+              }
             },
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-tj39dy7',
-              policy: extraSCPs[2]
+              policy: {
+                __validated: true,
+                policyDocument: extraSCPs[2],
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-tj39dy7'
+                }
+              }
             }
           ]
         },
@@ -755,11 +871,23 @@ describe('IamCollectClient', () => {
           policies: [
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678',
-              policy: s3Scp
+              policy: {
+                __validated: true,
+                policyDocument: s3Scp,
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-12345678'
+                }
+              }
             },
             {
               name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
-              policy: fullAccessPolicy
+              policy: {
+                __validated: true,
+                policyDocument: fullAccessPolicy,
+                metadata: {
+                  name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess'
+                }
+              }
             }
           ]
         }
@@ -814,16 +942,30 @@ describe('IamCollectClient', () => {
       const scps = await client.getScpsForOrgUnit(orgId, orgUnit1Id)
 
       // Then it should return the SCPs
-      expect(scps).toEqual([
+      expect(scps).toMatchObject([
         {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess',
           name: 'FullAWSAccess',
-          policy: fullAccessPolicy
+          policy: {
+            __validated: true,
+            policyDocument: fullAccessPolicy,
+            metadata: {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-FullAWSAccess'
+            },
+            errors: []
+          }
         },
         {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-j48dn38',
           name: 'TestPolicy1',
-          policy: s3Scp
+          policy: {
+            __validated: true,
+            policyDocument: s3Scp,
+            metadata: {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-j48dn38'
+            },
+            errors: []
+          }
         }
       ])
     })
@@ -876,16 +1018,28 @@ describe('IamCollectClient', () => {
       const rcps = await client.getRcpsForOrgUnit(orgId, orgUnit1Id)
 
       // Then it should return the SCPs
-      expect(rcps).toEqual([
+      expect(rcps).toMatchObject([
         {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess',
           name: 'FullAWSAccess',
-          policy: fullAccessPolicy
+          policy: {
+            __validated: true,
+            policyDocument: fullAccessPolicy,
+            metadata: {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-RcpFullAWSAccess'
+            }
+          }
         },
         {
           arn: 'arn:aws:organizations::aws:policy/service_control_policy/p-j48dn38',
           name: 'TestPolicy1',
-          policy: s3Scp
+          policy: {
+            __validated: true,
+            policyDocument: s3Scp,
+            metadata: {
+              name: 'arn:aws:organizations::aws:policy/service_control_policy/p-j48dn38'
+            }
+          }
         }
       ])
     })
@@ -1406,16 +1560,26 @@ describe('IamCollectClient', () => {
       const policies = await client.getManagedPoliciesForUser(userArn)
 
       // Then it should return the managed policies
-      expect(policies).toEqual([
+      expect(policies).toMatchObject([
         {
           arn: managedPolicyArn1,
           name: 'Policy1',
-          policy: managedPolicy1.policy
+          policy: {
+            __validated: true,
+            policyDocument: managedPolicy1.policy,
+            metadata: { name: managedPolicyArn1 },
+            errors: []
+          }
         },
         {
           arn: managedPolicyArn2,
           name: 'Policy2',
-          policy: managedPolicy2.policy
+          policy: {
+            __validated: true,
+            policyDocument: managedPolicy2.policy,
+            metadata: { name: managedPolicyArn2 },
+            errors: []
+          }
         }
       ])
     })
@@ -1449,7 +1613,16 @@ describe('IamCollectClient', () => {
       const result = await client.getManagedPolicy(accountId, managedPolicyArn)
 
       // Then it should return the managed policy
-      expect(result).toEqual(managedPolicy)
+      expect(result).toMatchObject({
+        arn: managedPolicyArn,
+        name: 'Policy1',
+        policy: {
+          __validated: true,
+          policyDocument: managedPolicy.policy,
+          metadata: { name: managedPolicyArn },
+          errors: []
+        }
+      })
     })
   })
 
@@ -1489,14 +1662,24 @@ describe('IamCollectClient', () => {
       const policies = await client.getInlinePoliciesForUser(userArn)
 
       // Then it should return the inline policies
-      expect(policies).toEqual([
+      expect(policies).toMatchObject([
         {
           name: 'InlinePolicy1',
-          policy: inlinePolicies[0].PolicyDocument
+          policy: {
+            __validated: true,
+            policyDocument: inlinePolicies[0].PolicyDocument,
+            metadata: { name: `${userArn}#InlinePolicy1` },
+            errors: []
+          }
         },
         {
           name: 'InlinePolicy2',
-          policy: inlinePolicies[1].PolicyDocument
+          policy: {
+            __validated: true,
+            policyDocument: inlinePolicies[1].PolicyDocument,
+            metadata: { name: `${userArn}#InlinePolicy2` },
+            errors: []
+          }
         }
       ])
     })
@@ -1639,16 +1822,26 @@ describe('IamCollectClient', () => {
       const policies = await client.getManagedPoliciesForGroup(groupArn)
 
       // Then it should return the managed policies
-      expect(policies).toEqual([
+      expect(policies).toMatchObject([
         {
           arn: managedPolicyArn1,
           name: 'GroupPolicy1',
-          policy: managedPolicy1.policy
+          policy: {
+            __validated: true,
+            policyDocument: managedPolicy1.policy,
+            metadata: { name: managedPolicyArn1 },
+            errors: []
+          }
         },
         {
           arn: managedPolicyArn2,
           name: 'GroupPolicy2',
-          policy: managedPolicy2.policy
+          policy: {
+            __validated: true,
+            policyDocument: managedPolicy2.policy,
+            metadata: { name: managedPolicyArn2 },
+            errors: []
+          }
         }
       ])
     })
@@ -1695,14 +1888,24 @@ describe('IamCollectClient', () => {
       const policies = await client.getInlinePoliciesForGroup(groupArn)
 
       // Then it should return the inline policies
-      expect(policies).toEqual([
+      expect(policies).toMatchObject([
         {
           name: 'GroupInlinePolicy1',
-          policy: inlinePolicies[0].PolicyDocument
+          policy: {
+            __validated: true,
+            policyDocument: inlinePolicies[0].PolicyDocument,
+            metadata: { name: `${groupArn}#GroupInlinePolicy1` },
+            errors: []
+          }
         },
         {
           name: 'GroupInlinePolicy2',
-          policy: inlinePolicies[1].PolicyDocument
+          policy: {
+            __validated: true,
+            policyDocument: inlinePolicies[1].PolicyDocument,
+            metadata: { name: `${groupArn}#GroupInlinePolicy2` },
+            errors: []
+          }
         }
       ])
     })
@@ -1772,7 +1975,16 @@ describe('IamCollectClient', () => {
       const permissionsBoundary = await client.getPermissionsBoundaryForUser(userArn)
 
       // Then it should return the permissions boundary policy
-      expect(permissionsBoundary).toEqual(boundaryPolicy)
+      expect(permissionsBoundary).toMatchObject({
+        arn: permissionsBoundaryArn,
+        name: 'BoundaryPolicy',
+        policy: {
+          __validated: true,
+          policyDocument: boundaryPolicy.policy,
+          metadata: { name: permissionsBoundaryArn },
+          errors: []
+        }
+      })
     })
   })
 
@@ -1840,16 +2052,26 @@ describe('IamCollectClient', () => {
       const policies = await client.getManagedPoliciesForRole(roleArn)
 
       // Then it should return the managed policies
-      expect(policies).toEqual([
+      expect(policies).toMatchObject([
         {
           arn: managedPolicyArn1,
           name: 'RolePolicy1',
-          policy: managedPolicy1.policy
+          policy: {
+            __validated: true,
+            policyDocument: managedPolicy1.policy,
+            metadata: { name: managedPolicyArn1 },
+            errors: []
+          }
         },
         {
           arn: managedPolicyArn2,
           name: 'RolePolicy2',
-          policy: managedPolicy2.policy
+          policy: {
+            __validated: true,
+            policyDocument: managedPolicy2.policy,
+            metadata: { name: managedPolicyArn2 },
+            errors: []
+          }
         }
       ])
     })
@@ -1895,14 +2117,24 @@ describe('IamCollectClient', () => {
       const policies = await client.getInlinePoliciesForRole(roleArn)
 
       // Then it should return the inline policies
-      expect(policies).toEqual([
+      expect(policies).toMatchObject([
         {
           name: 'RoleInlinePolicy1',
-          policy: inlinePolicies[0].PolicyDocument
+          policy: {
+            __validated: true,
+            policyDocument: inlinePolicies[0].PolicyDocument,
+            metadata: { name: `${roleArn}#RoleInlinePolicy1` },
+            errors: []
+          }
         },
         {
           name: 'RoleInlinePolicy2',
-          policy: inlinePolicies[1].PolicyDocument
+          policy: {
+            __validated: true,
+            policyDocument: inlinePolicies[1].PolicyDocument,
+            metadata: { name: `${roleArn}#RoleInlinePolicy2` },
+            errors: []
+          }
         }
       ])
     })
@@ -1972,7 +2204,16 @@ describe('IamCollectClient', () => {
       const permissionsBoundary = await client.getPermissionsBoundaryForRole(roleArn)
 
       // Then it should return the permissions boundary policy
-      expect(permissionsBoundary).toEqual(boundaryPolicy)
+      expect(permissionsBoundary).toMatchObject({
+        arn: permissionsBoundaryArn,
+        name: 'BoundaryPolicy',
+        policy: {
+          __validated: true,
+          policyDocument: boundaryPolicy.policy,
+          metadata: { name: permissionsBoundaryArn },
+          errors: []
+        }
+      })
     })
   })
 
@@ -1989,8 +2230,13 @@ describe('IamCollectClient', () => {
       // When getting the resource policy for the ARN
       const result = await client.getResourcePolicyForArn(resourceArn, accountId)
 
-      // Then it should return the policy
-      expect(result).toEqual(policy)
+      // Then it should return the validated policy
+      expect(result).toMatchObject({
+        __validated: true,
+        policyDocument: policy,
+        metadata: { name: resourceArn },
+        errors: expect.any(Array)
+      })
     })
     it('should return undefined if no policy exists for the ARN', async () => {
       // Given a resource with no policy
@@ -2020,8 +2266,50 @@ describe('IamCollectClient', () => {
       // When getting the trust policy for the role ARN
       const result = await client.getResourcePolicyForArn(roleArn, accountId)
 
-      // Then it should return the trust policy
-      expect(result).toEqual(trustPolicy)
+      // Then it should return the validated trust policy
+      expect(result).toMatchObject({
+        __validated: true,
+        policyDocument: trustPolicy,
+        metadata: { name: roleArn },
+        errors: expect.any(Array)
+      })
+    })
+
+    it('should validate role trust policies with resource-policy rules', async () => {
+      // Given a role trust policy missing Principal, which is invalid for resource policies
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const roleArn = `arn:aws:iam::${accountId}:role/test-role`
+      const invalidTrustPolicy = {
+        Statement: [
+          {
+            Effect: 'Allow',
+            Action: 'sts:AssumeRole',
+            Resource: '*'
+          }
+        ]
+      }
+      await store.saveResourceMetadata(accountId, roleArn, 'trust-policy', invalidTrustPolicy)
+
+      // When getting the trust policy for the role ARN
+      const result = await client.getResourcePolicyForArn(roleArn, accountId)
+
+      // Then the cached validation result should reflect resource-policy validation
+      expect(result).toMatchObject({
+        __validated: true,
+        policyDocument: invalidTrustPolicy,
+        metadata: { name: roleArn }
+      })
+      expect(result?.errors).toEqual([
+        {
+          message: 'Resource is not allowed in a trust policy',
+          path: 'Statement[0].#Resource'
+        },
+        {
+          message: 'One of Principal or NotPrincipal is required in a trust policy',
+          path: 'Statement[0]'
+        }
+      ])
     })
 
     it('should return a bucket policy for an S3 object ARN', async () => {
@@ -2037,8 +2325,13 @@ describe('IamCollectClient', () => {
       // When getting the resource policy for the S3 object ARN
       const result = await client.getResourcePolicyForArn(`${bucketArn}/my-object`, accountId)
 
-      // Then it should return the bucket policy
-      expect(result).toEqual(bucketPolicy)
+      // Then it should return the validated bucket policy
+      expect(result).toMatchObject({
+        __validated: true,
+        policyDocument: bucketPolicy,
+        metadata: { name: bucketArn },
+        errors: expect.any(Array)
+      })
     })
   })
 
@@ -2061,8 +2354,13 @@ describe('IamCollectClient', () => {
       // When getting the RAM share policy for the ARN
       const result = await client.getRamSharePolicyForArn(resourceArn, accountId)
 
-      // Then it should return the RAM share policy
-      expect(result).toEqual(ramSharePolicy)
+      // Then it should return the validated RAM share policy
+      expect(result).toMatchObject({
+        __validated: true,
+        policyDocument: ramSharePolicy,
+        metadata: { name: resourceArn },
+        errors: expect.any(Array)
+      })
     })
     it('should return undefined if no RAM share policy exists for the ARN', async () => {
       // Given a resource with no RAM share policy

@@ -1,5 +1,6 @@
 import { log } from '@cloud-copilot/log'
-import { existsSync, readFileSync, rmSync } from 'fs'
+import { randomBytes } from 'crypto'
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 import { fileURLToPath } from 'url'
@@ -23,10 +24,12 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 async function runSingleRequest(
   overrides: Partial<WhoCanProcessorConfig> & {
     onRequestSettled: WhoCanProcessorConfig['onRequestSettled']
+    collectConfigs?: WhoCanProcessorConfig['collectConfigs']
+    request?: Parameters<WhoCanProcessor['enqueueWhoCan']>[0]
   }
 ): Promise<void> {
   const processor = await WhoCanProcessor.create({
-    collectConfigs: getTestDatasetConfigs('1'),
+    collectConfigs: overrides.collectConfigs ?? getTestDatasetConfigs('1'),
     partition: 'aws',
     tuning: { workerThreads: 0 },
     ignorePrincipalIndex: true,
@@ -34,10 +37,12 @@ async function runSingleRequest(
   })
 
   try {
-    processor.enqueueWhoCan({
-      actions: ['ec2:TerminateInstances'],
-      resource: 'arn:aws:ec2:us-east-1:100000000001:instance/i-1234567890abcdef0'
-    })
+    processor.enqueueWhoCan(
+      overrides.request ?? {
+        actions: ['ec2:TerminateInstances'],
+        resource: 'arn:aws:ec2:us-east-1:100000000001:instance/i-1234567890abcdef0'
+      }
+    )
 
     await processor.waitForIdle()
   } finally {
@@ -202,5 +207,65 @@ describe('WhoCanProcessor Integration Tests', () => {
       expect(settledEvents).toHaveLength(1)
       expect(settledEvents[0].status).toBe('fulfilled')
     })
+  })
+
+  it('should settle the request as an error before enqueueing simulations when the resource policy is invalid', async () => {
+    const sourceDataset = resolve(__dirname, '..', 'test-datasets', 'iam-data-1')
+    const tempDataset = join(tmpdir(), `who-can-invalid-policy-${randomBytes(8).toString('hex')}`)
+    mkdirSync(tempDataset, { recursive: true })
+    const trustPolicyPath = join(
+      tempDataset,
+      'aws/aws/accounts/200000000002/iam/role/lambdarole/trust-policy.json'
+    )
+
+    try {
+      cpSync(sourceDataset, tempDataset, { recursive: true })
+      writeFileSync(
+        trustPolicyPath,
+        JSON.stringify(
+          {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: 'sts:AssumeRole'
+              }
+            ]
+          },
+          null,
+          2
+        )
+      )
+
+      const settledEvents: WhoCanSettledEvent[] = []
+      await runSingleRequest({
+        collectConfigs: [
+          {
+            iamCollectVersion: '0.0.0',
+            storage: {
+              type: 'file',
+              path: tempDataset
+            }
+          }
+        ],
+        request: {
+          resource: 'arn:aws:iam::200000000002:role/LambdaRole',
+          actions: ['sts:AssumeRole']
+        },
+        onRequestSettled: async (event) => {
+          settledEvents.push(event)
+        }
+      })
+
+      expect(settledEvents).toHaveLength(1)
+      expect(settledEvents[0].status).toBe('rejected')
+      if (settledEvents[0].status !== 'rejected') {
+        throw new Error(`Expected rejected settlement, got ${settledEvents[0].status}`)
+      }
+
+      expect(settledEvents[0].error.message).toContain('has validation errors')
+    } finally {
+      rmSync(tempDataset, { recursive: true, force: true })
+    }
   })
 })

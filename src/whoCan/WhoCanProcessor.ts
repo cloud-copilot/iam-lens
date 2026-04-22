@@ -1,4 +1,5 @@
 import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
+import { type ValidatedPolicy } from '@cloud-copilot/iam-policy'
 import { type JobResult, numberOfCpus, StreamingJobQueue } from '@cloud-copilot/job'
 import { Worker } from 'worker_threads'
 import { type ClientFactoryPlugin, getCollectClient } from '../collect/collect.js'
@@ -893,7 +894,7 @@ export class WhoCanProcessor {
 
     const untrustingActions = await actionsThatDoNotAutomaticallyTrustTheCurrentAccount()
 
-    let resourcePolicy: any = undefined
+    let resourcePolicy: ValidatedPolicy<{ name: string }> | undefined = undefined
     if (resource) {
       resourcePolicy = await getResourcePolicyForResource(collectClient, resource, resourceAccount)
       const resourceArn = new Arn(resource)
@@ -904,6 +905,17 @@ export class WhoCanProcessor {
       ) {
         throw new Error(
           `Unable to find resource policy for ${resource}. Cannot determine who can access the resource.`
+        )
+      }
+
+      if (resourcePolicy && resourcePolicy.errors.length > 0) {
+        log.error({
+          iamLensResourcePolicyValidationErrors: true,
+          errors: resourcePolicy.errors,
+          resource: resource
+        })
+        throw new Error(
+          `Resource policy for ${resource} has validation errors and cannot be used for simulation.`
         )
       }
     }

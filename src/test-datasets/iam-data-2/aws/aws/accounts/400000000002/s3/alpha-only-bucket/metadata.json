@@ -1,0 +1,5 @@
+{
+  "name": "alpha-only-bucket",
+  "region": "us-east-1",
+  "arn": "arn:aws:s3:::alpha-only-bucket"
+}
