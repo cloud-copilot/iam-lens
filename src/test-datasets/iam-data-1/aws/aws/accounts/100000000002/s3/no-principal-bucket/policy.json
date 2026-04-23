@@ -1,0 +1,26 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowWithoutPrincipal",
+      "Effect": "Allow",
+      "Action": "s3:GetBucketPolicy",
+      "Resource": "arn:aws:s3:::no-principal-bucket"
+    },
+    {
+      "Sid": "DenyWithoutPrincipal",
+      "Effect": "Deny",
+      "Action": "s3:GetBucketPolicy",
+      "Resource": "arn:aws:s3:::no-principal-bucket"
+    },
+    {
+      "Sid": "AllowIAMCollectList",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::100000000002:role/IAMCollect"
+      },
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::no-principal-bucket"
+    }
+  ]
+}
