@@ -1,3 +1,10 @@
+## [0.1.117](https://github.com/cloud-copilot/iam-lens/compare/v0.1.116...v0.1.117) (2026-04-24)
+
+
+### Features
+
+* Integration tests for new iam-simulate behavior for resource policies without a principal ([c143955](https://github.com/cloud-copilot/iam-lens/commit/c14395532b160e09b267442c93dd810c4570fe45))
+
 ## [0.1.116](https://github.com/cloud-copilot/iam-lens/compare/v0.1.115...v0.1.116) (2026-04-22)
 
 
