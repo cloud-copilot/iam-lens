@@ -1,6 +1,7 @@
 import { loadPolicy } from '@cloud-copilot/iam-policy'
 import { describe, expect, it } from 'vitest'
-import { makePrincipalOnlyPolicyFromStatement } from './statements.js'
+import { getTestDatasetClient } from '../../test-datasets/testClient.js'
+import { makePrincipalOnlyPolicyFromStatement, statementAppliesToPrincipal } from './statements.js'
 
 describe('makePrincipalOnlyPolicyFromStatement', () => {
   it('should create a principal-only policy from a statement with Principal', () => {
@@ -358,13 +359,12 @@ describe('makePrincipalOnlyPolicyFromStatement', () => {
     // When calling makePrincipalOnlyPolicyFromStatement
     const result = makePrincipalOnlyPolicyFromStatement(statement)
 
-    // Then it should create a policy a wildcard Principal with principal-related conditions
+    // Then the synthetic policy should carry no Principal element so simulation reports NoMatch
     expect(result.toJSON()).toEqual({
       Version: '2012-10-17',
       Statement: {
         Effect: 'Allow',
         Action: '*',
-        Principal: '*',
         Resource: '*',
         Condition: {
           StringEquals: {
@@ -373,5 +373,33 @@ describe('makePrincipalOnlyPolicyFromStatement', () => {
         }
       }
     })
+  })
+})
+
+describe('statementAppliesToPrincipal', () => {
+  it('should return NoMatch for a statement with neither Principal nor NotPrincipal', async () => {
+    //Given a statement that has no Principal or NotPrincipal element
+    const policy = loadPolicy({
+      Version: '2012-10-17',
+      Statement: {
+        Effect: 'Allow',
+        Action: 's3:GetObject',
+        Resource: 'arn:aws:s3:::my-bucket/*'
+      }
+    })
+    const statement = policy.statements()[0]
+
+    //And a real test-dataset client
+    const client = await getTestDatasetClient('1')
+
+    //When we ask whether the statement applies to a principal in the dataset
+    const result = await statementAppliesToPrincipal(
+      statement,
+      'arn:aws:iam::100000000002:role/EC2Admin',
+      client
+    )
+
+    //Then the result should be NoMatch because the statement cannot match any principal
+    expect(result).toBe('NoMatch')
   })
 })

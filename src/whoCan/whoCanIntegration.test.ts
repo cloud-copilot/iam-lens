@@ -2956,6 +2956,117 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
       ],
       allAccountsChecked: true
     }
+  },
+  {
+    name: 'resource policy Allow without Principal adds no principal to whoCan',
+    description:
+      'The bucket policy Allow on no-principal-bucket has no Principal element. EC2Admin has no identity grant for s3:GetBucketPolicy, so with principalScope limited to EC2Admin the result set is empty.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::no-principal-bucket',
+      actions: ['s3:GetBucketPolicy'],
+      principalScope: {
+        principals: ['arn:aws:iam::100000000002:role/EC2Admin']
+      }
+    },
+    expected: {
+      who: []
+    }
+  },
+  {
+    name: 'sibling statement in no-Principal resource policy still yields the expected principal',
+    description:
+      'The third statement of the no-principal-bucket policy explicitly names IAMCollect as a principal for s3:ListBucket. IAMCollect has no s3:ListBucket in identity and no permission boundary, so with principalScope limited to IAMCollect, that sibling statement is the only grant and IAMCollect should be returned.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::no-principal-bucket',
+      actions: ['s3:ListBucket'],
+      principalScope: {
+        principals: ['arn:aws:iam::100000000002:role/IAMCollect']
+      }
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::100000000002:role/IAMCollect',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        }
+      ]
+    }
+  },
+  {
+    name: 'resource policy Deny without Principal does not suppress same-account access',
+    description:
+      'The no-principal-bucket policy has a Deny for s3:GetBucketPolicy with no Principal element. The Deny must not fire, so the SSO admin on 100000000002 (identity *:* via AdministratorAccess) remains allowed when principalScope is limited to that admin.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::no-principal-bucket',
+      actions: ['s3:GetBucketPolicy'],
+      principalScope: {
+        principals: [
+          'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5'
+        ]
+      }
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetBucketPolicy',
+          principal:
+            'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'read',
+          resourceType: 'bucket'
+        }
+      ]
+    }
+  },
+  {
+    name: 'full whoCan on no-principal-bucket across s3:ListBucket and s3:GetBucketPolicy (no principalScope)',
+    description:
+      'Without principalScope, whoCan enumerates all principals in the organization. The no-Principal Allow and Deny statements on no-principal-bucket must neither add nor remove anyone; the sibling resource-policy statement adds IAMCollect for ListBucket only; cross-account admins have no path because the resource policy does not grant them.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::no-principal-bucket',
+      actions: ['s3:ListBucket', 's3:GetBucketPolicy']
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetBucketPolicy',
+          principal: 'arn:aws:iam::100000000002:role/IAMCollect',
+          service: 's3',
+          level: 'read',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::100000000002:role/IAMCollect',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'GetBucketPolicy',
+          principal:
+            'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'read',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal:
+            'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        }
+      ]
+    }
   }
 ]
 

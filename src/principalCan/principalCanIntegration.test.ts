@@ -22,6 +22,11 @@ const principalCanIntegrationTests: {
       Statement: [
         {
           Effect: 'Allow',
+          Action: 's3:ListBucket',
+          Resource: ['arn:aws:s3:::no-principal-bucket']
+        },
+        {
+          Effect: 'Allow',
           Action: 'sts:AssumeRole',
           Resource: [
             'arn:aws:iam::100000000002:role/EC2Admin',

@@ -356,6 +356,53 @@ const simulateIntegrationTest: {
       additionalStrictContextKeys: ['aws:SourceVpc']
     },
     expected: 'ImplicitlyDenied'
+  },
+  {
+    name: 'resource policy Allow without Principal does not allow cross-account access',
+    comment:
+      'The Allow statement on no-principal-bucket has no Principal element. Cross-account access requires both identity and resource policy allows; with the Allow silent, the request is ImplicitlyDenied.',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::no-principal-bucket',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    },
+    expected: 'ImplicitlyDenied'
+  },
+  {
+    name: 'resource policy Deny without Principal does not deny same-account access',
+    comment:
+      'The Deny statement on no-principal-bucket has no Principal element. The SSO admin on account 100000000002 has *:* via AdministratorAccess; the Deny must not fire because its principal element is absent.',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::no-principal-bucket',
+      resourceAccount: undefined,
+      action: 's3:GetBucketPolicy',
+      principal:
+        'arn:aws:iam::100000000002:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    },
+    expected: 'Allowed'
+  },
+  {
+    name: 'sibling statement in no-Principal resource policy still matches',
+    comment:
+      'IAMCollect has no s3:ListBucket in identity and no permission boundary; the sole grant for s3:ListBucket on no-principal-bucket is the third (sibling) statement in the bucket policy that names IAMCollect explicitly.',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::no-principal-bucket',
+      resourceAccount: undefined,
+      action: 's3:ListBucket',
+      principal: 'arn:aws:iam::100000000002:role/IAMCollect',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    },
+    expected: 'Allowed'
   }
 ]
 
