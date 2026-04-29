@@ -1,3 +1,10 @@
+## [0.1.119](https://github.com/cloud-copilot/iam-lens/compare/v0.1.118...v0.1.119) (2026-04-29)
+
+
+### Features
+
+* Export Permission and PermissionSet functionality ([4ed27dd](https://github.com/cloud-copilot/iam-lens/commit/4ed27dd37467b21a9e231e1fe2670688e294c5ba))
+
 ## [0.1.118](https://github.com/cloud-copilot/iam-lens/compare/v0.1.117...v0.1.118) (2026-04-26)
 
 ## [0.1.117](https://github.com/cloud-copilot/iam-lens/compare/v0.1.116...v0.1.117) (2026-04-24)
