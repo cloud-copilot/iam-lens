@@ -46,3 +46,14 @@ export {
   type SingleResourceLightRequestAnalysis,
   type WildcardResourceLightRequestAnalysis
 } from './whoCan/requestAnalysis.js'
+export {
+  PermissionSet,
+  buildPermissionSetFromPolicies,
+  addPoliciesToPermissionSet,
+  toPolicyStatements
+} from './principalCan/permissionSet.js'
+export {
+  Permission,
+  type PermissionEffect,
+  type PermissionConditions
+} from './principalCan/permission.js'
