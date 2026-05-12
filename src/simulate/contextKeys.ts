@@ -1,4 +1,5 @@
 import {
+  actionSupportsAwsResourceInfoContextKeys,
   bucketArn,
   convertAssumedRoleArnToRoleArn,
   isS3BucketOrObjectArn,
@@ -161,7 +162,7 @@ export async function createContextKeys(
   }
 
   //Resource context keys
-  if (!isAwsResourceInfoExcludedAction(simulationRequest.action)) {
+  if (actionSupportsAwsResourceInfoContextKeys(simulationRequest.action)) {
     contextKeys['aws:ResourceAccount'] = simulationRequest.resourceAccount!
 
     const resourceOrgId = await collectClient.getOrgIdForAccount(simulationRequest.resourceAccount!)
@@ -296,38 +297,6 @@ export async function getVpcKeys(
   }
 
   return vpcKeys
-}
-
-const awsResourceInfoExcludedActions = new Set([
-  'auditmanager:updateassessmentframeworkshare',
-  'detective:acceptinvitation',
-  'ds:acceptshareddirectory',
-  'ec2:accepttransitgatewaypeeringattachment',
-  'ec2:acceptvpcendpointconnections',
-  'ec2:acceptvpcpeeringconnection',
-  'ec2:copysnapshot',
-  'ec2:createtransitgatewaypeeringattachment',
-  'ec2:createvpcendpoint',
-  'ec2:createvpcpeeringconnection',
-  'ec2:deletetransitgatewaypeeringattachment',
-  'ec2:deletevpcpeeringconnection',
-  'ec2:rejecttransitgatewaypeeringattachment',
-  'ec2:rejectvpcendpointconnections',
-  'ec2:rejectvpcpeeringconnection',
-  'guardduty:acceptadministratorinvitation',
-  'macie2:acceptinvitation',
-  'es:acceptinboundconnection',
-  'route53:associatevpcwithhostedzone',
-  'route53:createvpcassociationauthorization',
-  'route53:deletevpcassociationauthorization',
-  'route53:disassociatevpcfromhostedzone',
-  'route53:listhostedzonesbyvpc',
-  'securityhub:acceptadministratorinvitation'
-])
-
-function isAwsResourceInfoExcludedAction(action: string): boolean {
-  const lowerCaseAction = action.toLowerCase()
-  return lowerCaseAction.startsWith('ebs:') || awsResourceInfoExcludedActions.has(lowerCaseAction)
 }
 
 const servicesThatSupportExtraVpcEndpointData = new Set([
