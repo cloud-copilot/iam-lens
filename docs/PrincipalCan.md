@@ -16,10 +16,10 @@ You can use this:
 
 ## Options
 
-| Flag                          | Description                                                             |
-| ----------------------------- | ----------------------------------------------------------------------- |
-| `--principal <arn>`           | The principal to check permissions for. Can be a user or role ARN.      |
-| `-s`, `--shrink-action-lists` | Shrink action lists to reduce policy size using wildcard consolidation. |
+| Flag                          | Description                                                                  |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| `--principal <arn>`           | The principal to check permissions for. Can be a user, role, or group ARN.   |
+| `-s`, `--shrink-action-lists` | Shrink action lists to reduce policy size using wildcard consolidation.      |
 
 You can also use any of the [Global CLI Options](GlobalCliOptions.md).
 
@@ -59,6 +59,10 @@ iam-lens principal-can \
 iam-lens principal-can \
   --principal arn:aws:iam::123456789012:role/MyRole \
   --shrink-action-lists
+
+# Get permissions for a group
+iam-lens principal-can \
+  --principal arn:aws:iam::123456789012:group/Developers
 
 # Analyze permissions across accounts (if cross-account policies exist)
 iam-lens principal-can \

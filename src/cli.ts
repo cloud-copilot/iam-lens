@@ -103,7 +103,7 @@ const main = async () => {
           'Create a consolidated view of all permissions for a principal, see readme for limitations',
         arguments: {
           principal: stringArgument({
-            description: 'The principal to check permissions for. Can be a user or role'
+            description: 'The principal to check permissions for. Can be a user, role, or group'
           }),
           shrinkActionLists: booleanArgument({
             description: 'Shrink action lists to reduce policy size',
