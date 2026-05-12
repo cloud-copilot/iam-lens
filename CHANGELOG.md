@@ -1,3 +1,10 @@
+## [0.1.124](https://github.com/cloud-copilot/iam-lens/compare/v0.1.123...v0.1.124) (2026-05-12)
+
+
+### Bug Fixes
+
+* verify whoCan question mark resource patterns ([bf268b7](https://github.com/cloud-copilot/iam-lens/commit/bf268b7e47a8f292594a239f097d10fbf1172208))
+
 ## [0.1.123](https://github.com/cloud-copilot/iam-lens/compare/v0.1.122...v0.1.123) (2026-05-12)
 
 ## [0.1.122](https://github.com/cloud-copilot/iam-lens/compare/v0.1.121...v0.1.122) (2026-05-10)
