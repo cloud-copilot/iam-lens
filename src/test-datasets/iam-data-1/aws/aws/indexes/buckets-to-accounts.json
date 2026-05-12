@@ -55,6 +55,10 @@
     "accountId": "200000000002",
     "region": "us-west-2"
   },
+  "eu-example-data-lake": {
+    "accountId": "100000000001",
+    "region": "us-west-2"
+  },
   "wildcard-bucket": {
     "accountId": "100000000001",
     "region": "us-west-2"

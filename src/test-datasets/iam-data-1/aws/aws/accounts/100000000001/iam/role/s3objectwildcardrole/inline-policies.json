@@ -16,6 +16,11 @@
           "Effect": "Deny",
           "Action": ["s3:GetObject"],
           "Resource": ["arn:aws:s3:::wildcard-bucket/reports/private/*"]
+        },
+        {
+          "Effect": "Allow",
+          "Action": ["s3:DeleteObject"],
+          "Resource": "arn:aws:s3:::??-example-data-lake/db_tables/v5/*/_delta_log/*"
         }
       ]
     }
