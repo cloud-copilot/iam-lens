@@ -92,4 +92,15 @@ describe('isIamGroupArn', () => {
     //Then it should return false
     expect(result).toBe(false)
   })
+
+  it('should return false for malformed ARNs', () => {
+    //Given a malformed ARN
+    const malformedArn = 'arn:aws:iam::'
+
+    //When checking if it is a group ARN
+    const result = isIamGroupArn(malformedArn)
+
+    //Then it should return false
+    expect(result).toBe(false)
+  })
 })

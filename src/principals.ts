@@ -23,7 +23,7 @@ export function isIamGroupArn(principal: string): boolean {
     return false
   }
   const parts = splitArnParts(principal)
-  return parts.service === 'iam' && parts.resourceType === 'group'
+  return parts?.service === 'iam' && parts?.resourceType === 'group'
 }
 
 export interface PrincipalPolicies {
@@ -117,7 +117,10 @@ export async function getAllPoliciesForGroup(
   collectClient: IamCollectClient,
   principalArn: string
 ): Promise<PrincipalPolicies> {
-  const accountId = splitArnParts(principalArn).accountId!
+  const accountId = splitArnParts(principalArn).accountId
+  if (!accountId) {
+    throw new Error(`Invalid group ARN: missing account ID in ${principalArn}`)
+  }
 
   const managedPolicies = await collectClient.getManagedPoliciesForGroup(principalArn)
   const inlinePolicies = await collectClient.getInlinePoliciesForGroup(principalArn)
