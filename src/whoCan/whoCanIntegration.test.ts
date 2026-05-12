@@ -378,6 +378,44 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
+    name: 'S3 object wildcard with policy question marks and request wildcard',
+    simulationCounts: { withoutIndex: 3, withIndex: 2 },
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::eu-example-data-lake/db_tables/v5/table/_delta_log/*',
+      actions: ['s3:DeleteObject']
+    },
+    expected: {
+      who: [
+        {
+          action: 'DeleteObject',
+          principal: 'arn:aws:iam::100000000001:role/S3ObjectWildcardRole',
+          service: 's3',
+          level: 'write',
+          allowedPatterns: [
+            {
+              pattern: 'arn:aws:s3:::??-example-data-lake/db_tables/v5/*/_delta_log/*',
+              resourceType: 'object'
+            }
+          ]
+        },
+        {
+          action: 'DeleteObject',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'write',
+          allowedPatterns: [
+            {
+              pattern: '*',
+              resourceType: 'object'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     name: 'S3 object wildcard (different prefix)',
     simulationCounts: { withoutIndex: 3, withIndex: 3 },
     data: '1',
