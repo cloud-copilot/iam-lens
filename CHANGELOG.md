@@ -1,3 +1,10 @@
+## [0.1.131](https://github.com/cloud-copilot/iam-lens/compare/v0.1.130...v0.1.131) (2026-06-18)
+
+
+### Bug Fixes
+
+* handle wildcard-account principal arn scope ([8a6ab73](https://github.com/cloud-copilot/iam-lens/commit/8a6ab73652a720a8dbd0772bd7eb95838bea7a67))
+
 ## [0.1.130](https://github.com/cloud-copilot/iam-lens/compare/v0.1.129...v0.1.130) (2026-06-15)
 
 ## [0.1.129](https://github.com/cloud-copilot/iam-lens/compare/v0.1.128...v0.1.129) (2026-06-13)
