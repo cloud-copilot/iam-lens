@@ -630,6 +630,8 @@ export async function accountsToCheckBasedOnResourcePolicy(
         const specificOus: string[] = []
         const specificAccounts: string[] = []
         const specificPrincipals: string[] = []
+        let principalArnRequiresAllAccounts = false
+        let hasNonPrincipalArnAccountNarrowing = false
 
         const conditions = statement.conditions()
         for (const cond of conditions) {
@@ -657,6 +659,7 @@ export async function accountsToCheckBasedOnResourcePolicy(
             if (opVal.startsWith('stringequals') && !hasDynamic) {
               // StringEquals family — all values are literal account IDs
               specificAccounts.push(...values)
+              hasNonPrincipalArnAccountNarrowing = true
             } else if (
               baseOp === 'stringlike' &&
               !hasDynamic &&
@@ -664,6 +667,7 @@ export async function accountsToCheckBasedOnResourcePolicy(
             ) {
               // StringLike where ALL values are literal (no wildcards or dynamic vars)
               specificAccounts.push(...values)
+              hasNonPrincipalArnAccountNarrowing = true
             }
           }
 
@@ -682,9 +686,11 @@ export async function accountsToCheckBasedOnResourcePolicy(
             }
 
             for (const value of cond.conditionValues()) {
+              let extractedPrincipalArnScope = false
               if (!hasWildcardOrDynamic(value)) {
                 // Exact literal — push as a specific principal
                 specificPrincipals.push(value)
+                extractedPrincipalArnScope = true
               } else if (isExactOperator && !value.includes('*') && !value.includes('?')) {
                 // Exact operator with a dynamic variable but no wildcards — try account extraction
                 const segments = splitArnIgnoringDynamicVars(value)
@@ -692,6 +698,7 @@ export async function accountsToCheckBasedOnResourcePolicy(
                   const account = segments[4]
                   if (account && !hasWildcardOrDynamic(account)) {
                     specificAccounts.push(account)
+                    extractedPrincipalArnScope = true
                   }
                 }
               } else {
@@ -701,8 +708,14 @@ export async function accountsToCheckBasedOnResourcePolicy(
                   const account = segments[4]
                   if (account && !hasWildcardOrDynamic(account)) {
                     specificAccounts.push(account)
+                    extractedPrincipalArnScope = true
                   }
                 }
+              }
+
+              if (!extractedPrincipalArnScope) {
+                // Wildcard-account or otherwise non-extractable PrincipalArn patterns can match any account.
+                principalArnRequiresAllAccounts = true
               }
             }
           }
@@ -711,7 +724,19 @@ export async function accountsToCheckBasedOnResourcePolicy(
         if (specificPrincipals.length > 0) {
           accountsToCheck.specificPrincipals.push(...specificPrincipals)
         }
-        if (specificAccounts.length > 0) {
+        if (
+          principalArnRequiresAllAccounts &&
+          specificOus.length === 0 &&
+          specificOrgs.length === 0 &&
+          !hasNonPrincipalArnAccountNarrowing
+        ) {
+          accountsToCheck.allAccounts = true
+          accountsToCheck.resourceAccountTrustedByPolicy = true
+          accountsToCheck.checkAllFromResourceAccount = true
+          if (specificAccounts.length > 0) {
+            accountsToCheck.specificAccounts.push(...specificAccounts)
+          }
+        } else if (specificAccounts.length > 0) {
           accountsToCheck.specificAccounts.push(...specificAccounts)
           if (resourceAccount && specificAccounts.includes(resourceAccount)) {
             accountsToCheck.resourceAccountTrustedByPolicy = true

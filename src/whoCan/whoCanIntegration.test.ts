@@ -1318,6 +1318,36 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
+    name: 'mixed wildcard-account and fixed-account PrincipalArn resource policy',
+    description:
+      'Bucket policy with Principal:"*" and StringLike aws:PrincipalArn includes both wildcard-account and fixed-account patterns. Expected: alpha-role from account 400000000001 is checked and allowed even though only account 400000000002 is explicitly named in a condition value.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:s3:::mixed-principalarn-bucket/object.txt',
+      resourceAccount: '400000000002',
+      actions: ['s3:GetObject']
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          principal: 'arn:aws:iam::400000000001:role/alpha-role',
+          service: 's3',
+          level: 'read',
+          resourceType: 'object'
+        },
+        {
+          action: 'GetObject',
+          principal: 'arn:aws:iam::400000000002:role/s3-reader',
+          service: 's3',
+          level: 'read',
+          resourceType: 'object'
+        }
+      ],
+      allAccountsChecked: true
+    }
+  },
+  {
     name: 'mixed explicit account grant plus wildcard PrincipalArn',
     simulationCounts: { withoutIndex: 26, withIndex: 26 },
     description:
