@@ -1,0 +1,35 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowWildcardAccountAndFixedAccountPrincipalArnPatterns",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::mixed-principalarn-bucket/*",
+      "Condition": {
+        "StringLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/alpha-*",
+            "arn:aws:iam::400000000002:role/s3-reader"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyNonMatchingPrincipalArnPatterns",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::mixed-principalarn-bucket/*",
+      "Condition": {
+        "StringNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/alpha-*",
+            "arn:aws:iam::400000000002:role/s3-reader"
+          ]
+        }
+      }
+    }
+  ]
+}

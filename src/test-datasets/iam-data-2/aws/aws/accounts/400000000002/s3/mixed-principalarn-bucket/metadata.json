@@ -1,0 +1,5 @@
+{
+  "name": "mixed-principalarn-bucket",
+  "region": "us-east-1",
+  "arn": "arn:aws:s3:::mixed-principalarn-bucket"
+}

@@ -1201,6 +1201,105 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       resourceAccountTrustedByPolicy: true
     }
   },
+  {
+    name: 'PrincipalArn: StringLike mixed wildcard-account and fixed-account role paths',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Sid: 'ExplicitlyAllowWildCardRolePaths',
+          Effect: 'Allow',
+          Action: ['secretsmanager:DescribeSecret', 'secretsmanager:GetSecretValue'],
+          Principal: { AWS: '*' },
+          Resource: '*',
+          Condition: {
+            StringLike: {
+              'aws:PrincipalArn': [
+                'arn:aws:iam::*:role/ecs-tasks/*',
+                'arn:aws:iam::*:role/k8s-pod/cicd/*',
+                'arn:aws:iam::*:role/lambda/util/*',
+                'arn:aws:iam::123456789012:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_engineer_*',
+                'arn:aws:iam::123456789012:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_super_*',
+                'arn:aws:iam::123456789012:role/bx_admin',
+                'arn:aws:iam::123456789012:role/bx_super',
+                'arn:aws:iam::123456789012:role/engineer',
+                'arn:aws:iam::123456789012:role/security_controls/*',
+                'arn:aws:iam::123456789012:role/xa-tfe/dply/tfe-deployment'
+              ]
+            }
+          }
+        },
+        {
+          Sid: 'ExplicitlyDenyOtherWildCardRolePaths',
+          Effect: 'Deny',
+          Action: 'secretsmanager:GetSecretValue',
+          Principal: { AWS: '*' },
+          Resource: '*',
+          Condition: {
+            StringNotLike: {
+              'aws:PrincipalArn': [
+                'arn:aws:iam::*:role/ecs-tasks/*',
+                'arn:aws:iam::*:role/k8s-pod/cicd/*',
+                'arn:aws:iam::*:role/lambda/util/*',
+                'arn:aws:iam::123456789012:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_engineer_*',
+                'arn:aws:iam::123456789012:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_super_*',
+                'arn:aws:iam::123456789012:role/bx_admin',
+                'arn:aws:iam::123456789012:role/bx_super',
+                'arn:aws:iam::123456789012:role/engineer',
+                'arn:aws:iam::123456789012:role/security_controls/*',
+                'arn:aws:iam::123456789012:role/xa-tfe/dply/tfe-deployment'
+              ]
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '123456789012',
+    expected: {
+      allAccounts: true,
+      // Each fixed-account wildcard role path contributes an account entry; literal ARNs contribute specific principals, and later account resolution deduplicates account entries.
+      specificAccounts: ['123456789012', '123456789012', '123456789012'],
+      specificPrincipals: [
+        'arn:aws:iam::123456789012:role/bx_admin',
+        'arn:aws:iam::123456789012:role/bx_super',
+        'arn:aws:iam::123456789012:role/engineer',
+        'arn:aws:iam::123456789012:role/xa-tfe/dply/tfe-deployment'
+      ],
+      checkAnonymous: false,
+      checkAllFromResourceAccount: true,
+      resourceAccountTrustedByPolicy: true
+    }
+  },
+  {
+    name: 'PrincipalArn: wildcard account still narrows when PrincipalAccount is present',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringLike: {
+              'aws:PrincipalArn': 'arn:aws:iam::*:role/ApplicationRole'
+            },
+            StringEquals: {
+              'aws:PrincipalAccount': '123456789012'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      allAccounts: false,
+      specificAccounts: ['123456789012'],
+      checkAnonymous: false,
+      checkAllFromResourceAccount: false,
+      resourceAccountTrustedByPolicy: false
+    }
+  },
   // --- aws:PrincipalArn: Dynamic variables ---
   {
     name: 'PrincipalArn: dynamic variable with no account',
