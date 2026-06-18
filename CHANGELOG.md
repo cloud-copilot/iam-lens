@@ -1,3 +1,10 @@
+## [0.1.132](https://github.com/cloud-copilot/iam-lens/compare/v0.1.131...v0.1.132) (2026-06-18)
+
+
+### Bug Fixes
+
+* map principal arn sessions to roles ([4636396](https://github.com/cloud-copilot/iam-lens/commit/4636396611fc9eb60a2578e4d0ff098c741c818f))
+
 ## [0.1.131](https://github.com/cloud-copilot/iam-lens/compare/v0.1.130...v0.1.131) (2026-06-18)
 
 
