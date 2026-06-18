@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SharingWithSessionArnAndPrincipalArnCondition",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": ["arn:aws:sts::200000000002:assumed-role/DynamoDbRole/my-session"]
+      },
+      "Action": ["s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::who-can-session-principalarn"],
+      "Condition": {
+        "StringEquals": {
+          "aws:PrincipalArn": "arn:aws:iam::200000000002:role/DynamoDbRole"
+        }
+      }
+    }
+  ]
+}

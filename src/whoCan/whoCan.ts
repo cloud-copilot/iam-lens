@@ -689,7 +689,7 @@ export async function accountsToCheckBasedOnResourcePolicy(
               let extractedPrincipalArnScope = false
               if (!hasWildcardOrDynamic(value)) {
                 // Exact literal — push as a specific principal
-                specificPrincipals.push(value)
+                specificPrincipals.push(convertSessionArnToRoleArn(value))
                 extractedPrincipalArnScope = true
               } else if (isExactOperator && !value.includes('*') && !value.includes('?')) {
                 // Exact operator with a dynamic variable but no wildcards — try account extraction
