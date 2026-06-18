@@ -2493,7 +2493,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     }
   },
   {
-    name: 'should NOT convert assumed-role session ARN in PrincipalArn condition',
+    name: 'should convert assumed-role session ARN to role ARN in PrincipalArn condition',
     resourcePolicy: {
       Version: '2012-10-17',
       Statement: [
@@ -2512,7 +2512,62 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     },
     resourceAccountId: '000000000000',
     expected: {
-      specificPrincipals: ['arn:aws:sts::777777777777:assumed-role/SpecificRole/session-123'],
+      specificPrincipals: ['arn:aws:iam::777777777777:role/SpecificRole'],
+      specificAccounts: [],
+      checkAnonymous: false,
+      checkAllFromResourceAccount: false,
+      resourceAccountTrustedByPolicy: false
+    }
+  },
+  {
+    name: 'should convert assumed-role session ARN with path to role ARN in PrincipalArn condition',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalArn':
+                'arn:aws:sts::777777777777:assumed-role/path/to/SpecificRole/session-123'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/path/to/SpecificRole'],
+      specificAccounts: [],
+      checkAnonymous: false,
+      checkAllFromResourceAccount: false,
+      resourceAccountTrustedByPolicy: false
+    }
+  },
+  {
+    name: 'should convert exact assumed-role session ARN under ArnLike PrincipalArn condition',
+    resourcePolicy: {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: '*',
+          Resource: '*',
+          Condition: {
+            ArnLike: {
+              'aws:PrincipalArn': 'arn:aws:sts::777777777777:assumed-role/SpecificRole/session-123'
+            }
+          }
+        }
+      ]
+    },
+    resourceAccountId: '000000000000',
+    expected: {
+      specificPrincipals: ['arn:aws:iam::777777777777:role/SpecificRole'],
       specificAccounts: [],
       checkAnonymous: false,
       checkAllFromResourceAccount: false,

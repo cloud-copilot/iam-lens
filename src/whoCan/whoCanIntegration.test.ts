@@ -250,6 +250,43 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
+    name: 'session ARN principal with PrincipalArn condition returns role ARN',
+    description:
+      'Resource policy grants a session ARN principal and constrains aws:PrincipalArn to the attached role ARN. The whoCan result should be the IAM role ARN, not the STS session ARN.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-session-principalarn',
+      resourceAccount: '200000000002',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/DynamoDbRole',
+          service: 's3',
+          resourceType: 'bucket',
+          dependsOnSessionName: true
+        },
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        }
+      ]
+    }
+  },
+  {
     name: 'session ARN principal with aws:userid condition surfaces both flags',
     simulationCounts: { withoutIndex: 6, withIndex: 5 },
     description:
