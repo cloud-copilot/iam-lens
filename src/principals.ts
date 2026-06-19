@@ -12,6 +12,20 @@ import {
   type SimulationOrgPolicies
 } from './collect/client.js'
 
+/**
+ * Test if a principal string is an IAM Group ARN
+ *
+ * @param principal the principal string to test
+ * @returns true if the principal is an IAM group ARN, false otherwise
+ */
+export function isIamGroupArn(principal: string): boolean {
+  if (!principal.startsWith('arn:')) {
+    return false
+  }
+  const parts = splitArnParts(principal)
+  return parts?.service === 'iam' && parts?.resourceType === 'group'
+}
+
 export interface PrincipalPolicies {
   managedPolicies: ManagedPolicy[]
   inlinePolicies: InlinePolicy[]
@@ -92,6 +106,36 @@ export async function getAllPoliciesForRole(
   }
 }
 
+/**
+ * Get all the IAM policies for a group, including managed and inline policies.
+ *
+ * @param collectClient the IAM collect client to use for retrieving policies
+ * @param principalArn the ARN of the group to get policies for
+ * @returns an object containing the managed policies, inline policies, and SCPs/RCPs
+ */
+export async function getAllPoliciesForGroup(
+  collectClient: IamCollectClient,
+  principalArn: string
+): Promise<PrincipalPolicies> {
+  const accountId = splitArnParts(principalArn).accountId
+  if (!accountId) {
+    throw new Error(`Invalid group ARN: missing account ID in ${principalArn}`)
+  }
+
+  const managedPolicies = await collectClient.getManagedPoliciesForGroup(principalArn)
+  const inlinePolicies = await collectClient.getInlinePoliciesForGroup(principalArn)
+  const scps = await collectClient.getScpHierarchyForAccount(accountId)
+  const rcps = await collectClient.getRcpHierarchyForAccount(accountId)
+
+  return {
+    scps,
+    rcps,
+    managedPolicies,
+    inlinePolicies,
+    permissionBoundary: undefined
+  }
+}
+
 export async function getAllPoliciesForPrincipal(
   collectClient: IamCollectClient,
   principalArn: string
@@ -118,6 +162,8 @@ export async function getAllPoliciesForPrincipal(
   } else if (isAssumedRoleArn(principalArn)) {
     const roleArn = convertAssumedRoleArnToRoleArn(principalArn)
     return getAllPoliciesForRole(collectClient, roleArn)
+  } else if (isIamGroupArn(principalArn)) {
+    return getAllPoliciesForGroup(collectClient, principalArn)
   }
   throw new Error(`Unsupported principal type: ${principalArn}`)
 }
