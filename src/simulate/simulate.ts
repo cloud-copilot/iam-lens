@@ -1,6 +1,7 @@
 import { iamActionDetails, iamActionExists, iamServiceExists } from '@cloud-copilot/iam-data'
 import { type ValidatedPolicy } from '@cloud-copilot/iam-policy'
 import {
+  type DiscoveryContextKeyConstraint,
   type EvaluationResult,
   type RunSimulationResults,
   runSimulation,
@@ -278,12 +279,47 @@ export async function simulateRequest(
     }
   }
 
+  const discoveryContextKeyConstraints = strictContextKeys.map(discoveryConstraintForStrictKey)
+
   const result = await runSimulation(simulation, {
     simulationMode: simulationRequest.simulationMode,
-    strictConditionKeys: strictContextKeys
+    discoveryContextKeyConstraints
   })
 
   return { request, result }
+}
+
+const awsSourceKeyPrefix = 'aws:source'
+
+/**
+ * Converts an iam-lens strict context key into an iam-simulate Discovery constraint.
+ *
+ * Most strict keys should preserve the old behavior where both presence and
+ * value are authoritative. Service source context keys are different during
+ * who-can discovery: iam-lens supplies resource-derived placeholder values, but
+ * the actual source account/org for a service principal request may differ.
+ * Treating those values as unknown lets who-can return conditional access
+ * instead of incorrectly denying service-principal statements.
+ *
+ * @param keyName the literal context key or slash-delimited key pattern
+ * @returns the Discovery constraint to pass to iam-simulate
+ */
+function discoveryConstraintForStrictKey(keyName: string): DiscoveryContextKeyConstraint {
+  if (
+    keyName.slice(0, 10).localeCompare(awsSourceKeyPrefix, undefined, { sensitivity: 'base' }) === 0
+  ) {
+    return {
+      keyName,
+      presenceIsKnown: true,
+      valueIsKnown: false
+    }
+  }
+
+  return {
+    keyName,
+    presenceIsKnown: true,
+    valueIsKnown: true
+  }
 }
 
 async function getResourcePolicies(

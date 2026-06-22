@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowLambdaFromDifferentSourceAccount",
+      "Effect": "Allow",
+      "Principal": { "Service": "lambda.amazonaws.com" },
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::service-sourceaccount-bucket/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceAccount": "400000000001"
+        }
+      }
+    }
+  ]
+}
