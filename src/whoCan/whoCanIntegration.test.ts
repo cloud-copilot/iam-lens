@@ -666,6 +666,39 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
+    name: 'service principal with different SourceAccount is conditional access',
+    description:
+      'Bucket policy names lambda.amazonaws.com and requires aws:SourceAccount from a different account than the bucket. whoCan should keep the service principal and report the SourceAccount condition instead of denying based on the resource-account placeholder value.',
+    data: '2',
+    request: {
+      resource: 'arn:aws:s3:::service-sourceaccount-bucket/example.txt',
+      resourceAccount: '400000000002',
+      actions: ['s3:PutObject']
+    },
+    expected: {
+      who: [
+        {
+          action: 'PutObject',
+          principal: 'lambda.amazonaws.com',
+          service: 's3',
+          level: 'write',
+          resourceType: 'object',
+          conditions: {
+            resource: {
+              allow: [
+                {
+                  key: 'aws:SourceAccount',
+                  op: 'StringEquals',
+                  values: ['400000000001']
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
     name: 'ListBucket with condition',
     simulationCounts: { withoutIndex: 6, withIndex: 4 },
     data: '1',
