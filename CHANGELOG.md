@@ -1,3 +1,10 @@
+## [0.1.134](https://github.com/cloud-copilot/iam-lens/compare/v0.1.133...v0.1.134) (2026-06-22)
+
+
+### Bug Fixes
+
+* update iam-simulate discovery constraints ([1f2a039](https://github.com/cloud-copilot/iam-lens/commit/1f2a03997d9263935196817494e33de87fd09415))
+
 ## [0.1.133](https://github.com/cloud-copilot/iam-lens/compare/v0.1.132...v0.1.133) (2026-06-20)
 
 ## [0.1.132](https://github.com/cloud-copilot/iam-lens/compare/v0.1.131...v0.1.132) (2026-06-18)
