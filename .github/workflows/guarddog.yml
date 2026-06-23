@@ -25,6 +25,6 @@ jobs:
           python-version: '3.10'
 
       - name: Install GuardDog
-        run: pip install guarddog
+        run: pip install 'guarddog<3.0.0'
 
       - run: guarddog npm scan src/ --exit-non-zero-on-finding --exclude-rules npm-api-obfuscation
