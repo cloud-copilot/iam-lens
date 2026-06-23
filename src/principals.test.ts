@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { isServiceLinkedRole } from './principals.js'
+import { testStore } from './collect/inMemoryClient.js'
+import { getAllPoliciesForPrincipal, isServiceLinkedRole } from './principals.js'
+import { saveRole } from './utils/testUtils.js'
 
 describe('isServiceLinkedRole', () => {
   it('should return true for service-linked role ARNs', () => {
@@ -34,5 +36,35 @@ describe('isServiceLinkedRole', () => {
 
     //Then it should return false
     expect(result).toBe(false)
+  })
+})
+
+describe('getAllPoliciesForPrincipal', () => {
+  it('should load policies from a path-qualified role for a pathless assumed-role ARN', async () => {
+    //Given a path-qualified role and an assumed-role session ARN that omits the IAM role path
+    const { store, client } = testStore()
+    const accountId = '123456789012'
+    const roleArn = `arn:aws:iam::${accountId}:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_engineer_abcdef1234567890`
+    await saveRole(store, {
+      arn: roleArn,
+      inlinePolicies: [
+        {
+          PolicyName: 'AllowListBucket',
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [{ Effect: 'Allow', Action: 's3:ListBucket', Resource: '*' }]
+          }
+        }
+      ],
+      managedPolicies: []
+    })
+    const assumedRoleArn = `arn:aws:sts::${accountId}:assumed-role/AWSReservedSSO_engineer_abcdef1234567890/session`
+
+    //When loading policies for the assumed-role session principal
+    const policies = await getAllPoliciesForPrincipal(client, assumedRoleArn)
+
+    //Then the path-qualified role policies should be loaded
+    expect(policies.inlinePolicies).toHaveLength(1)
+    expect(policies.inlinePolicies[0].name).toBe('AllowListBucket')
   })
 })

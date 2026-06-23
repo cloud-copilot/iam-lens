@@ -1,0 +1,16 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowPathQualifiedRoleSessionWithoutPath",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": [
+          "arn:aws:sts::100000000001:assumed-role/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5/session-abc"
+        ]
+      },
+      "Action": ["s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::who-can-session-pathless"]
+    }
+  ]
+}

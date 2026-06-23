@@ -94,6 +94,53 @@ describe('IamCollectClient', () => {
       // Then it should return false
       expect(exists).toBe(false)
     })
+
+    it('should find an IAM role when stored metadata uses different ARN capitalization', async () => {
+      // Given an IAM role whose collected metadata ARN preserves canonical capitalization
+      // but whose storage key uses different capitalization
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const collectedArn = `arn:aws:iam::${accountId}:role/awsreservedsso_engineer_abcdef1234567890`
+      const canonicalArn = `arn:aws:iam::${accountId}:role/AWSReservedSSO_engineer_abcdef1234567890`
+      await store.saveResourceMetadata(accountId, collectedArn, 'metadata', {
+        arn: canonicalArn,
+        accountId,
+        resourceType: 'role'
+      })
+
+      // When checking for the canonical principal ARN
+      const exists = await client.principalExists(canonicalArn)
+
+      // Then the principal should be treated as present
+      expect(exists).toBe(true)
+    })
+
+    it('should find a path-qualified IAM role by role name when an assumed-role ARN omits the path', async () => {
+      // Given an AWS SSO-style role stored with its IAM path and canonical capitalization
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const collectedArn = `arn:aws:iam::${accountId}:role/aws-reserved/sso.amazonaws.com/awsreservedsso_engineer_abcdef1234567890`
+      const canonicalArn = `arn:aws:iam::${accountId}:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_engineer_abcdef1234567890`
+      await store.saveResourceMetadata(accountId, collectedArn, 'metadata', {
+        arn: canonicalArn,
+        accountId,
+        resourceType: 'role'
+      })
+
+      // When checking for the role ARN derived from an STS assumed-role session principal:
+      // arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_engineer_abcdef1234567890/session
+      // becomes arn:aws:iam::123456789012:role/AWSReservedSSO_engineer_abcdef1234567890
+      const convertedRoleArn = `arn:aws:iam::${accountId}:role/AWSReservedSSO_engineer_abcdef1234567890`
+      const assumedRoleArn = `arn:aws:sts::${accountId}:assumed-role/AWSReservedSSO_engineer_abcdef1234567890/session`
+      const resolvedArn = await client.resolvePrincipalArn(convertedRoleArn)
+      const resolvedAssumedRoleArn = await client.resolvePrincipalArn(assumedRoleArn)
+      const exists = await client.principalExists(convertedRoleArn)
+
+      // Then the matching role should be resolved to the stored path-qualified ARN
+      expect(resolvedArn).toBe(canonicalArn)
+      expect(resolvedAssumedRoleArn).toBe(canonicalArn)
+      expect(exists).toBe(true)
+    })
   })
 
   describe('getScpHierarchyForAccount', () => {
