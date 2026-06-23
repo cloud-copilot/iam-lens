@@ -92,6 +92,16 @@ export async function getAllPoliciesForRole(
   }
 }
 
+/**
+ * Get all IAM policies for a supported principal.
+ *
+ * IAM role and assumed-role principals are resolved to their canonical stored ARN before
+ * loading policies so pathless STS session principals can use path-qualified IAM role data.
+ *
+ * @param collectClient the IAM collect client to use for retrieving policies
+ * @param principalArn the ARN or service principal to get policies for
+ * @returns all policies that apply directly to the principal
+ */
 export async function getAllPoliciesForPrincipal(
   collectClient: IamCollectClient,
   principalArn: string
@@ -114,9 +124,12 @@ export async function getAllPoliciesForPrincipal(
   if (isIamUserArn(principalArn)) {
     return getAllPoliciesForUser(collectClient, principalArn)
   } else if (isIamRoleArn(principalArn)) {
-    return getAllPoliciesForRole(collectClient, principalArn)
+    const roleArn = (await collectClient.resolvePrincipalArn(principalArn)) ?? principalArn
+    return getAllPoliciesForRole(collectClient, roleArn)
   } else if (isAssumedRoleArn(principalArn)) {
-    const roleArn = convertAssumedRoleArnToRoleArn(principalArn)
+    const roleArn =
+      (await collectClient.resolvePrincipalArn(principalArn)) ??
+      convertAssumedRoleArnToRoleArn(principalArn)
     return getAllPoliciesForRole(collectClient, roleArn)
   }
   throw new Error(`Unsupported principal type: ${principalArn}`)

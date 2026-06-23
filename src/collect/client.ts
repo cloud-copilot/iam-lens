@@ -13,7 +13,11 @@ import {
   validateEndpointPolicy,
   validateTrustPolicy
 } from '@cloud-copilot/iam-policy'
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import {
+  convertAssumedRoleArnToRoleArn,
+  isAssumedRoleArn,
+  splitArnParts
+} from '@cloud-copilot/iam-utils'
 import BitSet from 'bitset'
 import { gunzipSync, gzipSync } from 'zlib'
 import { decodeBitSet, decompressPrincipalString } from '../utils/bitset.js'
@@ -248,6 +252,56 @@ export class IamCollectClient {
   }
 
   /**
+   * Resolves a principal ARN to the canonical ARN stored in the collect data.
+   *
+   * STS assumed-role ARNs are first converted to their IAM role ARN form. Exact metadata
+   * matches are returned first. If an IAM role ARN is not found exactly, the role is
+   * resolved by role name within the same account. This supports STS assumed-role
+   * session ARNs because those session ARNs do not include the IAM role path.
+   *
+   * @param principalArn The ARN of the principal to resolve.
+   * @returns The canonical stored principal ARN, or undefined if no matching principal exists.
+   */
+  async resolvePrincipalArn(principalArn: string): Promise<string | undefined> {
+    const cacheKey = `resolvePrincipalArn:${principalArn}`
+    return this.withCache(cacheKey, async () => {
+      const lookupPrincipalArn = isAssumedRoleArn(principalArn)
+        ? convertAssumedRoleArnToRoleArn(principalArn)
+        : principalArn
+      const arnParts = splitArnParts(lookupPrincipalArn)
+      const accountId = arnParts.accountId!
+      const principalData = await this.storageClient.getResourceMetadata<
+        ResourceMetadata,
+        ResourceMetadata
+      >(accountId, lookupPrincipalArn, 'metadata')
+      if (principalData) {
+        return principalData.arn ?? lookupPrincipalArn
+      }
+
+      if (arnParts.service !== 'iam' || arnParts.resourceType !== 'role') {
+        return undefined
+      }
+
+      const roleName = arnParts.resourcePath?.split('/').at(-1)?.toLowerCase()
+      if (!roleName) {
+        return undefined
+      }
+
+      const accountPrincipals = await this.getAllPrincipalsInAccount(accountId)
+      const matchingRole = accountPrincipals.find((candidateArn) => {
+        const candidateParts = splitArnParts(candidateArn)
+        return (
+          candidateParts.service === 'iam' &&
+          candidateParts.resourceType === 'role' &&
+          candidateParts.resourcePath?.split('/').at(-1)?.toLowerCase() === roleName
+        )
+      })
+
+      return matchingRole
+    })
+  }
+
+  /**
    * Checks if a principal exists in the store.
    * @param principalArn The ARN of the principal to check.
    * @returns True if the principal exists, false otherwise.
@@ -255,13 +309,7 @@ export class IamCollectClient {
   async principalExists(principalArn: string): Promise<boolean> {
     const cacheKey = `principalExists:${principalArn}`
     return this.withCache(cacheKey, async () => {
-      const accountId = splitArnParts(principalArn).accountId!
-      const principalData = await this.storageClient.getResourceMetadata(
-        accountId,
-        principalArn,
-        'metadata'
-      )
-      return !!principalData
+      return !!(await this.resolvePrincipalArn(principalArn))
     })
   }
 

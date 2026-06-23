@@ -17,6 +17,7 @@ export interface WhoCanWorkItem {
   resourceAccount: string | undefined
   action: string
   principal: string
+  resultPrincipal?: string | undefined
   strictContextKeys: string[] | undefined
   collectDenyDetails: boolean
 }
@@ -231,12 +232,12 @@ function mapSimulationResultToWhoCanExecutionResult(
   collectDenyDetails: boolean,
   collectGrantDetails: boolean
 ): WhoCanExecutionResult {
-  const { principal } = workItem
+  const { principal, resultPrincipal } = workItem
 
   if (simulationResponse.overallResult === 'Allowed') {
     // Build allowed result
     const allowed: WhoCanAllowed = {
-      principal,
+      principal: resultPrincipal ?? principal,
       service,
       action,
       level: actionType.toLowerCase()

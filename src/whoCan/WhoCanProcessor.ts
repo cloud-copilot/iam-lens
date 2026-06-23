@@ -1105,8 +1105,8 @@ export class WhoCanProcessor {
               isIamRoleArn(principal) ||
               isAssumedRoleArn(principal)
             ) {
-              const principalExists = await collectClient.principalExists(principal)
-              if (!principalExists) {
+              const resolvedPrincipal = await collectClient.resolvePrincipalArn(principal)
+              if (!resolvedPrincipal) {
                 state.principalsNotFound.push(principal)
               } else {
                 for (const action of actions) {
@@ -1114,6 +1114,7 @@ export class WhoCanProcessor {
                     resource,
                     action,
                     principal,
+                    resultPrincipal: resolvedPrincipal,
                     resourceAccount,
                     strictContextKeys: state.request.strictContextKeys,
                     collectDenyDetails: !!state.denyDetailsCallback

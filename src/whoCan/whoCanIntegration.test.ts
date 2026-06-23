@@ -373,6 +373,44 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
+    name: 'path-qualified role referenced by pathless session ARN resolves to role ARN',
+    description:
+      'Resource policy grants a pathless STS assumed-role session ARN. The matching IAM role is stored with an aws-reserved SSO path, and the whoCan result should use that path-qualified role ARN.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-session-pathless',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket',
+          dependsOnSessionName: true
+        },
+        {
+          action: 'ListBucket',
+          level: 'list',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        }
+      ],
+      principalsNotFound: []
+    }
+  },
+  {
     name: 'S3 object wildcard (prefix)',
     simulationCounts: { withoutIndex: 3, withIndex: 3 },
     data: '1',
