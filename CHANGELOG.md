@@ -1,3 +1,10 @@
+## [0.1.135](https://github.com/cloud-copilot/iam-lens/compare/v0.1.134...v0.1.135) (2026-06-23)
+
+
+### Bug Fixes
+
+* resolve pathless assumed role sessions ([ae385a9](https://github.com/cloud-copilot/iam-lens/commit/ae385a90045c5103f459c5af5bc7dadc803abfd2))
+
 ## [0.1.134](https://github.com/cloud-copilot/iam-lens/compare/v0.1.133...v0.1.134) (2026-06-22)
 
 
