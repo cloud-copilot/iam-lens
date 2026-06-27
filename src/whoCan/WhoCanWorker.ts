@@ -92,8 +92,7 @@ export type WhoCanExecutionResult =
  * Union type for denied execution results that include detailed analysis.
  */
 export type DeniedWhoCanExecutionResultWithDetails =
-  | DeniedSingleWhoCanExecutionResult
-  | DeniedWildcardWhoCanExecutionResult
+  DeniedSingleWhoCanExecutionResult | DeniedWildcardWhoCanExecutionResult
 
 /**
  * The possible values for the `type` discriminator of a WhoCanExecutionResult.

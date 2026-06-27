@@ -1404,8 +1404,7 @@ export class IamCollectClient {
     action: string
   ): Promise<string[] | undefined> {
     const principals = (await this.getPrincipalIndex('principals')) as
-      | Pick<IamActionCache, 'principals' | 'prefix'>
-      | undefined
+      Pick<IamActionCache, 'principals' | 'prefix'> | undefined
     if (!principals) {
       return undefined
     }
@@ -1423,8 +1422,7 @@ export class IamCollectClient {
     }
 
     const serviceIndex = (await this.getPrincipalIndex(`actions-${service}`)) as
-      | IamActionCache['action'][string]
-      | undefined
+      IamActionCache['action'][string] | undefined
 
     // Look through service actions
     if (serviceIndex) {
@@ -1436,8 +1434,7 @@ export class IamCollectClient {
     }
 
     const notActionIndex = (await this.getPrincipalIndex(`not-actions`)) as
-      | IamActionCache['notAction']
-      | undefined
+      IamActionCache['notAction'] | undefined
 
     if (notActionIndex) {
       for (const [notActionService, notActions] of Object.entries(notActionIndex)) {
@@ -1461,8 +1458,7 @@ export class IamCollectClient {
     )
 
     const accountsIndex = (await this.getPrincipalIndex('accounts')) as
-      | IamActionCache['accounts']
-      | undefined
+      IamActionCache['accounts'] | undefined
 
     if (!accountsIndex) {
       throw new Error('Accounts index not found in principal index')
