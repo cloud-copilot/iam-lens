@@ -14,7 +14,7 @@ jobs:
       actions: write # Run check workflows
     steps:
       - name: Run dependency update
-        uses: cloud-copilot/action-update-dependencies@fe48d42724df9c4ed34abf9c0cc97a8da42917f4
+        uses: cloud-copilot/action-update-dependencies@c5c47ad399628ae464f31d1068717bcb39cf6002
         with:
           check-workflow: pr-checks.yml
           post-merge-workflow: release.yml
