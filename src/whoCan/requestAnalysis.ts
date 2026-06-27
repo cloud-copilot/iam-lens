@@ -71,8 +71,7 @@ export interface WildcardResourceLightRequestAnalysis {
  * along with the result fields of the various analyses.
  */
 export type LightRequestAnalysis =
-  | SingleResourceLightRequestAnalysis
-  | WildcardResourceLightRequestAnalysis
+  SingleResourceLightRequestAnalysis | WildcardResourceLightRequestAnalysis
 
 /**
  * Convert a RequestAnalysis to a LightResourceAnalysis.
