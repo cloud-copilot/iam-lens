@@ -1,3 +1,11 @@
+## [0.1.136](https://github.com/cloud-copilot/iam-lens/compare/v0.1.135...v0.1.136) (2026-06-27)
+
+
+### Bug Fixes
+
+* formatting ([6e6d556](https://github.com/cloud-copilot/iam-lens/commit/6e6d556e397370b62a6c68176ca6e7f05cdab8c7))
+* update dependency action reference ([9e1ca74](https://github.com/cloud-copilot/iam-lens/commit/9e1ca742e73f37f1b796bbf15d219880ddcddedf))
+
 ## [0.1.135](https://github.com/cloud-copilot/iam-lens/compare/v0.1.134...v0.1.135) (2026-06-23)
 
 
