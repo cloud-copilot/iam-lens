@@ -50,10 +50,13 @@ export {
   PermissionSet,
   buildPermissionSetFromPolicies,
   addPoliciesToPermissionSet,
-  toPolicyStatements
+  toPolicyStatements,
+  type AddStatementToPermissionSetOptions
 } from './principalCan/permissionSet.js'
 export {
   Permission,
   type PermissionEffect,
-  type PermissionConditions
+  type PermissionConditions,
+  type PermissionPrincipals,
+  type PermissionPrincipalType
 } from './principalCan/permission.js'

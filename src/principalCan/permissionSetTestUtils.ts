@@ -1,5 +1,5 @@
 import { assert, expect } from 'vitest'
-import { Permission, type PermissionConditions } from './permission.js'
+import { Permission, type PermissionConditions, type PermissionPrincipals } from './permission.js'
 import { PermissionSet } from './permissionSet.js'
 
 export interface TestPermission {
@@ -8,6 +8,8 @@ export interface TestPermission {
   resource?: string[]
   notResource?: string[]
   conditions?: PermissionConditions
+  principal?: PermissionPrincipals
+  notPrincipal?: PermissionPrincipals
 }
 
 /**
@@ -53,6 +55,8 @@ export function expectPermissionSetToMatch(
       expect(lowerCaseConditionKeys(actualPerm.conditions)).toEqual(
         lowerCaseConditionKeys(expectedPerm.conditions)
       )
+      expect(actualPerm.principal).toEqual(expectedPerm.principal)
+      expect(actualPerm.notPrincipal).toEqual(expectedPerm.notPrincipal)
     }
   }
 }
@@ -119,6 +123,8 @@ export function expectPermissionsToMatch(
     expect(lowerCaseConditionKeys(actualResult.conditions), message).toEqual(
       lowerCaseConditionKeys(expectedResult.conditions)
     )
+    expect(actualResult.principal, message).toEqual(expectedResult.principal)
+    expect(actualResult.notPrincipal, message).toEqual(expectedResult.notPrincipal)
   }
 }
 
@@ -136,6 +142,8 @@ export function convertTestPermissionToPermission(testPermission: TestPermission
     thisAction,
     testPermission.resource,
     testPermission.notResource,
-    testPermission.conditions
+    testPermission.conditions,
+    testPermission.principal,
+    testPermission.notPrincipal
   )
 }
