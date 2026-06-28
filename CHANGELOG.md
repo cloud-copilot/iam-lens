@@ -1,3 +1,10 @@
+## [0.1.138](https://github.com/cloud-copilot/iam-lens/compare/v0.1.137...v0.1.138) (2026-06-28)
+
+
+### Features
+
+* add principal-aware permission sets ([00ae50f](https://github.com/cloud-copilot/iam-lens/commit/00ae50f718546b6f7b100ba320c64125f8757646))
+
 ## [0.1.137](https://github.com/cloud-copilot/iam-lens/compare/v0.1.136...v0.1.137) (2026-06-27)
 
 ## [0.1.136](https://github.com/cloud-copilot/iam-lens/compare/v0.1.135...v0.1.136) (2026-06-27)
