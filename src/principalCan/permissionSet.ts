@@ -1,6 +1,11 @@
 import { expandIamActions, invertIamActions } from '@cloud-copilot/iam-expand'
 import { type Policy, type Statement } from '@cloud-copilot/iam-policy'
-import { Permission, type PermissionEffect } from './permission.js'
+import { Permission, type PermissionEffect, type PermissionPrincipals } from './permission.js'
+import {
+  canonicalPrincipal,
+  principalsFromRawPolicyValue,
+  principalsToPolicyValue
+} from './principalConstraints.js'
 
 /**
  * A permission set will be a collection of permissions for a specific effect (Allow or Deny).
@@ -161,8 +166,8 @@ export class PermissionSet {
 
         for (const thisPermission of thisPermissions) {
           for (const otherPermission of otherPermissions) {
-            const ix = thisPermission.intersection(otherPermission)
-            if (ix) {
+            const intersections = thisPermission.intersections(otherPermission)
+            for (const ix of intersections) {
               result.addPermission(ix)
             }
           }
@@ -302,20 +307,27 @@ export class PermissionSet {
  * Returns a PermissionSet containing one Permission object for each (service, action, resource, notResource, condition)
  * triple where Effect == "Allow".
  */
+export interface AddStatementToPermissionSetOptions {
+  /** Preserve Principal and NotPrincipal values from statements when converting to permissions. */
+  includePrincipals?: boolean
+}
+
 export async function buildPermissionSetFromPolicies(
   effect: PermissionEffect,
-  policies: Policy[]
+  policies: Policy[],
+  options: AddStatementToPermissionSetOptions = {}
 ): Promise<PermissionSet> {
   // We'll collect all "Allow" statements across all policies
   const permissionSet = new PermissionSet(effect)
-  await addPoliciesToPermissionSet(permissionSet, effect, policies)
+  await addPoliciesToPermissionSet(permissionSet, effect, policies, options)
   return permissionSet
 }
 
 export async function addPoliciesToPermissionSet(
   permissionSet: PermissionSet,
   effect: PermissionEffect,
-  policies: Policy[]
+  policies: Policy[],
+  options: AddStatementToPermissionSetOptions = {}
 ): Promise<void> {
   for (const policy of policies) {
     // Each Policy object has a `.statements` array of raw Statement JSON
@@ -325,7 +337,7 @@ export async function addPoliciesToPermissionSet(
       } else if (effect === 'Deny' && !stmt.isDeny()) {
         continue // skip Allow statements if we're building a Deny set
       }
-      await addStatementToPermissionSet(stmt, permissionSet)
+      await addStatementToPermissionSet(stmt, permissionSet, options)
     }
   }
 }
@@ -339,7 +351,8 @@ export async function addPoliciesToPermissionSet(
  */
 export async function addStatementToPermissionSet(
   statement: Statement,
-  permissionSet: PermissionSet
+  permissionSet: PermissionSet,
+  options: AddStatementToPermissionSetOptions = {}
 ) {
   const effect = statement.effect() as PermissionEffect
   let statementActions: string[]
@@ -364,10 +377,56 @@ export async function addStatementToPermissionSet(
       notResource = statement.notResources().map((r) => r.value())
     }
 
+    const { principal, notPrincipal } = principalFieldsFromStatement(statement, options)
+
     permissionSet.addPermission(
-      new Permission(effect, service, actionName, resource, notResource, statement.conditionMap())
+      new Permission(
+        effect,
+        service,
+        actionName,
+        resource,
+        notResource,
+        statement.conditionMap(),
+        principal,
+        notPrincipal
+      )
     )
   }
+}
+
+/**
+ * Extract opt-in Principal or NotPrincipal fields from a statement.
+ *
+ * @param statement the statement to inspect
+ * @param options conversion options controlling principal preservation
+ * @returns principal fields for a Permission constructor
+ */
+function principalFieldsFromStatement(
+  statement: Statement,
+  options: AddStatementToPermissionSetOptions
+): { principal: PermissionPrincipals | undefined; notPrincipal: PermissionPrincipals | undefined } {
+  if (!options.includePrincipals) {
+    return { principal: undefined, notPrincipal: undefined }
+  }
+
+  const rawStatement = statement.toJSON()
+  if (statement.isPrincipalStatement()) {
+    return {
+      principal: statement.hasSingleWildcardPrincipal()
+        ? { wildcard: true }
+        : principalsFromRawPolicyValue(rawStatement.Principal),
+      notPrincipal: undefined
+    }
+  }
+  if (statement.isNotPrincipalStatement()) {
+    return {
+      principal: undefined,
+      notPrincipal: statement.hasSingleWildcardNotPrincipal()
+        ? { wildcard: true }
+        : principalsFromRawPolicyValue(rawStatement.NotPrincipal)
+    }
+  }
+  return { principal: undefined, notPrincipal: undefined }
 }
 
 /**
@@ -400,8 +459,11 @@ function canonicalKey(p: Permission): string {
       )
     : null
 
+  const principal = canonicalPrincipal(p.principal)
+  const notPrincipal = canonicalPrincipal(p.notPrincipal)
+
   // Effect is fixed for the whole PermissionSet, so not needed in the key.
-  return JSON.stringify({ resources, notResource, canonicalCond })
+  return JSON.stringify({ resources, notResource, principal, notPrincipal, canonicalCond })
 }
 
 /**
@@ -413,7 +475,14 @@ function canonicalKey(p: Permission): string {
 export function toPolicyStatements(set: PermissionSet): any {
   const buckets = new Map<
     string,
-    { res?: string[]; notRes?: string[]; cond?: any; actions: string[] }
+    {
+      res?: string[]
+      notRes?: string[]
+      principal?: PermissionPrincipals
+      notPrincipal?: PermissionPrincipals
+      cond?: any
+      actions: string[]
+    }
   >()
 
   for (const perm of set.getAllPermissions()) {
@@ -421,6 +490,8 @@ export function toPolicyStatements(set: PermissionSet): any {
     const bucket = buckets.get(key) ?? {
       res: perm.resource ? [...perm.resource!] : undefined,
       notRes: perm.notResource ? [...perm.notResource!] : undefined,
+      principal: perm.principal,
+      notPrincipal: perm.notPrincipal,
       cond: perm.conditions ? perm.conditions : undefined,
       actions: []
     }
@@ -433,6 +504,16 @@ export function toPolicyStatements(set: PermissionSet): any {
     const value: any = {
       Effect: set.effect,
       Action: b.actions.length === 1 ? b.actions[0] : [...new Set(b.actions)].sort()
+    }
+
+    if (b.principal && b.notPrincipal) {
+      throw new Error('Permission cannot have both Principal and NotPrincipal defined')
+    }
+
+    if (b.principal) {
+      value['Principal'] = principalsToPolicyValue(b.principal)
+    } else if (b.notPrincipal) {
+      value['NotPrincipal'] = principalsToPolicyValue(b.notPrincipal)
     }
 
     if (b.cond) {

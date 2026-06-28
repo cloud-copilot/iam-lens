@@ -1,3 +1,17 @@
+import {
+  intersectPrincipalConstraints,
+  normalizePrincipalConstraint,
+  principalArgsForConstraint,
+  principalConstraintsOverlap,
+  principalIncludes,
+  subtractPrincipalConstraint,
+  unionPrincipalConstraints,
+  type PermissionPrincipals,
+  type PrincipalConstraint
+} from './principalConstraints.js'
+
+export type { PermissionPrincipals, PermissionPrincipalType } from './principalConstraints.js'
+
 export type PermissionEffect = 'Allow' | 'Deny'
 
 export type PermissionConditions = Record<string, Record<string, string[]>>
@@ -24,13 +38,25 @@ export class Permission {
     public readonly action: string,
     public readonly resource: string[] | undefined,
     public readonly notResource: string[] | undefined,
-    public readonly conditions: Record<string, Record<string, string[]>> | undefined
+    public readonly conditions: Record<string, Record<string, string[]>> | undefined,
+    public readonly principal: PermissionPrincipals | undefined = undefined,
+    public readonly notPrincipal: PermissionPrincipals | undefined = undefined
   ) {
     if (resource !== undefined && notResource !== undefined) {
       throw new Error('Permission must have a resource or notResource, not both.')
     } else if (resource === undefined && notResource === undefined) {
       throw new Error('Permission must have a resource or notResource, one must be defined.')
     }
+    normalizePrincipalConstraint(principal, notPrincipal)
+  }
+
+  /**
+   * Return this permission's principal constraint normalized for set algebra.
+   *
+   * @returns The normalized principal constraint.
+   */
+  public principalConstraint(): PrincipalConstraint {
+    return normalizePrincipalConstraint(this.principal, this.notPrincipal)
   }
 
   /**
@@ -44,6 +70,10 @@ export class Permission {
       this.service !== other.service ||
       this.action !== other.action
     ) {
+      return false
+    }
+
+    if (!principalIncludes(this.principalConstraint(), other.principalConstraint())) {
       return false
     }
 
@@ -190,6 +220,15 @@ export class Permission {
       return [this, other]
     }
 
+    const principalUnions = unionPrincipalConstraints(
+      this.principalConstraint(),
+      other.principalConstraint()
+    )
+    if (principalUnions.length !== 1) {
+      return [this, other]
+    }
+    const principalArgs = principalArgsForConstraint(principalUnions[0])
+
     // 4. Combine resource/notResource (constructor enforces exclusivity)
     const thisResource = this.resource
     const thisNotResource = this.notResource
@@ -203,25 +242,83 @@ export class Permission {
     // Both have resource[]
     if (thisResource !== undefined && otherResource !== undefined) {
       const union = Array.from(new Set([...thisResource, ...otherResource]))
-      return [new Permission(eff, svc, act, union, undefined, conds)]
+      return [
+        new Permission(
+          eff,
+          svc,
+          act,
+          union,
+          undefined,
+          conds,
+          principalArgs.principal,
+          principalArgs.notPrincipal
+        )
+      ]
     }
     // Both have notResource[]
     if (thisNotResource !== undefined && otherNotResource !== undefined) {
       // Intersection of both notResource arrays
       const intersection = thisNotResource.filter((n) => otherNotResource.includes(n))
-      return [new Permission(eff, svc, act, undefined, intersection, conds)]
+      return [
+        new Permission(
+          eff,
+          svc,
+          act,
+          undefined,
+          intersection,
+          conds,
+          principalArgs.principal,
+          principalArgs.notPrincipal
+        )
+      ]
     }
     // One has resource, other has notResource
     if (thisResource !== undefined && otherNotResource !== undefined) {
       return [
-        new Permission(eff, svc, act, thisResource, undefined, conds),
-        new Permission(eff, svc, act, undefined, otherNotResource, conds)
+        new Permission(
+          eff,
+          svc,
+          act,
+          thisResource,
+          undefined,
+          conds,
+          principalArgs.principal,
+          principalArgs.notPrincipal
+        ),
+        new Permission(
+          eff,
+          svc,
+          act,
+          undefined,
+          otherNotResource,
+          conds,
+          principalArgs.principal,
+          principalArgs.notPrincipal
+        )
       ]
     }
     if (otherResource !== undefined && thisNotResource !== undefined) {
       return [
-        new Permission(eff, svc, act, otherResource, undefined, conds),
-        new Permission(eff, svc, act, undefined, thisNotResource, conds)
+        new Permission(
+          eff,
+          svc,
+          act,
+          otherResource,
+          undefined,
+          conds,
+          principalArgs.principal,
+          principalArgs.notPrincipal
+        ),
+        new Permission(
+          eff,
+          svc,
+          act,
+          undefined,
+          thisNotResource,
+          conds,
+          principalArgs.principal,
+          principalArgs.notPrincipal
+        )
       ]
     }
 
@@ -230,12 +327,48 @@ export class Permission {
   }
 
   /**
-   * Returns the intersection of this Permission with another.
-   * Always returns exactly one Permission. If there is no overlap,
-   * returns undefined.
+   * Returns all representable intersections of this Permission with another.
    *
    * @param other The other Permission to intersect with.
-   * @returns A new Permission representing the intersection of other and this, or undefined if there is no intersection.
+   * @returns New Permissions representing the overlap, or an empty array if there is no intersection.
+   */
+  public intersections(other: Permission): Permission[] {
+    const principalIntersections = intersectPrincipalConstraints(
+      this.principalConstraint(),
+      other.principalConstraint()
+    )
+    const results: Permission[] = []
+
+    for (const principalIntersection of principalIntersections) {
+      const principalArgs = principalArgsForConstraint(principalIntersection)
+      const permissionWithIntersectionPrincipal = new Permission(
+        this.effect,
+        this.service,
+        this.action,
+        this.resource,
+        this.notResource,
+        this.conditions,
+        principalArgs.principal,
+        principalArgs.notPrincipal
+      )
+      const intersection = permissionWithIntersectionPrincipal.intersection(other)
+      if (intersection) {
+        results.push(intersection)
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * Returns one intersection of this Permission with another.
+   *
+   * Prefer {@link intersections} when correctness depends on all possible overlaps. This
+   * compatibility method returns at most one Permission and may omit additional representable
+   * intersections if future principal algebra produces multiple principal residuals.
+   *
+   * @param other The other Permission to intersect with.
+   * @returns A new Permission representing one intersection of other and this, or undefined if there is no intersection.
    */
   public intersection(other: Permission): Permission | undefined {
     // 1. Must match effect, service, and action
@@ -247,6 +380,15 @@ export class Permission {
       // No overlap at all—return a "zero-resource" permission
       return undefined
     }
+
+    const principalIntersections = intersectPrincipalConstraints(
+      this.principalConstraint(),
+      other.principalConstraint()
+    )
+    if (principalIntersections.length === 0) {
+      return undefined
+    }
+    const principalArgs = principalArgsForConstraint(principalIntersections[0])
 
     if (this.resource != undefined && other.resource != undefined) {
       // 2. If one includes the other, return the narrower one unless both are NotResource
@@ -382,7 +524,16 @@ export class Permission {
       if (intersectR.length === 0) {
         return undefined
       }
-      return new Permission(eff, svc, act, intersectR, undefined, conds)
+      return new Permission(
+        eff,
+        svc,
+        act,
+        intersectR,
+        undefined,
+        conds,
+        principalArgs.principal,
+        principalArgs.notPrincipal
+      )
     }
 
     // Both have notResource[] => union of exclusions (more restrictive), but remove subsumed patterns
@@ -394,7 +545,16 @@ export class Permission {
         (pat) =>
           !combined.some((otherPat) => otherPat !== pat && wildcardToRegex(otherPat).test(pat))
       )
-      return new Permission(eff, svc, act, undefined, filtered, conds)
+      return new Permission(
+        eff,
+        svc,
+        act,
+        undefined,
+        filtered,
+        conds,
+        principalArgs.principal,
+        principalArgs.notPrincipal
+      )
     }
 
     // One has resource, other has notResource
@@ -408,7 +568,16 @@ export class Permission {
       if (filtered.length === 0) {
         return undefined
       }
-      return new Permission(eff, svc, act, filtered, undefined, conds)
+      return new Permission(
+        eff,
+        svc,
+        act,
+        filtered,
+        undefined,
+        conds,
+        principalArgs.principal,
+        principalArgs.notPrincipal
+      )
     }
 
     // This should never happen
@@ -440,6 +609,11 @@ export class Permission {
     const allowCondsNorm = normalizeConditionKeys(this.conditions || {})
     const denyCondsNorm = normalizeConditionKeys(other.conditions || {})
     const conditionsMatch = JSON.stringify(allowCondsNorm) === JSON.stringify(denyCondsNorm)
+    const allowPrincipalConstraint = this.principalConstraint()
+    const denyPrincipalConstraint = other.principalConstraint()
+    if (!principalConstraintsOverlap(allowPrincipalConstraint, denyPrincipalConstraint)) {
+      return [this]
+    }
 
     const allowResource = this.resource
     const allowNotResource = this.notResource
@@ -449,6 +623,49 @@ export class Permission {
     const eff = this.effect
     const svc = this.service
     const act = this.action
+    const principalResiduals = subtractPrincipalConstraint(
+      allowPrincipalConstraint,
+      denyPrincipalConstraint
+    )
+    const sameResourceShape =
+      JSON.stringify([...(allowResource ?? [])].sort()) ===
+        JSON.stringify([...(denyResource ?? [])].sort()) &&
+      JSON.stringify([...(allowNotResource ?? [])].sort()) ===
+        JSON.stringify([...(denyNotResource ?? [])].sort())
+    const denyFullyCoversPrincipal = principalIncludes(
+      denyPrincipalConstraint,
+      allowPrincipalConstraint
+    )
+    const allowPrincipalArgs = principalArgsForConstraint(allowPrincipalConstraint)
+    const denyPrincipalArgs = principalArgsForConstraint(denyPrincipalConstraint)
+
+    if (!denyFullyCoversPrincipal && sameResourceShape && conditionsMatch) {
+      const principalResidualsEqualAllow =
+        principalResiduals.length === 1 &&
+        JSON.stringify(principalArgsForConstraint(principalResiduals[0])) ===
+          JSON.stringify(allowPrincipalArgs)
+      if (principalResidualsEqualAllow) {
+        return [this, other]
+      }
+
+      return principalResiduals.map((constraint) => {
+        const args = principalArgsForConstraint(constraint)
+        return new Permission(
+          eff,
+          svc,
+          act,
+          allowResource,
+          allowNotResource,
+          this.conditions,
+          args.principal,
+          args.notPrincipal
+        )
+      })
+    }
+
+    if (!denyFullyCoversPrincipal) {
+      return [this, other]
+    }
 
     // Case: Allow.resource & Deny.resource
     if (allowResource !== undefined && denyResource !== undefined) {
@@ -514,12 +731,30 @@ export class Permission {
       const permissionsToReturn: Permission[] = []
       if (allowNoOverlap.length > 0) {
         permissionsToReturn.push(
-          new Permission(eff, svc, act, allowNoOverlap, undefined, this.conditions)
+          new Permission(
+            eff,
+            svc,
+            act,
+            allowNoOverlap,
+            undefined,
+            this.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
+          )
         )
       }
       if (allowSupersets.length > 0) {
         permissionsToReturn.push(
-          new Permission(eff, svc, act, allowSupersets, undefined, this.conditions)
+          new Permission(
+            eff,
+            svc,
+            act,
+            allowSupersets,
+            undefined,
+            this.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
+          )
         )
       }
       if (allowMatches.length > 0 || allowSubsets.length > 0) {
@@ -531,14 +766,25 @@ export class Permission {
             act,
             [...allowMatches, ...allowSubsets],
             undefined,
-            this.conditions
+            this.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
           )
           permissionsToReturn.push(...applyDenyConditionsToAllow(newAllow, other))
         }
       }
       if (denySubsets.length > 0) {
         permissionsToReturn.push(
-          new Permission('Deny', svc, act, denySubsets, undefined, other.conditions)
+          new Permission(
+            'Deny',
+            svc,
+            act,
+            denySubsets,
+            undefined,
+            other.conditions,
+            denyPrincipalArgs.principal,
+            denyPrincipalArgs.notPrincipal
+          )
         )
       }
       return permissionsToReturn
@@ -610,7 +856,16 @@ export class Permission {
       // ExcludedFromDeny: Keep as-is with original conditions (deny doesn't touch these)
       if (excludedFromDeny.length > 0) {
         permissionsToReturn.push(
-          new Permission(eff, svc, act, excludedFromDeny, undefined, this.conditions)
+          new Permission(
+            eff,
+            svc,
+            act,
+            excludedFromDeny,
+            undefined,
+            this.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
+          )
         )
       }
 
@@ -627,14 +882,25 @@ export class Permission {
               act,
               coveredDenyNotResourcePatterns,
               undefined,
-              this.conditions
+              this.conditions,
+              allowPrincipalArgs.principal,
+              allowPrincipalArgs.notPrincipal
             )
           )
         }
 
         // Second: Apply inverted deny conditions to the superset resources
         if (denyHasConditions && !conditionsMatch) {
-          const supersetAllow = new Permission(eff, svc, act, supersets, undefined, this.conditions)
+          const supersetAllow = new Permission(
+            eff,
+            svc,
+            act,
+            supersets,
+            undefined,
+            this.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
+          )
           permissionsToReturn.push(...applyDenyConditionsToAllow(supersetAllow, other))
         }
         // If no conditions or conditions match, the superset is fully denied (nothing to add)
@@ -646,7 +912,16 @@ export class Permission {
         // If the conditions match - these are fully denied (drop them)
         if (denyHasConditions && !conditionsMatch) {
           // Different conditions - keep with inverted deny conditions
-          const newAllow = new Permission(eff, svc, act, affectedByDeny, undefined, this.conditions)
+          const newAllow = new Permission(
+            eff,
+            svc,
+            act,
+            affectedByDeny,
+            undefined,
+            this.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
+          )
           permissionsToReturn.push(...applyDenyConditionsToAllow(newAllow, other))
         }
       }
@@ -710,7 +985,18 @@ export class Permission {
 
       // Same conditions or no deny conditions: simply expand notResource
       if (conditionsMatch || !denyHasConditions) {
-        return [new Permission(eff, svc, act, undefined, expandedNotResource, this.conditions)]
+        return [
+          new Permission(
+            eff,
+            svc,
+            act,
+            undefined,
+            expandedNotResource,
+            this.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
+          )
+        ]
       }
 
       // Different conditions: handle Subset and NoOverlap cases separately
@@ -726,7 +1012,9 @@ export class Permission {
         act,
         undefined,
         allowNotResource,
-        this.conditions
+        this.conditions,
+        allowPrincipalArgs.principal,
+        allowPrincipalArgs.notPrincipal
       )
       permissionsToReturn.push(...applyDenyConditionsToAllow(originalAllow, other))
 
@@ -745,7 +1033,9 @@ export class Permission {
             act,
             undefined,
             subsetExpandedNotResource,
-            subsetConditions || other.conditions
+            subsetConditions || other.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
           )
         )
       }
@@ -754,7 +1044,16 @@ export class Permission {
       // (adding new exclusion is always safe, no condition needed)
       if (hasNoOverlapAdditions) {
         permissionsToReturn.push(
-          new Permission(eff, svc, act, undefined, expandedNotResource, this.conditions)
+          new Permission(
+            eff,
+            svc,
+            act,
+            undefined,
+            expandedNotResource,
+            this.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
+          )
         )
       }
 
@@ -801,7 +1100,18 @@ export class Permission {
       // Handle conditions
       if (!denyHasConditions || conditionsMatch) {
         // No deny conditions or same conditions: apply directly
-        return [new Permission(eff, svc, act, survivingResources, undefined, this.conditions)]
+        return [
+          new Permission(
+            eff,
+            svc,
+            act,
+            survivingResources,
+            undefined,
+            this.conditions,
+            allowPrincipalArgs.principal,
+            allowPrincipalArgs.notPrincipal
+          )
+        ]
       }
 
       // Different conditions: split into two parts
@@ -814,7 +1124,9 @@ export class Permission {
         act,
         undefined,
         allowNotResource,
-        this.conditions
+        this.conditions,
+        allowPrincipalArgs.principal,
+        allowPrincipalArgs.notPrincipal
       )
       permissionsToReturn.push(...applyDenyConditionsToAllow(originalAllow, other))
 
@@ -825,7 +1137,16 @@ export class Permission {
       )
       const part2Conditions = denyConditionCount === 1 ? other.conditions : undefined
       permissionsToReturn.push(
-        new Permission(eff, svc, act, survivingResources, undefined, part2Conditions)
+        new Permission(
+          eff,
+          svc,
+          act,
+          survivingResources,
+          undefined,
+          part2Conditions,
+          allowPrincipalArgs.principal,
+          allowPrincipalArgs.notPrincipal
+        )
       )
 
       return permissionsToReturn
@@ -1324,7 +1645,9 @@ export function applyDenyConditionsToAllow(allow: Permission, deny: Permission):
             allow.action,
             allow.resource,
             allow.notResource,
-            mergedConditions
+            mergedConditions,
+            allow.principal,
+            allow.notPrincipal
           )
         )
       }
