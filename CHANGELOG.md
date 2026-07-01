@@ -1,3 +1,10 @@
+## [0.1.140](https://github.com/cloud-copilot/iam-lens/compare/v0.1.139...v0.1.140) (2026-07-01)
+
+
+### Bug Fixes
+
+* Allow parsing trust policies in PermissionSets ([f994f14](https://github.com/cloud-copilot/iam-lens/commit/f994f14d9eaa083a828e8e29aac8d38a9c3e7d7a))
+
 ## [0.1.139](https://github.com/cloud-copilot/iam-lens/compare/v0.1.138...v0.1.139) (2026-07-01)
 
 
