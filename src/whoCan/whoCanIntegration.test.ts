@@ -411,6 +411,42 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
+    name: 'resource policy account and pathless session grants do not duplicate path-qualified role results',
+    description:
+      'Resource policy grants an account and also names a pathless STS assumed-role session for a path-qualified role in that account. The same resolved role should only be returned once.',
+    data: '1',
+    request: {
+      resource: 'arn:aws:s3:::who-can-account-and-session',
+      actions: ['s3:ListBucket']
+    },
+    expected: {
+      who: [
+        {
+          action: 'ListBucket',
+          principal:
+            'arn:aws:iam::100000000001:role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        },
+        {
+          action: 'ListBucket',
+          principal: 'arn:aws:iam::200000000002:user/user1',
+          service: 's3',
+          level: 'list',
+          resourceType: 'bucket'
+        }
+      ]
+    }
+  },
+  {
     name: 'S3 object wildcard (prefix)',
     simulationCounts: { withoutIndex: 3, withIndex: 3 },
     data: '1',

@@ -6,7 +6,7 @@
       "Effect": "Allow",
       "Principal": {
         "AWS": [
-          "arn:aws:sts::100000000001:assumed-role/aws-reserved/sso.amazonaws.com/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5/session-abc"
+          "arn:aws:sts::100000000001:assumed-role/AWSReservedSSO_AdministratorAccess_0fed56ec5d997fc5/session-abc"
         ]
       },
       "Action": ["s3:ListBucket", "s3:GetObject"],

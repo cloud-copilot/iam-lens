@@ -922,7 +922,8 @@ export class WhoCanProcessor {
 
     const accountsToCheck = await accountsToCheckBasedOnResourcePolicy(
       resourcePolicy,
-      resourceAccount
+      resourceAccount,
+      collectClient
     )
 
     const principalArnFilter = buildPrincipalArnFilter(resourcePolicy)
