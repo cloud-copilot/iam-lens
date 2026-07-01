@@ -312,9 +312,9 @@ export interface AddStatementToPermissionSetOptions {
   includePrincipals?: boolean
 
   /**
-   * For resource policies that do not require a resource element
-   * such as IAM Role trust policies. Use this to provide the
-   * resource ARN(s) for these policies.
+   * Resource ARN(s) to use for resource-policy statements that do not contain Resource or
+   * NotResource, such as IAM role trust policies. Explicit Resource and NotResource values
+   * always take precedence.
    */
   implicitResources?: string[]
 }
@@ -354,6 +354,7 @@ export async function addPoliciesToPermissionSet(
  *
  * @param statement the IAM policy statement to add
  * @param permissionSet the PermissionSet to add the statement to
+ * @param options conversion options controlling principal and implicit resource handling
  * @returns nothing; the PermissionSet is modified in place
  */
 export async function addStatementToPermissionSet(
@@ -378,12 +379,12 @@ export async function addStatementToPermissionSet(
 
     let resource: string[] | undefined = undefined
     let notResource: string[] | undefined = undefined
-    if (!!options.implicitResources && options.implicitResources.length > 0) {
-      resource = options.implicitResources
-    } else if (statement.isResourceStatement()) {
+    if (statement.isResourceStatement()) {
       resource = statement.resources().map((r) => r.value())
     } else if (statement.isNotResourceStatement()) {
       notResource = statement.notResources().map((r) => r.value())
+    } else if (!!options.implicitResources?.length) {
+      resource = options.implicitResources
     }
 
     const { principal, notPrincipal } = principalFieldsFromStatement(statement, options)

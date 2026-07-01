@@ -1014,6 +1014,72 @@ describe('addStatementToPermissionSet with implicitResources', () => {
       }
     ])
   })
+
+  it('should preserve explicit Resource when implicit resources are provided', async () => {
+    //Given a resource policy statement with an explicit Resource
+    const implicitRoleArn = 'arn:aws:iam::111122223333:role/ExampleRole'
+    const explicitBucketArn = 'arn:aws:s3:::example-bucket/*'
+    const principalArn = 'arn:aws:iam::444455556666:role/DeploymentRole'
+    const statement = loadPolicy({
+      Version: '2012-10-17',
+      Statement: {
+        Effect: 'Allow',
+        Principal: { AWS: principalArn },
+        Action: 's3:GetObject',
+        Resource: explicitBucketArn
+      }
+    }).statements()[0]
+    const permissionSet = new PermissionSet('Allow')
+
+    //When the statement is added with implicit resources
+    await addStatementToPermissionSet(statement, permissionSet, {
+      includePrincipals: true,
+      implicitResources: [implicitRoleArn]
+    })
+
+    //Then the explicit Resource should take precedence over the implicit resources
+    expectPermissionSetToMatch(permissionSet, [
+      {
+        effect: 'Allow',
+        action: 's3:GetObject',
+        resource: [explicitBucketArn],
+        principal: { AWS: [principalArn] }
+      }
+    ])
+  })
+
+  it('should preserve explicit NotResource when implicit resources are provided', async () => {
+    //Given a resource policy statement with an explicit NotResource
+    const implicitRoleArn = 'arn:aws:iam::111122223333:role/ExampleRole'
+    const explicitExcludedBucketArn = 'arn:aws:s3:::sensitive-bucket/*'
+    const principalArn = 'arn:aws:iam::444455556666:role/DeploymentRole'
+    const statement = loadPolicy({
+      Version: '2012-10-17',
+      Statement: {
+        Effect: 'Deny',
+        Principal: { AWS: principalArn },
+        Action: 's3:GetObject',
+        NotResource: explicitExcludedBucketArn
+      }
+    }).statements()[0]
+    const permissionSet = new PermissionSet('Deny')
+
+    //When the statement is added with implicit resources
+    await addStatementToPermissionSet(statement, permissionSet, {
+      includePrincipals: true,
+      implicitResources: [implicitRoleArn]
+    })
+
+    //Then the explicit NotResource should take precedence over the implicit resources
+    expectPermissionSetToMatch(permissionSet, [
+      {
+        effect: 'Deny',
+        action: 's3:GetObject',
+        notResource: [explicitExcludedBucketArn],
+        principal: { AWS: [principalArn] }
+      }
+    ])
+  })
 })
 
 describe('toPolicyStatements', () => {
