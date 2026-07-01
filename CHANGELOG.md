@@ -1,3 +1,10 @@
+## [0.1.139](https://github.com/cloud-copilot/iam-lens/compare/v0.1.138...v0.1.139) (2026-07-01)
+
+
+### Bug Fixes
+
+* deduplicate resolved session principals in whoCan ([06c6d09](https://github.com/cloud-copilot/iam-lens/commit/06c6d09abf11c585e8d61b85be3f4d864f37026f))
+
 ## [0.1.138](https://github.com/cloud-copilot/iam-lens/compare/v0.1.137...v0.1.138) (2026-06-28)
 
 
