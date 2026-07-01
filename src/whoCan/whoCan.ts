@@ -12,11 +12,7 @@ import {
 } from '@cloud-copilot/iam-data'
 import { type Condition, type ConditionOperation, loadPolicy } from '@cloud-copilot/iam-policy'
 import { type RequestDenial, type RequestGrant } from '@cloud-copilot/iam-simulate'
-import {
-  convertAssumedRoleArnToRoleArn,
-  isAssumedRoleArn,
-  splitArnParts
-} from '@cloud-copilot/iam-utils'
+import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { Arn } from '../utils/arn.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'
@@ -573,9 +569,21 @@ function checkForServicePrincipalConditions(conditions: Condition[]): ServicePri
   return { type: 'not-service-only' }
 }
 
+/**
+ * Derives the accounts and specific principals that should be considered from a resource policy.
+ *
+ * Specific STS session principals are resolved through collect data so account-enumeration
+ * paths can de-duplicate path-qualified roles that resolve from pathless session ARNs.
+ *
+ * @param resourcePolicy The resource policy document to inspect.
+ * @param resourceAccount The account ID that owns the resource, when known.
+ * @param collectClient The collect client used to resolve canonical principal ARNs.
+ * @returns The accounts, principals, organizations, and related flags to consider for whoCan.
+ */
 export async function accountsToCheckBasedOnResourcePolicy(
   resourcePolicy: any,
-  resourceAccount: string | undefined
+  resourceAccount: string | undefined,
+  collectClient: IamCollectClient
 ): Promise<AccountsToCheck> {
   const accountsToCheck: AccountsToCheck = {
     allAccounts: false,
@@ -610,7 +618,9 @@ export async function accountsToCheckBasedOnResourcePolicy(
             accountsToCheck.resourceAccountTrustedByPolicy = true
           }
         } else {
-          accountsToCheck.specificPrincipals.push(convertSessionArnToRoleArn(principal.value()))
+          accountsToCheck.specificPrincipals.push(
+            await resolveResourcePolicyPrincipalArn(principal.value(), collectClient)
+          )
         }
       }
 
@@ -689,7 +699,9 @@ export async function accountsToCheckBasedOnResourcePolicy(
               let extractedPrincipalArnScope = false
               if (!hasWildcardOrDynamic(value)) {
                 // Exact literal — push as a specific principal
-                specificPrincipals.push(convertSessionArnToRoleArn(value))
+                specificPrincipals.push(
+                  await resolveResourcePolicyPrincipalArn(value, collectClient)
+                )
                 extractedPrincipalArnScope = true
               } else if (isExactOperator && !value.includes('*') && !value.includes('?')) {
                 // Exact operator with a dynamic variable but no wildcards — try account extraction
@@ -765,17 +777,26 @@ export async function accountsToCheckBasedOnResourcePolicy(
 }
 
 /**
- * If the princpal arn is a session, converts it to the ARN of the assumed role.
- * Otherwise returns the principal ARN as is.
+ * Resolves a resource-policy principal to the canonical collected principal ARN.
  *
- * @param principalArn The principal ARN to convert.
- * @returns The ARN of the assumed role if the principal ARN is a session, otherwise the original principal ARN.
+ * Resource policies can name STS assumed-role sessions, including pathless session
+ * ARNs for path-qualified IAM roles. Resolve through collect data first so
+ * whoCan can de-duplicate those principals before simulation, then preserve the
+ * previous session-to-role conversion behavior when the principal is not found.
+ *
+ * @param principalArn The resource-policy principal ARN or service principal to resolve.
+ * @param collectClient The collect client used to resolve canonical principal ARNs.
+ * @returns The canonical collected ARN when found, otherwise the original principal ARN.
  */
-function convertSessionArnToRoleArn(principalArn: string): string {
-  if (!isAssumedRoleArn(principalArn)) {
+async function resolveResourcePolicyPrincipalArn(
+  principalArn: string,
+  collectClient: IamCollectClient
+): Promise<string> {
+  if (!principalArn.startsWith('arn:')) {
     return principalArn
   }
-  return convertAssumedRoleArnToRoleArn(principalArn)
+
+  return (await collectClient.resolvePrincipalArn(principalArn)) ?? principalArn
 }
 
 export async function actionsForWhoCan(

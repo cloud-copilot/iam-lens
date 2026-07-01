@@ -11,6 +11,10 @@ import {
   type WhoCanResponse
 } from './whoCan.js'
 
+const noPrincipalResolutionClient = {
+  resolvePrincipalArn: async () => undefined
+} as unknown as IamCollectClient
+
 const findResourceTypeForArnTests: {
   only?: boolean
   input: string
@@ -2441,7 +2445,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
   },
   // --- Session ARN conversion (assumed-role) ---
   {
-    name: 'should convert assumed-role session ARN to role ARN in Principal',
+    name: 'should keep unresolved assumed-role session ARN in Principal',
     resourcePolicy: {
       Version: '2012-10-17',
       Statement: [
@@ -2459,7 +2463,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       allAccounts: false,
       specificAccounts: [],
-      specificPrincipals: ['arn:aws:iam::666666666666:role/MyRole'],
+      specificPrincipals: ['arn:aws:sts::666666666666:assumed-role/MyRole/my-session'],
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
@@ -2467,7 +2471,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     }
   },
   {
-    name: 'should convert assumed-role session ARN with path to role ARN in Principal',
+    name: 'should keep unresolved path-containing assumed-role session ARN in Principal',
     resourcePolicy: {
       Version: '2012-10-17',
       Statement: [
@@ -2485,7 +2489,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     expected: {
       allAccounts: false,
       specificAccounts: [],
-      specificPrincipals: ['arn:aws:iam::666666666666:role/path/to/MyRole'],
+      specificPrincipals: ['arn:aws:sts::666666666666:assumed-role/path/to/MyRole/my-session'],
       specificOrganizations: [],
       specificOrganizationalUnits: [],
       checkAnonymous: false,
@@ -2493,7 +2497,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     }
   },
   {
-    name: 'should convert assumed-role session ARN to role ARN in PrincipalArn condition',
+    name: 'should keep unresolved assumed-role session ARN in PrincipalArn condition',
     resourcePolicy: {
       Version: '2012-10-17',
       Statement: [
@@ -2512,7 +2516,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     },
     resourceAccountId: '000000000000',
     expected: {
-      specificPrincipals: ['arn:aws:iam::777777777777:role/SpecificRole'],
+      specificPrincipals: ['arn:aws:sts::777777777777:assumed-role/SpecificRole/session-123'],
       specificAccounts: [],
       checkAnonymous: false,
       checkAllFromResourceAccount: false,
@@ -2520,7 +2524,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     }
   },
   {
-    name: 'should convert assumed-role session ARN with path to role ARN in PrincipalArn condition',
+    name: 'should keep unresolved path-containing assumed-role session ARN in PrincipalArn condition',
     resourcePolicy: {
       Version: '2012-10-17',
       Statement: [
@@ -2540,7 +2544,9 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     },
     resourceAccountId: '000000000000',
     expected: {
-      specificPrincipals: ['arn:aws:iam::777777777777:role/path/to/SpecificRole'],
+      specificPrincipals: [
+        'arn:aws:sts::777777777777:assumed-role/path/to/SpecificRole/session-123'
+      ],
       specificAccounts: [],
       checkAnonymous: false,
       checkAllFromResourceAccount: false,
@@ -2548,7 +2554,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     }
   },
   {
-    name: 'should convert exact assumed-role session ARN under ArnLike PrincipalArn condition',
+    name: 'should keep unresolved exact assumed-role session ARN under ArnLike PrincipalArn condition',
     resourcePolicy: {
       Version: '2012-10-17',
       Statement: [
@@ -2567,7 +2573,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
     },
     resourceAccountId: '000000000000',
     expected: {
-      specificPrincipals: ['arn:aws:iam::777777777777:role/SpecificRole'],
+      specificPrincipals: ['arn:aws:sts::777777777777:assumed-role/SpecificRole/session-123'],
       specificAccounts: [],
       checkAnonymous: false,
       checkAllFromResourceAccount: false,
@@ -2623,7 +2629,7 @@ const accountsToCheckBasedOnResourcePolicyTests: {
       allAccounts: false,
       specificAccounts: [],
       specificPrincipals: [
-        'arn:aws:iam::666666666666:role/RoleA',
+        'arn:aws:sts::666666666666:assumed-role/RoleA/session-1',
         'arn:aws:iam::777777777777:role/RoleB'
       ],
       specificOrganizations: [],
@@ -3175,6 +3181,114 @@ const accountsToCheckBasedOnResourcePolicyTests: {
 ]
 
 describe('accountsToCheckBasedOnResourcePolicy', () => {
+  it('should resolve session principals from resource policies through the collect client', async () => {
+    // Given a resource policy that names an STS session ARN without the IAM role path
+    const resourcePolicy = {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:sts::111122223333:assumed-role/ExampleRole/example-session'
+          },
+          Action: 's3:ListBucket',
+          Resource: 'arn:aws:s3:::example-bucket'
+        }
+      ]
+    }
+    const resolvedRoleArn = 'arn:aws:iam::111122223333:role/path/to/ExampleRole'
+    const client = {
+      resolvePrincipalArn: async (principalArn: string) => {
+        if (principalArn === 'arn:aws:sts::111122223333:assumed-role/ExampleRole/example-session') {
+          return resolvedRoleArn
+        }
+        return undefined
+      }
+    } as unknown as IamCollectClient
+
+    // When accountsToCheckBasedOnResourcePolicy derives the specific principals to search
+    const result = await accountsToCheckBasedOnResourcePolicy(
+      resourcePolicy,
+      '999988887777',
+      client
+    )
+
+    // Then it should use the fully resolved principal ARN so scoped whoCan calls de-duplicate it correctly
+    expect(result.specificPrincipals).toEqual([resolvedRoleArn])
+  })
+
+  it('should keep unresolved session principal ARN so it is reported as not found later', async () => {
+    // Given a resource policy that names an STS session ARN and a client that cannot resolve the role
+    const resourcePolicy = {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: {
+            AWS: 'arn:aws:sts::111122223333:assumed-role/ExampleRole/example-session'
+          },
+          Action: 's3:ListBucket',
+          Resource: 'arn:aws:s3:::example-bucket'
+        }
+      ]
+    }
+    const client = {
+      resolvePrincipalArn: async () => undefined
+    } as unknown as IamCollectClient
+
+    // When accountsToCheckBasedOnResourcePolicy derives the specific principals to search
+    const result = await accountsToCheckBasedOnResourcePolicy(
+      resourcePolicy,
+      '999988887777',
+      client
+    )
+
+    // Then it should keep the unresolved session ARN for later principalsNotFound reporting
+    expect(result.specificPrincipals).toEqual([
+      'arn:aws:sts::111122223333:assumed-role/ExampleRole/example-session'
+    ])
+  })
+
+  it('should resolve session principals extracted from PrincipalArn conditions through the collect client', async () => {
+    // Given a wildcard-principal resource policy narrowed by an exact PrincipalArn session condition
+    const resourcePolicy = {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: '*',
+          Action: 's3:ListBucket',
+          Resource: 'arn:aws:s3:::example-bucket',
+          Condition: {
+            StringEquals: {
+              'aws:PrincipalArn':
+                'arn:aws:sts::111122223333:assumed-role/ExampleRole/example-session'
+            }
+          }
+        }
+      ]
+    }
+    const resolvedRoleArn = 'arn:aws:iam::111122223333:role/path/to/ExampleRole'
+    const client = {
+      resolvePrincipalArn: async (principalArn: string) => {
+        if (principalArn === 'arn:aws:sts::111122223333:assumed-role/ExampleRole/example-session') {
+          return resolvedRoleArn
+        }
+        return undefined
+      }
+    } as unknown as IamCollectClient
+
+    // When accountsToCheckBasedOnResourcePolicy extracts the condition principal scope
+    const result = await accountsToCheckBasedOnResourcePolicy(
+      resourcePolicy,
+      '999988887777',
+      client
+    )
+
+    // Then it should use the fully resolved principal ARN from the collect client
+    expect(result.specificPrincipals).toEqual([resolvedRoleArn])
+  })
+
   for (const test of accountsToCheckBasedOnResourcePolicyTests) {
     const func = test.only ? it.only : it
     func(test.name, async () => {
@@ -3182,7 +3296,11 @@ describe('accountsToCheckBasedOnResourcePolicy', () => {
       const { resourcePolicy, resourceAccountId } = test
 
       // When accountsToCheckBasedOnResourcePolicy is called
-      const result = await accountsToCheckBasedOnResourcePolicy(resourcePolicy, resourceAccountId)
+      const result = await accountsToCheckBasedOnResourcePolicy(
+        resourcePolicy,
+        resourceAccountId,
+        noPrincipalResolutionClient
+      )
 
       // Then it should return the expected accounts
       const expected = test.expected
