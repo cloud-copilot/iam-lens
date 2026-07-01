@@ -310,6 +310,13 @@ export class PermissionSet {
 export interface AddStatementToPermissionSetOptions {
   /** Preserve Principal and NotPrincipal values from statements when converting to permissions. */
   includePrincipals?: boolean
+
+  /**
+   * For resource policies that do not require a resource element
+   * such as IAM Role trust policies. Use this to provide the
+   * resource ARN(s) for these policies.
+   */
+  implicitResources?: string[]
 }
 
 export async function buildPermissionSetFromPolicies(
@@ -371,7 +378,9 @@ export async function addStatementToPermissionSet(
 
     let resource: string[] | undefined = undefined
     let notResource: string[] | undefined = undefined
-    if (statement.isResourceStatement()) {
+    if (!!options.implicitResources && options.implicitResources.length > 0) {
+      resource = options.implicitResources
+    } else if (statement.isResourceStatement()) {
       resource = statement.resources().map((r) => r.value())
     } else if (statement.isNotResourceStatement()) {
       notResource = statement.notResources().map((r) => r.value())

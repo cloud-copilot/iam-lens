@@ -1,6 +1,7 @@
+import { loadPolicy } from '@cloud-copilot/iam-policy'
 import { describe, expect, it } from 'vitest'
 import { Permission } from './permission.js'
-import { PermissionSet, toPolicyStatements } from './permissionSet.js'
+import { addStatementToPermissionSet, PermissionSet, toPolicyStatements } from './permissionSet.js'
 import { expectPermissionSetToMatch, TestPermission } from './permissionSetTestUtils.js'
 
 const addPermissionTests: {
@@ -905,6 +906,115 @@ const toPolicyStatementsTests: {
     ]
   }
 ]
+
+describe('addStatementToPermissionSet with implicitResources', () => {
+  it('should use implicit role resource for an Allow trust policy without Resource', async () => {
+    //Given an IAM role trust policy statement that allows a specific AWS principal to assume the role
+    const roleArn = 'arn:aws:iam::111122223333:role/ExampleRole'
+    const trustedPrincipal = 'arn:aws:iam::444455556666:role/DeploymentRole'
+    const statement = loadPolicy({
+      Version: '2012-10-17',
+      Statement: {
+        Effect: 'Allow',
+        Principal: { AWS: trustedPrincipal },
+        Action: 'sts:AssumeRole'
+      }
+    }).statements()[0]
+    const permissionSet = new PermissionSet('Allow')
+
+    //When the statement is added with the role ARN as an implicit resource
+    await addStatementToPermissionSet(statement, permissionSet, {
+      includePrincipals: true,
+      implicitResources: [roleArn]
+    })
+
+    //Then the trust policy permission should use the implicit role resource
+    expectPermissionSetToMatch(permissionSet, [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: [roleArn],
+        principal: { AWS: [trustedPrincipal] }
+      }
+    ])
+  })
+
+  it('should use implicit role resources for a multi-action service trust policy without Resource', async () => {
+    //Given an IAM role trust policy statement that allows Lambda to assume and tag sessions
+    const roleArns = [
+      'arn:aws:iam::111122223333:role/ApplicationRole',
+      'arn:aws:iam::111122223333:role/WorkerRole'
+    ]
+    const statement = loadPolicy({
+      Version: '2012-10-17',
+      Statement: {
+        Effect: 'Allow',
+        Principal: { Service: 'lambda.amazonaws.com' },
+        Action: ['sts:AssumeRole', 'sts:TagSession'],
+        Condition: {
+          StringEquals: {
+            'aws:SourceAccount': '111122223333'
+          }
+        }
+      }
+    }).statements()[0]
+    const permissionSet = new PermissionSet('Allow')
+
+    //When the statement is added with multiple role ARNs as implicit resources
+    await addStatementToPermissionSet(statement, permissionSet, {
+      includePrincipals: true,
+      implicitResources: roleArns
+    })
+
+    //Then every generated permission should use the implicit role resources
+    expectPermissionSetToMatch(permissionSet, [
+      {
+        effect: 'Allow',
+        action: 'sts:AssumeRole',
+        resource: roleArns,
+        conditions: { StringEquals: { 'aws:SourceAccount': ['111122223333'] } },
+        principal: { Service: ['lambda.amazonaws.com'] }
+      },
+      {
+        effect: 'Allow',
+        action: 'sts:TagSession',
+        resource: roleArns,
+        conditions: { StringEquals: { 'aws:SourceAccount': ['111122223333'] } },
+        principal: { Service: ['lambda.amazonaws.com'] }
+      }
+    ])
+  })
+
+  it('should use implicit role resource for a Deny trust policy without Resource', async () => {
+    //Given an IAM role trust policy statement that denies assume-role to non-approved principals
+    const roleArn = 'arn:aws:iam::111122223333:role/ExampleRole'
+    const statement = loadPolicy({
+      Version: '2012-10-17',
+      Statement: {
+        Effect: 'Deny',
+        NotPrincipal: { AWS: 'arn:aws:iam::444455556666:role/ApprovedRole' },
+        Action: 'sts:AssumeRole'
+      }
+    }).statements()[0]
+    const permissionSet = new PermissionSet('Deny')
+
+    //When the statement is added with the role ARN as an implicit resource
+    await addStatementToPermissionSet(statement, permissionSet, {
+      includePrincipals: true,
+      implicitResources: [roleArn]
+    })
+
+    //Then the deny permission should use the implicit role resource
+    expectPermissionSetToMatch(permissionSet, [
+      {
+        effect: 'Deny',
+        action: 'sts:AssumeRole',
+        resource: [roleArn],
+        notPrincipal: { AWS: ['arn:aws:iam::444455556666:role/ApprovedRole'] }
+      }
+    ])
+  })
+})
 
 describe('toPolicyStatements', () => {
   for (const test of toPolicyStatementsTests) {
