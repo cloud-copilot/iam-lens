@@ -1,3 +1,10 @@
+## [0.1.141](https://github.com/cloud-copilot/iam-lens/compare/v0.1.140...v0.1.141) (2026-07-01)
+
+
+### Bug Fixes
+
+* preserve explicit resources when implicit resources are provided ([aa250b7](https://github.com/cloud-copilot/iam-lens/commit/aa250b74292c96b5f6a4956dc817c041c075b739))
+
 ## [0.1.140](https://github.com/cloud-copilot/iam-lens/compare/v0.1.139...v0.1.140) (2026-07-01)
 
 
