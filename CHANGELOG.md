@@ -1,3 +1,10 @@
+## [0.1.144](https://github.com/cloud-copilot/iam-lens/compare/v0.1.143...v0.1.144) (2026-07-11)
+
+
+### Bug Fixes
+
+* handle source arn for service principal discovery ([f75213d](https://github.com/cloud-copilot/iam-lens/commit/f75213db9521b1bb6b3b84f081d8148b37cc4671))
+
 ## [0.1.143](https://github.com/cloud-copilot/iam-lens/compare/v0.1.142...v0.1.143) (2026-07-11)
 
 ## [0.1.142](https://github.com/cloud-copilot/iam-lens/compare/v0.1.141...v0.1.142) (2026-07-04)
