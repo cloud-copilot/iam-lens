@@ -70,5 +70,9 @@
   "wildcard-bucket": {
     "accountId": "100000000001",
     "region": "us-west-2"
+  },
+  "source-arn-deny-bucket": {
+    "accountId": "200000000002",
+    "region": "us-west-2"
   }
 }

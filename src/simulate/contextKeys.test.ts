@@ -1272,6 +1272,71 @@ describe('createContextKeys', () => {
     })
   })
 
+  describe('aws:SourceArn', () => {
+    it('should set aws:SourceArn for service principals in Discovery mode', async () => {
+      //Given a Discovery simulation request with a service principal
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        simulationMode: 'Discovery',
+        principal: 'cloudtrail.amazonaws.com',
+        resourceAccount: '123456789012'
+      }
+
+      //When creating context keys
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
+
+      //Then aws:SourceArn should be present so Discovery can treat its value as unknown
+      expect(contextKeys['aws:SourceArn']).toMatch(/^arn:aws:/)
+    })
+
+    it('should not set aws:SourceArn for IAM users or roles in Discovery mode', async () => {
+      //Given a Discovery simulation request with an IAM user principal
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        simulationMode: 'Discovery',
+        principal: 'arn:aws:iam::123456789012:user/test-user',
+        resourceAccount: '123456789012'
+      }
+
+      //When creating context keys
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
+
+      //Then aws:SourceArn should not be set
+      expect(contextKeys['aws:SourceArn']).toBeUndefined()
+    })
+
+    it('should not set aws:SourceArn for service principals in Strict mode', async () => {
+      //Given a Strict simulation request with a service principal
+      const simulationRequest: SimulationRequest = {
+        ...defaultSimulationRequest,
+        simulationMode: 'Strict',
+        principal: 'cloudtrail.amazonaws.com',
+        resourceAccount: '123456789012'
+      }
+
+      //When creating context keys
+      const { contextKeys } = await createContextKeys(
+        testStore().client,
+        simulationRequest,
+        's3',
+        {}
+      )
+
+      //Then aws:SourceArn should not be set without an explicit context override
+      expect(contextKeys['aws:SourceArn']).toBeUndefined()
+    })
+  })
+
   describe('aws:SourceOwner', () => {
     it('should set aws:SourceOwner to the owner of the resource account for service principals', async () => {
       // Given a simulation request with a service principal and a resource account
