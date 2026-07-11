@@ -40,6 +40,7 @@ export const knownContextKeys: readonly string[] = [
   'aws:SourceOrgID',
   'aws:SourceOrgPaths',
   'aws:SourceOwner',
+  'aws:SourceArn',
 
   'kms:CallerAccount'
 ]
@@ -202,6 +203,12 @@ export async function createContextKeys(
     contextKeys['aws:SourceOwner'] = simulationRequest.resourceAccount!
     contextKeys['aws:SourceOrgID'] = contextKeys['aws:ResourceOrgID']
     contextKeys['aws:SourceOrgPaths'] = contextKeys['aws:ResourceOrgPaths']
+
+    if (simulationRequest.simulationMode === 'Discovery') {
+      // Source key Discovery constraints make the concrete value non-authoritative;
+      // this placeholder only marks the key as present for service-originated requests.
+      contextKeys['aws:SourceArn'] = 'arn:aws:iam::000000000000:role/unknown-source'
+    }
   }
 
   //Apply any custom context key overrides

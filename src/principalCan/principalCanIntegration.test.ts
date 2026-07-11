@@ -181,6 +181,16 @@ const principalCanIntegrationTests: {
         },
         {
           Effect: 'Deny',
+          Action: 's3:PutObject',
+          Condition: {
+            arnnotequals: {
+              'aws:sourcearn': ['arn:aws:cloudtrail:*:*:trail/*']
+            }
+          },
+          Resource: ['arn:aws:s3:::source-arn-deny-bucket/*']
+        },
+        {
+          Effect: 'Deny',
           Action: ['s3:DeleteObject', 's3:GetObject', 's3:ListBucket', 's3:PutObject'],
           Condition: {
             stringnotequals: {

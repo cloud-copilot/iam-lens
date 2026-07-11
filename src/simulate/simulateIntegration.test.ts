@@ -358,6 +358,36 @@ const simulateIntegrationTest: {
     expected: 'ImplicitlyDenied'
   },
   {
+    name: 'resource policy Deny with aws:SourceArn treats presence as known and value as unknown',
+    comment:
+      'The role has an identity Allow for s3:PutObject, but the bucket policy has a Deny gated by ArnNotEquals aws:SourceArn. SourceArn is absent for an IAM principal request, so the negated condition matches and the explicit Deny applies.',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::source-arn-deny-bucket/object.txt',
+      resourceAccount: undefined,
+      action: 's3:PutObject',
+      principal: 'arn:aws:iam::200000000002:role/S3CrossAccountRole',
+      customContextKeys: {},
+      simulationMode: 'Discovery'
+    },
+    expected: 'ExplicitlyDenied'
+  },
+  {
+    name: 'service principal can write when aws:SourceArn is present with an unknown value',
+    comment:
+      'The bucket policy allows CloudTrail to write for a matching SourceArn and denies writes for a nonmatching SourceArn. In Discovery mode a service request has a present SourceArn whose exact value is unknown, so the possible Allow matches while the negated Deny cannot definitively apply. No custom context is required.',
+    data: '1',
+    request: {
+      resourceArn: 'arn:aws:s3:::source-arn-deny-bucket/object.txt',
+      resourceAccount: undefined,
+      action: 's3:PutObject',
+      principal: 'cloudtrail.amazonaws.com',
+      customContextKeys: {},
+      simulationMode: 'Discovery'
+    },
+    expected: 'Allowed'
+  },
+  {
     name: 'resource policy Allow without Principal does not allow cross-account access',
     comment:
       'The Allow statement on no-principal-bucket has no Principal element. Cross-account access requires both identity and resource policy allows; with the Allow silent, the request is ImplicitlyDenied.',
