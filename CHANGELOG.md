@@ -1,3 +1,10 @@
+## [0.1.146](https://github.com/cloud-copilot/iam-lens/compare/v0.1.145...v0.1.146) (2026-07-21)
+
+
+### Features
+
+* integrate S3 BPA settings into simulations ([c9a1241](https://github.com/cloud-copilot/iam-lens/commit/c9a1241bdc5560da530b648643a6ecae039c993d))
+
 ## [0.1.145](https://github.com/cloud-copilot/iam-lens/compare/v0.1.144...v0.1.145) (2026-07-18)
 
 ## [0.1.144](https://github.com/cloud-copilot/iam-lens/compare/v0.1.143...v0.1.144) (2026-07-11)
