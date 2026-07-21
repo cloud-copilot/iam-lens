@@ -932,6 +932,86 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
     }
   },
   {
+    name: 'ListBucket with public policy and bucket-level S3 BPA enabled',
+    description:
+      'This checks that bucket-level RestrictPublicBuckets blocks cross-account access granted only by a public bucket policy',
+    data: '2',
+    request: {
+      resource: 'arn:aws:s3:::bucket-bpa-public-bucket/report.txt',
+      actions: ['s3:GetObject'],
+      principalScope: {
+        principals: ['arn:aws:iam::400000000001:role/alpha-role']
+      }
+    },
+    expected: {
+      who: []
+    }
+  },
+  {
+    name: 'ListBucket with public policy and account-level S3 BPA enabled',
+    description:
+      'This checks that account-level RestrictPublicBuckets blocks cross-account access granted only by a public bucket policy',
+    data: '2',
+    request: {
+      resource: 'arn:aws:s3:::account-bpa-public-bucket/report.txt',
+      actions: ['s3:GetObject'],
+      principalScope: {
+        principals: ['arn:aws:iam::400000000001:role/alpha-role']
+      }
+    },
+    expected: {
+      who: []
+    }
+  },
+  {
+    name: 'GetObject with non-public policy and bucket-level S3 BPA enabled',
+    description:
+      'This checks that bucket-level RestrictPublicBuckets does not block cross-account access granted to a specific principal by a non-public bucket policy',
+    data: '2',
+    request: {
+      resource: 'arn:aws:s3:::bucket-bpa-specific-principal-bucket/report.txt',
+      actions: ['s3:GetObject'],
+      principalScope: {
+        principals: ['arn:aws:iam::400000000001:role/alpha-role']
+      }
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          level: 'read',
+          principal: 'arn:aws:iam::400000000001:role/alpha-role',
+          service: 's3',
+          resourceType: 'object'
+        }
+      ]
+    }
+  },
+  {
+    name: 'GetObject with non-public policy and account-level S3 BPA enabled',
+    description:
+      'This checks that account-level RestrictPublicBuckets does not block cross-account access granted to a specific principal by a non-public bucket policy',
+    data: '2',
+    request: {
+      resource: 'arn:aws:s3:::account-bpa-specific-principal-bucket/report.txt',
+      actions: ['s3:GetObject'],
+      principalScope: {
+        principals: ['arn:aws:iam::400000000001:role/alpha-role']
+      }
+    },
+    expected: {
+      who: [
+        {
+          action: 'GetObject',
+          level: 'read',
+          principal: 'arn:aws:iam::400000000001:role/alpha-role',
+          service: 's3',
+          resourceType: 'object'
+        }
+      ]
+    }
+  },
+  {
     name: 'ListBucket with tags and ABAC, override s3Abac to disabled',
     simulationCounts: { withoutIndex: 6, withIndex: 4 },
     description:

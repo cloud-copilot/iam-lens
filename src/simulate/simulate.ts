@@ -224,15 +224,22 @@ export async function simulateRequest(
   const s3BucketOrObjectRequest =
     simulationRequest.resourceArn && isS3BucketOrObjectArn(simulationRequest.resourceArn)
   if (s3BucketOrObjectRequest) {
-    const bucketAbacEnabled = await evaluateAbacForBucket(
-      simulationRequest.s3AbacOverride,
-      collectClient,
-      simulationRequest.resourceAccount!,
-      simulationRequest.resourceArn!
-    )
+    const [bucketAbacEnabled, blockPublicAccess] = await Promise.all([
+      evaluateAbacForBucket(
+        simulationRequest.s3AbacOverride,
+        collectClient,
+        simulationRequest.resourceAccount!,
+        simulationRequest.resourceArn!
+      ),
+      collectClient.getBlockPublicAccessEnabledForBucket(
+        simulationRequest.resourceAccount!,
+        simulationRequest.resourceArn!
+      )
+    ])
     simulation.additionalSettings = {
       s3: {
-        bucketAbacEnabled
+        bucketAbacEnabled,
+        blockPublicAccess
       }
     }
   }

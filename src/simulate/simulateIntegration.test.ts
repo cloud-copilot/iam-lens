@@ -803,6 +803,72 @@ describe('s3 ABAC', () => {
   })
 })
 
+describe('s3 Block Public Access', () => {
+  it('should deny cross-account public bucket access when only bucket-level RestrictPublicBuckets is enabled', async () => {
+    // Given a client with a public bucket policy, bucket-level Block Public Access enabled,
+    // and account-level Block Public Access disabled
+    const collectClient = await getTestDatasetClient('2')
+
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::bucket-bpa-public-bucket/report.txt',
+      resourceAccount: undefined,
+      action: 's3:GetObject',
+      principal: 'arn:aws:iam::400000000001:role/alpha-role',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should be denied by the effective S3 BPA setting
+    assertSuccessfulResult(result)
+    expect(result.overallResult).toEqual('ExplicitlyDenied')
+  })
+
+  it('should deny cross-account public bucket access when account-level RestrictPublicBuckets is enabled', async () => {
+    // Given a client with a public bucket policy and account-level Block Public Access enabled
+    const collectClient = await getTestDatasetClient('2')
+
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::account-bpa-public-bucket/report.txt',
+      resourceAccount: undefined,
+      action: 's3:GetObject',
+      principal: 'arn:aws:iam::400000000001:role/alpha-role',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should be denied by the effective S3 BPA setting
+    assertSuccessfulResult(result)
+    expect(result.overallResult).toEqual('ExplicitlyDenied')
+  })
+
+  it('should allow cross-account public bucket access when RestrictPublicBuckets is disabled', async () => {
+    // Given a client with a public bucket policy and Block Public Access disabled
+    const collectClient = await getTestDatasetClient('2')
+
+    const request: SimulationRequest = {
+      resourceArn: 'arn:aws:s3:::no-bpa-public-bucket/report.txt',
+      resourceAccount: undefined,
+      action: 's3:GetObject',
+      principal: 'arn:aws:iam::400000000001:role/alpha-role',
+      customContextKeys: {},
+      simulationMode: 'Strict'
+    }
+
+    // When we run the simulation
+    const { result } = await simulateRequest(request, collectClient)
+
+    // Then the result should remain allowed without an effective S3 BPA restriction
+    assertSuccessfulResult(result)
+    expect(result.overallResult).toEqual('Allowed')
+  })
+})
+
 function assertSuccessfulResult(
   result: RunSimulationResults
 ): asserts result is Exclude<RunSimulationResults, { resultType: 'error' }> {

@@ -1,0 +1,5 @@
+{
+  "name": "account-bpa-public-bucket",
+  "region": "us-west-2",
+  "arn": "arn:aws:s3:::account-bpa-public-bucket"
+}
