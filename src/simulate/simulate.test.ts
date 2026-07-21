@@ -57,6 +57,114 @@ describe('simulateRequest', () => {
     )
   })
 
+  it('should use underlying role tags for assumed-role session principals', async () => {
+    //Given an assumed-role session whose role has a tag-gated identity policy
+    const { store, client } = testStore()
+    const roleArn = 'arn:aws:iam::123456789012:role/TestRole'
+    const sessionArn = 'arn:aws:sts::123456789012:assumed-role/TestRole/TestSession'
+    await saveRole(store, {
+      arn: roleArn,
+      inlinePolicies: [
+        {
+          PolicyName: 'AllowTaggedRoleAccess',
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: 's3:GetObject',
+                Resource: 'arn:aws:s3:::example-bucket/*',
+                Condition: {
+                  StringEquals: {
+                    'aws:PrincipalTag/Department': 'Engineering'
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    })
+    await store.saveResourceMetadata('123456789012', roleArn, 'tags', {
+      Department: 'Engineering'
+    })
+
+    //When simulating as the assumed-role session
+    const { request, result } = await simulateRequest(
+      {
+        simulationMode: 'Strict',
+        principal: sessionArn,
+        resourceArn: 'arn:aws:s3:::example-bucket/private.txt',
+        resourceAccount: '123456789012',
+        action: 's3:GetObject',
+        customContextKeys: {}
+      },
+      client
+    )
+
+    //Then the simulation should preserve the session principal but use role-backed context
+    expect(request.principal).toBe(sessionArn)
+    expect(request.contextVariables['aws:PrincipalArn']).toBe(roleArn)
+    if (result.resultType === 'error') {
+      assert.fail(`Simulation resulted in error: ${result.errors.message}`)
+    }
+    expect(result.overallResult).toBe('Allowed')
+  })
+
+  it('should use canonical path-qualified role tags for pathless assumed-role session principals', async () => {
+    //Given a pathless assumed-role session whose collected IAM role has a path
+    const { store, client } = testStore()
+    const roleArn = 'arn:aws:iam::123456789012:role/aws-reserved/sso.amazonaws.com/TestRole'
+    const sessionArn = 'arn:aws:sts::123456789012:assumed-role/TestRole/TestSession'
+    await saveRole(store, {
+      arn: roleArn,
+      inlinePolicies: [
+        {
+          PolicyName: 'AllowTaggedPathRoleAccess',
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Effect: 'Allow',
+                Action: 's3:GetObject',
+                Resource: 'arn:aws:s3:::example-bucket/*',
+                Condition: {
+                  StringEquals: {
+                    'aws:PrincipalTag/Department': 'Engineering'
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    })
+    await store.saveResourceMetadata('123456789012', roleArn, 'tags', {
+      Department: 'Engineering'
+    })
+
+    //When simulating as the assumed-role session
+    const { request, result } = await simulateRequest(
+      {
+        simulationMode: 'Strict',
+        principal: sessionArn,
+        resourceArn: 'arn:aws:s3:::example-bucket/private.txt',
+        resourceAccount: '123456789012',
+        action: 's3:GetObject',
+        customContextKeys: {}
+      },
+      client
+    )
+
+    //Then context keys should use the canonical collected role ARN and its tags
+    expect(request.principal).toBe(sessionArn)
+    expect(request.contextVariables['aws:PrincipalArn']).toBe(roleArn)
+    if (result.resultType === 'error') {
+      assert.fail(`Simulation resulted in error: ${result.errors.message}`)
+    }
+    expect(result.overallResult).toBe('Allowed')
+  })
+
   it('should return structured validation errors for invalid trust policies', async () => {
     const { store, client } = testStore()
     const principalArn = 'arn:aws:iam::123456789012:user/test-user'
