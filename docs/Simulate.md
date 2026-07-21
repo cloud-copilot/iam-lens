@@ -14,6 +14,7 @@ Simulations can be run for any principal type (user, role, assumed role, federat
 - Service control policies (SCPs)
 - Resource control policies (RCPs)
 - Permission boundaries
+- S3 Block Public Access `RestrictPublicBuckets` settings from collected bucket and account metadata
 
 Simulations support both inclusive and exclusive statement fields such as `Principal`, `NotPrincipal`, `Action`, `NotAction`, `Resource`, `NotResource`, `Condition`, and `Effect`. [All condition operators are supported](#supported-condition-keys).
 
@@ -33,7 +34,7 @@ When simulating requests, iam-lens will detect the account for the principal and
 | `-v`, `--verbose`                   | Enable verbose output for the simulation to see exactly what statements applied or not and why.                                                                                                                                                                                                                         |
 | `--expect <result>`                 | Optional expected outcome of the simulation. Valid values are `Allowed`, `ImplicitlyDenied`, `ExplicitlyDenied`, `AnyDeny`. If the result does not match the expected value, a non-zero exit code is returned                                                                                                           |
 | `-i`, `--ignore-missing-principal`  | Ignore if the principal is not found in the data. By default a simulation will fail if the principal is not in your iam-collect data. Use this flag if you want to simulate a request for a principal that may not exist in the downloaded data.                                                                        |
-| `--s3-abac-override`                | Override the S3 ABAC setting for S3 buckets. Defaults to the bucket setting stored in your iam-collect data. Valid values are `enabled` or `disabled`.                                                                                                                                                                  |
+| `--s3-abac-override`                | Override the S3 ABAC setting for S3 buckets. Defaults to the bucket setting stored in your iam-collect data. Valid values are `enabled` or `disabled`. S3 Block Public Access is detected automatically from collected bucket/account metadata.                                                                         |
 | `--session-policy <policy or file>` | A session policy to use for the simulation. Can be either a JSON policy document or a path to a file containing the policy. Only applies to principal types that support session policies (roles, role sessions, and federated users).                                                                                  |
 
 You can also include any [Global CLI Options](GlobalCliOptions.md).

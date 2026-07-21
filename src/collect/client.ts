@@ -41,6 +41,20 @@ interface ResourceMetadata {
   arn: string
 }
 
+/**
+ * Collected S3 Public Access Block configuration metadata for an account or bucket.
+ */
+interface S3PublicAccessBlockMetadata {
+  /** Whether public ACLs are blocked when new ACLs are applied. */
+  BlockPublicAcls?: boolean
+  /** Whether public ACLs are ignored when evaluating access. */
+  IgnorePublicAcls?: boolean
+  /** Whether public bucket policies are blocked when new policies are applied. */
+  BlockPublicPolicy?: boolean
+  /** Whether public and cross-account bucket policies are restricted at authorization time. */
+  RestrictPublicBuckets?: boolean
+}
+
 interface InlinePolicyMetadata {
   PolicyName: string
   PolicyDocument: any
@@ -142,6 +156,20 @@ export type IamActionCache = {
   accounts: Record<string, number[]>
   action: Record<Service, Record<Action, BitSet>>
   notAction: Record<Service, Record<Action, BitSet>>
+}
+
+/**
+ * Normalize an S3 bucket or object ARN to the bucket ARN used by iam-collect bucket metadata.
+ *
+ * @param bucketOrObjectArn The S3 bucket or object ARN to normalize
+ * @returns The bucket ARN without an object key suffix
+ */
+function bucketArnFromBucketOrObjectArn(bucketOrObjectArn: string): string {
+  // S3 bucket ARNs use the first slash to separate the bucket name from the object key.
+  if (bucketOrObjectArn.includes('/')) {
+    return bucketOrObjectArn.split('/').at(0)!
+  }
+  return bucketOrObjectArn
 }
 
 /**
@@ -641,16 +669,47 @@ export class IamCollectClient {
    */
 
   async getAbacEnabledForBucket(accountId: string, bucketOrObjectArn: string): Promise<boolean> {
-    if (bucketOrObjectArn.includes('/')) {
-      bucketOrObjectArn = bucketOrObjectArn.split('/').at(0)!
-    }
-    return this.withCache(`abacEnabledForBucket:${bucketOrObjectArn}`, async () => {
+    const bucketArn = bucketArnFromBucketOrObjectArn(bucketOrObjectArn)
+    return this.withCache(`abacEnabledForBucket:${bucketArn}`, async () => {
       const bucketMetadata = await this.storageClient.getResourceMetadata<
         { abacEnabled?: boolean },
         {}
-      >(accountId, bucketOrObjectArn, 'metadata', {})
+      >(accountId, bucketArn, 'metadata', {})
 
       return !!bucketMetadata.abacEnabled
+    })
+  }
+
+  /**
+   * Check if S3 Block Public Access RestrictPublicBuckets is enabled for a specific S3 bucket.
+   * Bucket-level and account-level settings both apply, so the effective setting is enabled
+   * when either collected metadata source has RestrictPublicBuckets set to true.
+   *
+   * @param accountId The account ID of the bucket
+   * @param bucketOrObjectArn The ARN of the bucket or object
+   * @returns true if RestrictPublicBuckets is enabled at the bucket or account level
+   */
+  async getBlockPublicAccessEnabledForBucket(
+    accountId: string,
+    bucketOrObjectArn: string
+  ): Promise<boolean> {
+    const bucketArn = bucketArnFromBucketOrObjectArn(bucketOrObjectArn)
+    return this.withCache(`bpaEnabledForBucket:${accountId}:${bucketArn}`, async () => {
+      const [bucketBpa, accountBpa] = await Promise.all([
+        this.storageClient.getResourceMetadata<S3PublicAccessBlockMetadata, {}>(
+          accountId,
+          bucketArn,
+          'bpa',
+          {}
+        ),
+        this.storageClient.getAccountMetadata<S3PublicAccessBlockMetadata, {}>(
+          accountId,
+          's3-bpa',
+          {}
+        )
+      ])
+
+      return bucketBpa.RestrictPublicBuckets === true || accountBpa.RestrictPublicBuckets === true
     })
   }
 

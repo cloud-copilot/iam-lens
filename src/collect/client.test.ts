@@ -1242,6 +1242,93 @@ describe('IamCollectClient', () => {
     })
   })
 
+  describe('getBlockPublicAccessEnabledForBucket', () => {
+    it('should return true if RestrictPublicBuckets is enabled for the bucket', async () => {
+      // Given a bucket with bucket-level Block Public Access enabled
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+
+      await store.saveResourceMetadata(accountId, bucketArn, 'bpa', {
+        RestrictPublicBuckets: true
+      })
+
+      // When checking if Block Public Access is enabled for the bucket
+      const result = await client.getBlockPublicAccessEnabledForBucket(accountId, bucketArn)
+
+      // Then it should return true
+      expect(result).toBe(true)
+    })
+
+    it('should return true if RestrictPublicBuckets is enabled for the account', async () => {
+      // Given an account with account-level Block Public Access enabled
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+
+      await store.saveAccountMetadata(accountId, 's3-bpa', {
+        RestrictPublicBuckets: true
+      })
+
+      // When checking if Block Public Access is enabled for the bucket
+      const result = await client.getBlockPublicAccessEnabledForBucket(accountId, bucketArn)
+
+      // Then it should return true
+      expect(result).toBe(true)
+    })
+
+    it('should return false if RestrictPublicBuckets is false or not set', async () => {
+      // Given a bucket and account without effective Block Public Access
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+
+      await store.saveResourceMetadata(accountId, bucketArn, 'bpa', {
+        RestrictPublicBuckets: false
+      })
+      await store.saveAccountMetadata(accountId, 's3-bpa', {
+        BlockPublicPolicy: true
+      })
+
+      // When checking if Block Public Access is enabled for the bucket
+      const result = await client.getBlockPublicAccessEnabledForBucket(accountId, bucketArn)
+
+      // Then it should return false
+      expect(result).toBe(false)
+    })
+
+    it('should return false if Block Public Access metadata is missing', async () => {
+      // Given a bucket without Block Public Access metadata
+      const { client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+
+      // When checking if Block Public Access is enabled for the bucket
+      const result = await client.getBlockPublicAccessEnabledForBucket(accountId, bucketArn)
+
+      // Then it should return false
+      expect(result).toBe(false)
+    })
+
+    it('should extract bucket ARN from S3 object ARN', async () => {
+      // Given a bucket with bucket-level Block Public Access enabled
+      const { store, client } = testStore()
+      const accountId = '123456789012'
+      const bucketArn = 'arn:aws:s3:::my-bucket'
+      const objectArn = `${bucketArn}/path/to/object.txt`
+
+      await store.saveResourceMetadata(accountId, bucketArn, 'bpa', {
+        RestrictPublicBuckets: true
+      })
+
+      // When checking if Block Public Access is enabled using the object ARN
+      const result = await client.getBlockPublicAccessEnabledForBucket(accountId, objectArn)
+
+      // Then it should return true
+      expect(result).toBe(true)
+    })
+  })
+
   describe('getAccountIdForRestApi', () => {
     it('should return the account ID for a RestApi ARN', async () => {
       // Given a RestApi ARN

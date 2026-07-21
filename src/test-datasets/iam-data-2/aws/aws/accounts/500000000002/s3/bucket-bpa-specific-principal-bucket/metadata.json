@@ -1,0 +1,5 @@
+{
+  "name": "bucket-bpa-specific-principal-bucket",
+  "region": "us-west-2",
+  "arn": "arn:aws:s3:::bucket-bpa-specific-principal-bucket"
+}
