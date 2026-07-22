@@ -1,3 +1,10 @@
+## [0.1.147](https://github.com/cloud-copilot/iam-lens/compare/v0.1.146...v0.1.147) (2026-07-22)
+
+
+### Bug Fixes
+
+* resolve assumed-role principal tags in simulate ([841b152](https://github.com/cloud-copilot/iam-lens/commit/841b1527079d08208cfdf9790862617b864c8250))
+
 ## [0.1.146](https://github.com/cloud-copilot/iam-lens/compare/v0.1.145...v0.1.146) (2026-07-21)
 
 
