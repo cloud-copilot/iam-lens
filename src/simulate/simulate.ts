@@ -8,7 +8,13 @@ import {
   type Simulation,
   type SimulationMode
 } from '@cloud-copilot/iam-simulate'
-import { isIamRoleArn, isS3BucketOrObjectArn, splitArnParts } from '@cloud-copilot/iam-utils'
+import {
+  convertAssumedRoleArnToRoleArn,
+  isAssumedRoleArn,
+  isIamRoleArn,
+  isS3BucketOrObjectArn,
+  splitArnParts
+} from '@cloud-copilot/iam-utils'
 import { IamCollectClient, type SimulationOrgPolicies } from '../collect/client.js'
 import {
   getAllPoliciesForPrincipal,
@@ -180,11 +186,17 @@ export async function simulateRequest(
     )
   }
 
+  const principalArnForContext = await resolvePrincipalArnForContext(
+    collectClient,
+    simulationRequest.principal
+  )
+
   const { contextKeys, resourceTagsAreKnown } = await createContextKeys(
     collectClient,
     simulationRequest,
     service,
-    simulationRequest.customContextKeys
+    simulationRequest.customContextKeys,
+    principalArnForContext
   )
 
   const vpcEndpointId = contextValue(contextKeys, CONTEXT_KEYS.vpcEndpointId)
@@ -376,6 +388,33 @@ function rcpsForRequest(
       })
     }
   })
+}
+
+/**
+ * Resolves the principal ARN to use for role-backed context keys.
+ *
+ * Direct simulations can use STS assumed-role session ARNs, but collected tags
+ * and the canonical `aws:PrincipalArn` value belong to the underlying IAM role.
+ * This function performs the collected-data lookup only after the principal ARN
+ * passes the cheap assumed-role ARN check, avoiding unnecessary storage lookups
+ * for users, role ARNs, root principals, and service principals.
+ *
+ * @param collectClient the IAM collect client to use for resolving role ARNs
+ * @param principalArn the simulation principal ARN or service principal
+ * @returns the canonical role ARN for assumed-role sessions, otherwise undefined
+ */
+async function resolvePrincipalArnForContext(
+  collectClient: IamCollectClient,
+  principalArn: string
+): Promise<string | undefined> {
+  if (!isAssumedRoleArn(principalArn)) {
+    return undefined
+  }
+
+  return (
+    (await collectClient.resolvePrincipalArn(principalArn)) ??
+    convertAssumedRoleArnToRoleArn(principalArn)
+  )
 }
 
 function prepareIdentityPolicies(

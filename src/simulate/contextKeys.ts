@@ -88,13 +88,15 @@ export function contextValue(context: ContextKeys, key: string): string | string
  * @param simulationRequest the simulation request to create context keys for
  * @param service the service the request is for
  * @param contextKeyOverrides the context key overrides to apply
+ * @param resolvedPrincipalArnForContext canonical principal ARN to use for role-backed context keys
  * @returns a promise that resolves to the context keys for the simulation request
  */
 export async function createContextKeys(
   collectClient: IamCollectClient,
   simulationRequest: SimulationRequest,
   service: string,
-  contextKeyOverrides: ContextKeys
+  contextKeyOverrides: ContextKeys,
+  resolvedPrincipalArnForContext?: string
 ): Promise<{ resourceTagsAreKnown: boolean; contextKeys: ContextKeys }> {
   const contextKeys: ContextKeys = {
     'aws:SecureTransport': 'true',
@@ -105,9 +107,10 @@ export async function createContextKeys(
   if (isArnPrincipal(simulationRequest.principal)) {
     const arnParts = splitArnParts(simulationRequest.principal)
     const principalArnForContext =
-      arnParts.resourceType === 'assumed-role'
+      resolvedPrincipalArnForContext ??
+      (arnParts.resourceType === 'assumed-role'
         ? convertAssumedRoleArnToRoleArn(simulationRequest.principal)
-        : simulationRequest.principal
+        : simulationRequest.principal)
     contextKeys['aws:PrincipalArn'] = principalArnForContext
     const principalAccountId = arnParts.accountId!
     contextKeys['aws:PrincipalAccount'] = arnParts.accountId || ''
@@ -121,7 +124,7 @@ export async function createContextKeys(
     }
 
     const { tags } = await collectClient.getTagsForResource(
-      simulationRequest.principal,
+      principalArnForContext,
       principalAccountId
     )
 
