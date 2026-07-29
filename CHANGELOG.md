@@ -1,3 +1,10 @@
+## [0.1.149](https://github.com/cloud-copilot/iam-lens/compare/v0.1.148...v0.1.149) (2026-07-29)
+
+
+### Features
+
+* require latest iam-simulate ([bceaf32](https://github.com/cloud-copilot/iam-lens/commit/bceaf323da45937c8c4c9b4c083f7270416e5931))
+
 ## [0.1.148](https://github.com/cloud-copilot/iam-lens/compare/v0.1.147...v0.1.148) (2026-07-22)
 
 ## [0.1.147](https://github.com/cloud-copilot/iam-lens/compare/v0.1.146...v0.1.147) (2026-07-22)
