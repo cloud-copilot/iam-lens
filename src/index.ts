@@ -28,6 +28,7 @@ export {
   type WhoCanPrincipalScope,
   type ResourceAccessRequest,
   type WhoCanAllowed,
+  type WhoCanAllowedResourcePattern,
   type WhoCanResponse
 } from './whoCan/whoCan.js'
 export {

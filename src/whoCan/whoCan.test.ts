@@ -3751,7 +3751,22 @@ describe('sortWhoCanResults', () => {
           service: 's3',
           action: 'GetObject',
           level: 'object',
-          conditions: { StringEquals: { 's3:prefix': 'test/' } },
+          conditions: {
+            conditionType: 'condition',
+            op: 'StringEquals',
+            key: 's3:prefix',
+            values: ['test/'],
+            sources: [
+              {
+                policyType: 'identity',
+                effect: 'Allow',
+                statementIndex: 1
+              }
+            ]
+          },
+          ignoredConditions: {
+            identity: { allow: [{ op: 'StringEquals', key: 's3:prefix', values: ['test/'] }] }
+          },
           dependsOnSessionName: true
         },
         {
@@ -3759,7 +3774,24 @@ describe('sortWhoCanResults', () => {
           service: 's3',
           action: 'PutObject',
           level: 'object',
-          conditions: { IpAddress: { 'aws:SourceIp': '192.168.1.0/24' } }
+          conditions: {
+            conditionType: 'condition',
+            op: 'IpAddress',
+            key: 'aws:SourceIp',
+            values: ['192.168.1.0/24'],
+            sources: [
+              {
+                policyType: 'identity',
+                effect: 'Allow',
+                statementIndex: 1
+              }
+            ]
+          },
+          ignoredConditions: {
+            identity: {
+              allow: [{ op: 'IpAddress', key: 'aws:SourceIp', values: ['192.168.1.0/24'] }]
+            }
+          }
         }
       ],
       allAccountsChecked: true,
@@ -3780,14 +3812,46 @@ describe('sortWhoCanResults', () => {
         service: 's3',
         action: 'PutObject',
         level: 'object',
-        conditions: { IpAddress: { 'aws:SourceIp': '192.168.1.0/24' } }
+        conditions: {
+          conditionType: 'condition',
+          op: 'IpAddress',
+          key: 'aws:SourceIp',
+          values: ['192.168.1.0/24'],
+          sources: [
+            {
+              policyType: 'identity',
+              effect: 'Allow',
+              statementIndex: 1
+            }
+          ]
+        },
+        ignoredConditions: {
+          identity: {
+            allow: [{ op: 'IpAddress', key: 'aws:SourceIp', values: ['192.168.1.0/24'] }]
+          }
+        }
       },
       {
         principal: 'arn:aws:iam::123456789012:role/RoleB',
         service: 's3',
         action: 'GetObject',
         level: 'object',
-        conditions: { StringEquals: { 's3:prefix': 'test/' } },
+        conditions: {
+          conditionType: 'condition',
+          op: 'StringEquals',
+          key: 's3:prefix',
+          values: ['test/'],
+          sources: [
+            {
+              policyType: 'identity',
+              effect: 'Allow',
+              statementIndex: 1
+            }
+          ]
+        },
+        ignoredConditions: {
+          identity: { allow: [{ op: 'StringEquals', key: 's3:prefix', values: ['test/'] }] }
+        },
         dependsOnSessionName: true
       }
     ])

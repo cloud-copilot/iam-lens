@@ -11,7 +11,12 @@ import {
   type ResourceType
 } from '@cloud-copilot/iam-data'
 import { type Condition, type ConditionOperation, loadPolicy } from '@cloud-copilot/iam-policy'
-import { type RequestDenial, type RequestGrant } from '@cloud-copilot/iam-simulate'
+import {
+  type AllowedConditionExpression,
+  type IgnoredConditions,
+  type RequestDenial,
+  type RequestGrant
+} from '@cloud-copilot/iam-simulate'
 import { splitArnParts } from '@cloud-copilot/iam-utils'
 import { Arn } from '../utils/arn.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
@@ -130,9 +135,16 @@ export interface WhoCanAllowedResourcePattern {
   resourceType: string
 
   /**
-   * The conditions under which access is allowed for this pattern, if any.
+   * The structured expression describing the conditions under which access is allowed
+   * for this pattern. Undefined when access is unconditional.
    */
-  conditions?: any
+  conditions?: AllowedConditionExpression
+
+  /**
+   * Discovery-mode condition diagnostics that were ignored while determining this
+   * pattern could be allowed. This was returned in `conditions` in earlier versions.
+   */
+  ignoredConditions?: IgnoredConditions
 
   /**
    * If true, access is only allowed when the session has a specific session name.
@@ -152,11 +164,17 @@ export interface WhoCanAllowed {
   level: string
 
   /**
-   * The conditions under which access is allowed, if any.
-   * This will be undefined if access is allowed unconditionally or
-   * if `allowedPatterns` are provided.
+   * The structured expression describing the conditions under which access is allowed.
+   * This will be undefined if access is allowed unconditionally or if `allowedPatterns`
+   * are provided.
    */
-  conditions?: any
+  conditions?: AllowedConditionExpression
+
+  /**
+   * Discovery-mode condition diagnostics that were ignored while determining access
+   * could be allowed. This was returned in `conditions` in earlier versions.
+   */
+  ignoredConditions?: IgnoredConditions
 
   /**
    * The resource type for the allowed action. This will be undefined if `allowedPatterns` are provided,
