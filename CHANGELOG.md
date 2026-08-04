@@ -1,3 +1,10 @@
+## [0.1.151](https://github.com/cloud-copilot/iam-lens/compare/v0.1.150...v0.1.151) (2026-08-04)
+
+
+### Features
+
+* expose allowed conditions in whoCan results ([849d9fb](https://github.com/cloud-copilot/iam-lens/commit/849d9fb7c5a2a36feac9e48fedb379e526b018b7))
+
 ## [0.1.150](https://github.com/cloud-copilot/iam-lens/compare/v0.1.149...v0.1.150) (2026-08-01)
 
 ## [0.1.149](https://github.com/cloud-copilot/iam-lens/compare/v0.1.148...v0.1.149) (2026-07-29)
