@@ -8,9 +8,17 @@ Lists all principals in your IAM data who are allowed to perform one or more spe
 
 This works by starting with the resource policy (if any) and looking for all principals, accounts, and organizations that have access to the resource. It will then check each principal for the specified actions and return a list of all principals that are allowed to perform the action.
 
+## Conditional Access Output
+
+Allowed results may include a `conditions` field when access depends on request-context values. This field is a structured expression from `iam-simulate` that describes the conditions under which the principal is allowed. Unconditional allows omit `conditions`.
+
+Allowed results may also include `ignoredConditions`, which contains the discovery-mode condition diagnostics that older `iam-lens` versions returned in `conditions`.
+
+**Breaking change:** if you were reading `conditions` as grouped ignored condition keys, migrate that usage to `ignoredConditions`.
+
 ## Wildcard Resource ARNs
 
-You can pass a wildcard resource ARN (for example, an S3 object prefix like `arn:aws:s3:::my-bucket/reports/*`). When the resource contains wildcards, results include `allowedPatterns` instead of `conditions`. Each `allowedPatterns` entry tells you which specific resource patterns allowed access for that principal/action.
+You can pass a wildcard resource ARN (for example, an S3 object prefix like `arn:aws:s3:::my-bucket/reports/*`). When the resource contains wildcards, results include `allowedPatterns` instead of top-level resource details. Each `allowedPatterns` entry tells you which specific resource patterns allowed access for that principal/action and may include its own `conditions` and `ignoredConditions` fields.
 
 Example output snippet:
 

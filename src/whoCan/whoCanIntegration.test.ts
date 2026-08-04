@@ -10,6 +10,104 @@ import {
 } from './whoCan.js'
 import { WhoCanProcessor } from './WhoCanProcessor.js'
 
+/**
+ * Build the expected iam-simulate source metadata for a resource-policy allow statement.
+ *
+ * @param statementId the expected statement ID
+ * @returns the expected resource-policy source metadata
+ */
+function resourceAllowSource(statementId: string) {
+  return {
+    effect: 'Allow',
+    policyIdentifier: undefined,
+    policyType: 'resource',
+    statementId,
+    statementIndex: 1
+  }
+}
+
+/**
+ * Build the expected iam-simulate source metadata for an identity-policy allow statement.
+ *
+ * @param policyIdentifier the expected identity policy identifier
+ * @returns the expected identity-policy source metadata
+ */
+function identityAllowSource(policyIdentifier: string) {
+  return {
+    effect: 'Allow',
+    policyIdentifier,
+    policyType: 'identity',
+    statementIndex: 1
+  }
+}
+
+/**
+ * Build the expected allowed-condition expression for a required role session name.
+ *
+ * @param sessionName the expected role session name
+ * @param statementId the resource-policy statement requiring the session name
+ * @returns the expected session-name condition expression
+ */
+function sessionNameCondition(sessionName: string, statementId: string) {
+  return {
+    conditionType: 'sessionName',
+    sessionName: [sessionName],
+    sources: [resourceAllowSource(statementId)]
+  }
+}
+
+/**
+ * Build the expected allowed-condition expression for a policy condition.
+ *
+ * @param op the IAM condition operator
+ * @param key the IAM condition key
+ * @param values the expected condition values
+ * @param source the expected source statement metadata
+ * @returns the expected policy-condition expression
+ */
+function conditionExpression(
+  op: string,
+  key: string,
+  values: string[],
+  source: ReturnType<typeof resourceAllowSource> | ReturnType<typeof identityAllowSource>
+) {
+  return {
+    conditionType: 'condition',
+    op,
+    key,
+    values,
+    sources: [source]
+  }
+}
+
+/**
+ * Build the expected ignored-condition diagnostics for an allow-side condition.
+ *
+ * @param policyType the policy type that contained the ignored condition
+ * @param op the IAM condition operator
+ * @param key the IAM condition key
+ * @param values the ignored condition values
+ * @returns the expected ignored-condition diagnostics
+ */
+function ignoredAllowCondition(
+  policyType: 'identity' | 'resource',
+  op: string,
+  key: string,
+  values: string[]
+) {
+  return {
+    [policyType]: {
+      allow: [
+        {
+          key,
+          op,
+          values
+        }
+      ]
+    }
+  }
+}
+
 interface WhoCanIntegrationTest {
   only?: true
   name: string
@@ -230,7 +328,8 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
           principal: 'arn:aws:iam::200000000002:role/DynamoDbRole',
           service: 's3',
           resourceType: 'bucket',
-          dependsOnSessionName: true
+          dependsOnSessionName: true,
+          conditions: sessionNameCondition('my-session', 'SharingWithSessionArn')
         },
         {
           action: 'ListBucket',
@@ -267,7 +366,11 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
           principal: 'arn:aws:iam::200000000002:role/DynamoDbRole',
           service: 's3',
           resourceType: 'bucket',
-          dependsOnSessionName: true
+          dependsOnSessionName: true,
+          conditions: sessionNameCondition(
+            'my-session',
+            'SharingWithSessionArnAndPrincipalArnCondition'
+          )
         },
         {
           action: 'ListBucket',
@@ -308,16 +411,21 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
           resourceType: 'bucket',
           dependsOnSessionName: true,
           conditions: {
-            resource: {
-              allow: [
-                {
-                  key: 'aws:userid',
-                  op: 'StringLike',
-                  values: ['*:my-session']
-                }
-              ]
-            }
-          }
+            conditionType: 'group',
+            operator: 'and',
+            conditions: [
+              conditionExpression(
+                'StringLike',
+                'aws:userid',
+                ['*:my-session'],
+                resourceAllowSource('SessionWithUserIdCondition')
+              ),
+              sessionNameCondition('my-session', 'SessionWithUserIdCondition')
+            ]
+          },
+          ignoredConditions: ignoredAllowCondition('resource', 'StringLike', 'aws:userid', [
+            '*:my-session'
+          ])
         },
         {
           action: 'ListBucket',
@@ -367,7 +475,8 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
           service: 's3',
           level: 'list',
           resourceType: 'bucket',
-          dependsOnSessionName: true
+          dependsOnSessionName: true,
+          conditions: sessionNameCondition('session-abc', 'SharingWithCrossAccountSessionArn')
         }
       ]
     }
@@ -390,7 +499,11 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
           service: 's3',
           level: 'list',
           resourceType: 'bucket',
-          dependsOnSessionName: true
+          dependsOnSessionName: true,
+          conditions: sessionNameCondition(
+            'session-abc',
+            'AllowPathQualifiedRoleSessionWithoutPath'
+          )
         },
         {
           action: 'ListBucket',
@@ -757,17 +870,18 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
           service: 's3',
           level: 'write',
           resourceType: 'object',
-          conditions: {
-            resource: {
-              allow: [
-                {
-                  key: 'aws:SourceAccount',
-                  op: 'StringEquals',
-                  values: ['400000000001']
-                }
-              ]
-            }
-          }
+          conditions: conditionExpression(
+            'StringEquals',
+            'aws:SourceAccount',
+            ['400000000001'],
+            resourceAllowSource('AllowLambdaFromDifferentSourceAccount')
+          ),
+          ignoredConditions: ignoredAllowCondition(
+            'resource',
+            'StringEquals',
+            'aws:SourceAccount',
+            ['400000000001']
+          )
         }
       ]
     }
@@ -788,17 +902,15 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
           service: 's3',
           level: 'list',
           resourceType: 'bucket',
-          conditions: {
-            identity: {
-              allow: [
-                {
-                  key: 'aws:SourceVpc',
-                  op: 'StringEquals',
-                  values: ['vpc-123456789']
-                }
-              ]
-            }
-          }
+          conditions: conditionExpression(
+            'StringEquals',
+            'aws:SourceVpc',
+            ['vpc-123456789'],
+            identityAllowSource('arn:aws:iam::200000000002:role/VpcBucketRole#ListBucket')
+          ),
+          ignoredConditions: ignoredAllowCondition('identity', 'StringEquals', 'aws:SourceVpc', [
+            'vpc-123456789'
+          ])
         }
       ]
     }
@@ -819,17 +931,15 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
           service: 's3',
           level: 'list',
           resourceType: 'bucket',
-          conditions: {
-            identity: {
-              allow: [
-                {
-                  key: 'aws:SourceVpc',
-                  op: 'StringEquals',
-                  values: ['vpc-123456789']
-                }
-              ]
-            }
-          }
+          conditions: conditionExpression(
+            'StringEquals',
+            'aws:SourceVpc',
+            ['vpc-123456789'],
+            identityAllowSource('arn:aws:iam::200000000002:role/VpcBucketRole#ListBucket')
+          ),
+          ignoredConditions: ignoredAllowCondition('identity', 'StringEquals', 'aws:SourceVpc', [
+            'vpc-123456789'
+          ])
         }
       ]
     }
@@ -1131,17 +1241,15 @@ const whoCanIntegrationTests: WhoCanIntegrationTest[] = [
           service: 's3',
           level: 'list',
           resourceType: 'bucket',
-          conditions: {
-            identity: {
-              allow: [
-                {
-                  key: 'aws:SourceVpc',
-                  op: 'StringEquals',
-                  values: ['vpc-123456789']
-                }
-              ]
-            }
-          },
+          conditions: conditionExpression(
+            'StringEquals',
+            'aws:SourceVpc',
+            ['vpc-123456789'],
+            identityAllowSource('arn:aws:iam::200000000002:role/VpcBucketRole#ListBucket')
+          ),
+          ignoredConditions: ignoredAllowCondition('identity', 'StringEquals', 'aws:SourceVpc', [
+            'vpc-123456789'
+          ]),
           details: [
             {
               policyIdentifier: 'arn:aws:iam::200000000002:role/VpcBucketRole#ListBucket',

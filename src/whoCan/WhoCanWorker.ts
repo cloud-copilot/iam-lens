@@ -1,7 +1,9 @@
 import { iamActionDetails } from '@cloud-copilot/iam-data'
 import {
+  type AllowedConditionExpression,
   type EvaluationResult,
   getGrantReasons,
+  type IgnoredConditions,
   type RequestAnalysis,
   type SuccessfulRunSimulationResults
 } from '@cloud-copilot/iam-simulate'
@@ -222,6 +224,46 @@ async function getActionLevel(service: string, action: string): Promise<string> 
   return details.accessLevel
 }
 
+/**
+ * Return an allowed-condition expression only when it represents a meaningful
+ * access constraint for whoCan output.
+ *
+ * @param conditions the allowed-condition expression returned by iam-simulate
+ * @returns the expression when it is meaningful, otherwise undefined
+ */
+function meaningfulAllowedConditions(
+  conditions: AllowedConditionExpression | undefined
+): AllowedConditionExpression | undefined {
+  if (!conditions || conditions.conditionType === 'always') {
+    return undefined
+  }
+  return conditions
+}
+
+/**
+ * Return ignored discovery-condition diagnostics only when at least one policy
+ * bucket contains ignored allow or deny condition entries.
+ *
+ * @param ignoredConditions the ignored-condition diagnostics returned by iam-simulate
+ * @returns the diagnostics when non-empty, otherwise undefined
+ */
+function nonEmptyIgnoredConditions(
+  ignoredConditions: IgnoredConditions | undefined
+): IgnoredConditions | undefined {
+  if (!ignoredConditions) {
+    return undefined
+  }
+
+  for (const conditionBucket of Object.values(ignoredConditions)) {
+    // IgnoredConditions buckets are shaped as optional allow/deny arrays per policy type.
+    if ((conditionBucket.allow?.length ?? 0) > 0 || (conditionBucket.deny?.length ?? 0) > 0) {
+      return ignoredConditions
+    }
+  }
+
+  return undefined
+}
+
 function mapSimulationResultToWhoCanExecutionResult(
   workItem: WhoCanWorkItem,
   service: string,
@@ -244,8 +286,14 @@ function mapSimulationResultToWhoCanExecutionResult(
 
     if (simulationResponse.resultType === 'single') {
       const analysis = simulationResponse.result.analysis
-      if (analysis.ignoredConditions && Object.keys(analysis.ignoredConditions).length > 0) {
-        allowed.conditions = analysis.ignoredConditions
+      const conditions = meaningfulAllowedConditions(analysis.conditions)
+      if (conditions) {
+        allowed.conditions = conditions
+      }
+
+      const ignoredConditions = nonEmptyIgnoredConditions(analysis.ignoredConditions)
+      if (ignoredConditions) {
+        allowed.ignoredConditions = ignoredConditions
       }
 
       if (analysis.ignoredRoleSessionName) {
@@ -263,10 +311,13 @@ function mapSimulationResultToWhoCanExecutionResult(
       const allowedPatterns: WhoCanAllowedResourcePattern[] = []
       for (const r of simulationResponse.results) {
         if (r.analysis.result === 'Allowed') {
+          const conditions = meaningfulAllowedConditions(r.analysis.conditions)
+          const ignoredConditions = nonEmptyIgnoredConditions(r.analysis.ignoredConditions)
           allowedPatterns.push({
             pattern: r.resourcePattern,
             resourceType: r.resourceType,
-            conditions: r.analysis.ignoredConditions,
+            ...(conditions && { conditions }),
+            ...(ignoredConditions && { ignoredConditions }),
             dependsOnSessionName: r.analysis.ignoredRoleSessionName ? true : undefined,
             ...(collectGrantDetails && { details: getGrantReasons(r.analysis) })
           })
