@@ -17,7 +17,7 @@ import {
   type RequestDenial,
   type RequestGrant
 } from '@cloud-copilot/iam-simulate'
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import { mostSpecificMatchingResourceTypePatterns, splitArnParts } from '@cloud-copilot/iam-utils'
 import { Arn } from '../utils/arn.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'
@@ -891,32 +891,18 @@ export async function findResourceTypeForArn(resourceArn: string): Promise<[stri
   }
 
   const sortedResourceTypes = await allResourceTypesByArnLength(service)
-  for (const rt of sortedResourceTypes) {
-    const pattern = convertResourcePatternToRegex(rt.arn)
-    const match = resourceArn.match(new RegExp(pattern))
-    if (match) {
-      return [service, rt]
-    }
+  const matchingPatterns = mostSpecificMatchingResourceTypePatterns(
+    resourceArn,
+    sortedResourceTypes.map((resourceType) => resourceType.arn)
+  )
+  const resourceType = sortedResourceTypes.find((rt) => matchingPatterns.includes(rt.arn))
+  if (resourceType) {
+    return [service, resourceType]
   }
 
   throw new Error(
     `Unable to find resource type for service ${service} and resource ${resourceArn}.`
   )
-}
-
-/**
- * Convert a resource pattern from iam-data to a regex pattern
- *
- * @param pattern the pattern to convert to a regex
- * @returns the regex pattern
- */
-export function convertResourcePatternToRegex(pattern: string): string {
-  const regex = pattern.replace(/\$\{.*?\}/g, (match, position) => {
-    const name = match.substring(2, match.length - 1)
-    const camelName = name.at(0)?.toLowerCase() + name.substring(1)
-    return `(?<${camelName}>(.+?))`
-  })
-  return `^${regex}$`
 }
 
 async function allResourceTypesByArnLength(service: string): Promise<ResourceType[]> {
