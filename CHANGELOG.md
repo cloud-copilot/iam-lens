@@ -1,3 +1,10 @@
+## [0.1.152](https://github.com/cloud-copilot/iam-lens/compare/v0.1.151...v0.1.152) (2026-08-05)
+
+
+### Bug Fixes
+
+* use iam-utils resource type matching ([9ef9f95](https://github.com/cloud-copilot/iam-lens/commit/9ef9f952d1ed2b3884e69e4d8b53c5626b1537ed))
+
 ## [0.1.151](https://github.com/cloud-copilot/iam-lens/compare/v0.1.150...v0.1.151) (2026-08-04)
 
 
