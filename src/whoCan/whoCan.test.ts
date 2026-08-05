@@ -31,6 +31,13 @@ const findResourceTypeForArnTests: {
     }
   },
   {
+    input: 'arn:aws:S3:::my-bucket',
+    expected: {
+      service: 's3',
+      key: 'bucket'
+    }
+  },
+  {
     input: 'arn:aws:s3:::my-bucket/a',
     expected: {
       service: 's3',
