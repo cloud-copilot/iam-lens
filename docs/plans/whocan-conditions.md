@@ -5,7 +5,7 @@
 - Problem statement: `iam-simulate` now returns a structured `analysis.conditions` expression describing the conditions under which a Discovery-mode allowed request is allowed, but `iam-lens` `whoCan` still places the older `analysis.ignoredConditions` diagnostic object in the public `conditions` field.
 - Goals: For `WhoCanAllowed` and `WhoCanAllowedResourcePattern`, return the new `iam-simulate` allowed-condition expression in `conditions`, and preserve the prior ignored-condition diagnostic in a new `ignoredConditions` field.
 - Non-goals: Do not change simulation behavior, condition evaluation, deny details, CLI flags, or principal/resource discovery.
-- Target package/API: `@cloud-copilot/iam-lens` `whoCan` API and CLI JSON output; types in `src/whoCan/whoCan.ts`; mapping in `src/whoCan/WhoCanWorker.ts`.
+- Target package/API: `@actsecurity/iam-lens` `whoCan` API and CLI JSON output; types in `src/whoCan/whoCan.ts`; mapping in `src/whoCan/WhoCanWorker.ts`.
 - User-facing behavior: Allowed `whoCan` results expose `conditions` as the new structured allowed-condition expression when present and meaningful. Existing ignored discovery-condition details move to `ignoredConditions`. Unconditional allows continue to omit `conditions` rather than emitting `{ conditionType: 'always' }`.
 - Inputs: Existing `whoCan` requests and `iam-simulate` `SuccessfulRunSimulationResults`.
 - Outputs: `WhoCanAllowed.conditions?: AllowedConditionExpression`; `WhoCanAllowed.ignoredConditions?: IgnoredConditions`; same for `WhoCanAllowedResourcePattern`.
@@ -18,7 +18,7 @@
 ## Repository Reconnaissance
 
 - Current branch/status: `main...origin/main`, working tree clean at intake.
-- Package: `@cloud-copilot/iam-lens`; `@actsecurity/iam-simulate` dependency is `^0.1.163` and its declarations include `RequestAnalysis.conditions?: AllowedConditionExpression` and `RequestAnalysis.ignoredConditions?: IgnoredConditions`.
+- Package: `@actsecurity/iam-lens`; `@actsecurity/iam-simulate` dependency is `^0.1.163` and its declarations include `RequestAnalysis.conditions?: AllowedConditionExpression` and `RequestAnalysis.ignoredConditions?: IgnoredConditions`.
 - Public API entry point: `src/index.ts` exports `whoCan`, `ResourceAccessRequest`, `WhoCanAllowed`, and `WhoCanResponse`. `WhoCanAllowedResourcePattern` is exported from `src/whoCan/whoCan.ts` but not re-exported from `src/index.ts`; this change should re-export it for typed access to `allowedPatterns` entries.
 - Current mapping: `src/whoCan/WhoCanWorker.ts` maps single allowed result `analysis.ignoredConditions` into `allowed.conditions`; wildcard allowed patterns map `r.analysis.ignoredConditions` into each pattern's `conditions`.
 - Current public types: `WhoCanAllowed.conditions?: any` and `WhoCanAllowedResourcePattern.conditions?: any` with comments describing conditions under which access is allowed. No `ignoredConditions` field exists.

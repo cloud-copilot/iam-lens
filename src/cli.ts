@@ -133,7 +133,7 @@ const main = async () => {
       expectOperands: false,
       version: {
         currentVersion: iamLensVersion,
-        checkForUpdates: '@cloud-copilot/iam-lens'
+        checkForUpdates: '@actsecurity/iam-lens'
       }
     }
   )

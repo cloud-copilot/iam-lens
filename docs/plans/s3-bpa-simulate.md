@@ -13,7 +13,7 @@
   - Reimplement S3 BPA policy classification in `iam-lens`.
   - Change non-S3 simulation behavior.
   - Change existing S3 ABAC override behavior.
-- Target package/API: `@cloud-copilot/iam-lens`; `simulateRequest`, `whoCan` (through its existing `simulateRequest` path), and `IamCollectClient` metadata access.
+- Target package/API: `@actsecurity/iam-lens`; `simulateRequest`, `whoCan` (through its existing `simulateRequest` path), and `IamCollectClient` metadata access.
 - User-facing behavior: For S3 bucket/object requests, `iam-lens` automatically looks up S3 BPA data from the collected bucket metadata and account metadata and passes the effective setting to `iam-simulate`. Users should see simulations and who-can results that account for S3 public bucket policy restrictions when the collected metadata says `RestrictPublicBuckets` is enabled.
 - Inputs:
   - Existing `SimulationRequest` and `ResourceAccessRequest` inputs.

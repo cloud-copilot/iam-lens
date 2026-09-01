@@ -1,8 +1,8 @@
 # iam-lens
 
-[![NPM Version](https://img.shields.io/npm/v/@cloud-copilot/iam-lens.svg?logo=nodedotjs)](https://www.npmjs.com/package/@cloud-copilot/iam-lens) [![License: AGPL v3](https://img.shields.io/github/license/cloud-copilot/iam-lens)](LICENSE.txt) [![GuardDog](https://github.com/cloud-copilot/iam-lens/actions/workflows/guarddog.yml/badge.svg)](https://github.com/cloud-copilot/iam-lens/actions/workflows/guarddog.yml) [![Known Vulnerabilities](https://snyk.io/test/github/cloud-copilot/iam-lens/badge.svg?targetFile=package.json&style=flat-square)](https://snyk.io/test/github/cloud-copilot/iam-lens?targetFile=package.json)
+[![NPM Version](https://img.shields.io/npm/v/@actsecurity/iam-lens.svg?logo=nodedotjs)](https://www.npmjs.com/package/@actsecurity/iam-lens) [![License: AGPL v3](https://img.shields.io/github/license/act-security-labs/iam-lens)](LICENSE.txt) [![GuardDog](https://github.com/act-security-labs/iam-lens/actions/workflows/guarddog.yml/badge.svg)](https://github.com/act-security-labs/iam-lens/actions/workflows/guarddog.yml) [![Known Vulnerabilities](https://snyk.io/test/github/act-security-labs/iam-lens/badge.svg?targetFile=package.json&style=flat-square)](https://snyk.io/test/github/act-security-labs/iam-lens?targetFile=package.json)
 
-Get visibility into the IAM permissions in your AWS organizations and accounts. Use your actual AWS IAM policies (downloaded via [iam-collect](https://github.com/cloud-copilot/iam-collect)) and evaluate the effective permissions.
+Get visibility into the IAM permissions in your AWS organizations and accounts. Use your actual AWS IAM policies (downloaded via [iam-collect](https://github.com/act-security-labs/iam-collect)) and evaluate the effective permissions.
 
 ## Table of Contents
 
@@ -40,7 +40,7 @@ iam-lens who-can --resource arn:aws:s3:::example-bucket
 
 ## What is iam-lens?
 
-**iam-lens** lets you **simulate** and **audit** real IAM requests against your collected IAM data from your AWS accounts (collected via [iam-collect](https://github.com/cloud-copilot/iam-collect)) and understand the effective permissions that apply to a principal or resource.
+**iam-lens** lets you **simulate** and **audit** real IAM requests against your collected IAM data from your AWS accounts (collected via [iam-collect](https://github.com/act-security-labs/iam-collect)) and understand the effective permissions that apply to a principal or resource.
 
 ## Why use it?
 
@@ -52,7 +52,7 @@ iam-lens who-can --resource arn:aws:s3:::example-bucket
 
 ## Getting Started
 
-1. **Download Your Policies** with [iam-collect](https://github.com/cloud-copilot/iam-collect) to get all policies from your AWS accounts. iam-collect is highly configurable and can be customized to collect the policies you need. It only downloads information to your file system or an S3 bucket, so you're in full control of your data.
+1. **Download Your Policies** with [iam-collect](https://github.com/act-security-labs/iam-collect) to get all policies from your AWS accounts. iam-collect is highly configurable and can be customized to collect the policies you need. It only downloads information to your file system or an S3 bucket, so you're in full control of your data.
 
 ```bash
 npm install -g @actsecurity/iam-collect
@@ -67,7 +67,7 @@ You can download information for as many accounts, organizations, and regions as
 2. **Install iam-lens**
 
 ```bash
-npm install -g @cloud-copilot/iam-lens
+npm install -g @actsecurity/iam-lens
 ```
 
 3. **Execute Commands** with `iam-lens` to simulate requests, discover permissions, and audit your IAM policies.
@@ -196,7 +196,7 @@ iam-lens principal-can \
 
 ## Contributing & Support
 
-The best way to support is to [open an issue](https://github.com/cloud-copilot/iam-lens/issues) and let us know of any bugs, feature requests, or questions you have. We're always looking for ways to improve the project and make it more useful for everyone.
+The best way to support is to [open an issue](https://github.com/act-security-labs/iam-lens/issues) and let us know of any bugs, feature requests, or questions you have. We're always looking for ways to improve the project and make it more useful for everyone.
 
 ## Acknowledgements
 

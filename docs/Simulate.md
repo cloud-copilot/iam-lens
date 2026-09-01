@@ -9,7 +9,7 @@ Evaluates whether a principal can perform a specified action on a resource (or a
 Simulations can be run for any principal type (user, role, assumed role, federated user, or AWS service) and any resource type (S3 bucket, DynamoDB table, etc.). The simulation will evaluate all policies that apply to the principal and resource, including:
 
 - Identity policies (inline and managed)
-- Resource policies ([supported resource types](https://github.com/cloud-copilot/iam-collect?tab=readme-ov-file#supported-services-and-data))
+- Resource policies ([supported resource types](https://github.com/act-security-labs/iam-collect?tab=readme-ov-file#supported-services-and-data))
 - Resource Access Manager (RAM) Shares
 - Service control policies (SCPs)
 - Resource control policies (RCPs)
