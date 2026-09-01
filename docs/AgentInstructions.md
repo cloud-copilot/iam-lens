@@ -14,7 +14,7 @@ Before using iam-lens, customers MUST first collect their IAM data using `iam-co
 
 ```bash
 # Install both tools
-npm install -g @actsecurity/iam-collect @cloud-copilot/iam-lens
+npm install -g @actsecurity/iam-collect @actsecurity/iam-lens
 
 # Initialize and download IAM data (run once per account)
 iam-collect init
