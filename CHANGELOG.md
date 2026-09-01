@@ -1,3 +1,16 @@
+## [0.1.157](https://github.com/act-security-labs/iam-lens/compare/v0.1.156...v0.1.157) (2026-09-01)
+
+
+### Bug Fixes
+
+* Improve dependencies ([d475719](https://github.com/act-security-labs/iam-lens/commit/d475719a033ec13467488f68d10c34d1ce501707))
+* Remove extra @actsecurity/log entry in package-lock.json ([befc4e3](https://github.com/act-security-labs/iam-lens/commit/befc4e370e948d5aa2e16cd16dacad463ad62a5d))
+
+
+### Features
+
+* Move to actsecurity ([c594290](https://github.com/act-security-labs/iam-lens/commit/c59429030e534d65a458e73718d18ac07da13a12))
+
 ## [0.1.156](https://github.com/cloud-copilot/iam-lens/compare/v0.1.155...v0.1.156) (2026-08-29)
 
 ## [0.1.155](https://github.com/cloud-copilot/iam-lens/compare/v0.1.154...v0.1.155) (2026-08-22)
