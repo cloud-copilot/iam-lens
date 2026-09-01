@@ -1,6 +1,6 @@
-import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
-import { type ValidatedPolicy } from '@cloud-copilot/iam-policy'
-import { type JobResult, numberOfCpus, StreamingJobQueue } from '@cloud-copilot/job'
+import { type TopLevelConfig } from '@actsecurity/iam-collect'
+import { type ValidatedPolicy } from '@actsecurity/iam-policy'
+import { type JobResult, numberOfCpus, StreamingJobQueue } from '@actsecurity/job'
 import { Worker } from 'worker_threads'
 import { type ClientFactoryPlugin, getCollectClient } from '../collect/collect.js'
 import { IamCollectClient } from '../collect/client.js'
@@ -29,11 +29,11 @@ import {
   isIamRoleArn,
   isIamUserArn,
   isServicePrincipal
-} from '@cloud-copilot/iam-utils'
+} from '@actsecurity/iam-utils'
 import { buildPrincipalArnFilter, principalMatchesFilter } from './principalArnFilter.js'
 import { actionsThatDoNotAutomaticallyTrustTheCurrentAccount } from './untrustingActions.js'
 import { type WorkerBootstrapPlugin } from './workerBootstrapPlugin.js'
-import { log } from '@cloud-copilot/log'
+import { log } from '@actsecurity/log'
 
 export type { WorkerBootstrapPlugin } from './workerBootstrapPlugin.js'
 

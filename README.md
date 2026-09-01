@@ -22,7 +22,7 @@ Get visibility into the IAM permissions in your AWS organizations and accounts. 
 
 ```bash
 # Install
-npm install -g @cloud-copilot/iam-collect @cloud-copilot/iam-lens
+npm install -g @actsecurity/iam-collect @actsecurity/iam-lens
 
 # Download all IAM policies in your account using default credentials, run download once per account
 iam-collect init
@@ -55,7 +55,7 @@ iam-lens who-can --resource arn:aws:s3:::example-bucket
 1. **Download Your Policies** with [iam-collect](https://github.com/cloud-copilot/iam-collect) to get all policies from your AWS accounts. iam-collect is highly configurable and can be customized to collect the policies you need. It only downloads information to your file system or an S3 bucket, so you're in full control of your data.
 
 ```bash
-npm install -g @cloud-copilot/iam-collect
+npm install -g @actsecurity/iam-collect
 iam-collect init
 iam-collect download
 ```

@@ -1,5 +1,5 @@
-import { expandIamActions, invertIamActions } from '@cloud-copilot/iam-expand'
-import { type Policy, type Statement } from '@cloud-copilot/iam-policy'
+import { expandIamActions, invertIamActions } from '@actsecurity/iam-expand'
+import { type Policy, type Statement } from '@actsecurity/iam-policy'
 import { Permission, type PermissionEffect, type PermissionPrincipals } from './permission.js'
 import {
   canonicalPrincipal,
@@ -291,7 +291,7 @@ export class PermissionSet {
  * service ("s3", "ec2", etc.) and the individual action name ("GetObject", "StartInstances", etc.).
  *
  * Assumptions:
- * 1. The Policy type comes from `@cloud-copilot/iam-policy`.  Each Policy has a `.statements` array.
+ * 1. The Policy type comes from `@actsecurity/iam-policy`.  Each Policy has a `.statements` array.
  * 2. Each Statement has at least these fields (per AWS IAM JSON):
  *      - Effect: "Allow" | "Deny"
  *      - Action: string | string[]

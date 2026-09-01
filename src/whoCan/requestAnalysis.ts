@@ -3,7 +3,7 @@ import {
   type BlockedReason,
   type EvaluationResult,
   type RequestAnalysis
-} from '@cloud-copilot/iam-simulate'
+} from '@actsecurity/iam-simulate'
 import type { DeniedWhoCanExecutionResultWithDetails } from './WhoCanWorker.js'
 import type { WhoCanDenyDetail } from './whoCan.js'
 

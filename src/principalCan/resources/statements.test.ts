@@ -1,4 +1,4 @@
-import { loadPolicy } from '@cloud-copilot/iam-policy'
+import { loadPolicy } from '@actsecurity/iam-policy'
 import { describe, expect, it } from 'vitest'
 import { getTestDatasetClient } from '../../test-datasets/testClient.js'
 import { makePrincipalOnlyPolicyFromStatement, statementAppliesToPrincipal } from './statements.js'

@@ -4,7 +4,7 @@ import {
   convertAssumedRoleArnToRoleArn,
   isS3BucketOrObjectArn,
   splitArnParts
-} from '@cloud-copilot/iam-utils'
+} from '@actsecurity/iam-utils'
 import { IamCollectClient } from '../collect/client.js'
 import { isArnPrincipal, isServicePrincipal } from '../principals.js'
 import { type SimulationRequest } from './simulate.js'

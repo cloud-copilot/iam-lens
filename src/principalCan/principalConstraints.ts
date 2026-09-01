@@ -1,4 +1,4 @@
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import { splitArnParts } from '@actsecurity/iam-utils'
 
 /** IAM principal type keys supported in Principal and NotPrincipal policy elements. */
 export type PermissionPrincipalType = 'AWS' | 'Service' | 'Federated' | 'CanonicalUser'

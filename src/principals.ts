@@ -4,7 +4,7 @@ import {
   isIamRoleArn,
   isIamUserArn,
   splitArnParts
-} from '@cloud-copilot/iam-utils'
+} from '@actsecurity/iam-utils'
 import {
   IamCollectClient,
   type InlinePolicy,

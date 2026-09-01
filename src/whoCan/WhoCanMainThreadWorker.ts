@@ -1,4 +1,4 @@
-import { type JobResult } from '@cloud-copilot/job'
+import { type JobResult } from '@actsecurity/job'
 import { IamCollectClient } from '../collect/client.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { PullBasedJobRunner } from '../workers/JobRunner.js'

@@ -1,4 +1,4 @@
-import { iamActionDetails } from '@cloud-copilot/iam-data'
+import { iamActionDetails } from '@actsecurity/iam-data'
 import {
   type AllowedConditionExpression,
   type EvaluationResult,
@@ -6,13 +6,13 @@ import {
   type IgnoredConditions,
   type RequestAnalysis,
   type SuccessfulRunSimulationResults
-} from '@cloud-copilot/iam-simulate'
-import type { Job } from '@cloud-copilot/job'
+} from '@actsecurity/iam-simulate'
+import type { Job } from '@actsecurity/job'
 import { IamCollectClient } from '../collect/client.js'
 import { simulateRequest } from '../simulate/simulate.js'
 import type { S3AbacOverride } from '../utils/s3Abac.js'
 import type { WhoCanAllowed, WhoCanAllowedResourcePattern } from './whoCan.js'
-import { log } from '@cloud-copilot/log'
+import { log } from '@actsecurity/log'
 
 export interface WhoCanWorkItem {
   resource: string | undefined

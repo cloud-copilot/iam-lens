@@ -1,5 +1,5 @@
 {
-  "name": "@cloud-copilot/iam-lens",
+  "name": "@actsecurity/iam-lens",
   "version": "0.1.156",
   "description": "Visibility in IAM in and across AWS accounts",
   "keywords": [
@@ -8,7 +8,7 @@
     "security",
     "identity"
   ],
-  "homepage": "https://github.com/cloud-copilot/iam-lens#readme",
+  "homepage": "https://github.com/act-security-labs/iam-lens#readme",
   "bin": {
     "iam-lens": "dist/esm/cli.js"
   },
@@ -22,13 +22,13 @@
     "dist/**/*"
   ],
   "types": "dist/cjs/index.d.ts",
-  "prettier": "@cloud-copilot/prettier-config",
+  "prettier": "@actsecurity/prettier-config",
   "bugs": {
-    "url": "https://github.com/cloud-copilot/iam-lens/issues"
+    "url": "https://github.com/act-security-labs/iam-lens/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cloud-copilot/iam-lens.git"
+    "url": "git+https://github.com/act-security-labs/iam-lens.git"
   },
   "license": "AGPL-3.0-or-later",
   "author": "David Kerber <dave@cloudcopilot.io>",
@@ -41,9 +41,10 @@
     "format-check": "npx prettier --check src/"
   },
   "devDependencies": {
-    "@cloud-copilot/prettier-config": "^0.1.0",
+    "@actsecurity/prettier-config": "^0.1.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^12.0.6",
     "@semantic-release/npm": "^13.1.4",
@@ -91,6 +92,12 @@
         }
       ],
       [
+        "@semantic-release/exec",
+        {
+          "successCmd": "echo published=true >> $GITHUB_OUTPUT && echo version=${nextRelease.version} >> $GITHUB_OUTPUT && echo package_name=$(node -p \"require('./package.json').name\") >> $GITHUB_OUTPUT"
+        }
+      ],
+      [
         "@semantic-release/git",
         {
           "assets": [
@@ -110,16 +117,16 @@
     ]
   },
   "dependencies": {
-    "@cloud-copilot/cli": "^0.2.23",
-    "@cloud-copilot/iam-collect": "^0.1.206",
-    "@cloud-copilot/iam-data": ">=0.15.202511222 <1.0.0",
-    "@cloud-copilot/iam-expand": "^0.11.29",
-    "@cloud-copilot/iam-policy": "^0.1.89",
-    "@cloud-copilot/iam-shrink": "^0.1.21",
-    "@cloud-copilot/iam-simulate": "^0.1.166",
-    "@cloud-copilot/iam-utils": "^0.1.78",
-    "@cloud-copilot/job": "^0.1.0",
-    "@cloud-copilot/log": "^0.1.39",
+    "@actsecurity/cli": "^0.2.23",
+    "@actsecurity/iam-collect": "^0.1.216",
+    "@actsecurity/iam-data": ">=0.15.202511222 <1.0.0",
+    "@actsecurity/iam-expand": "^0.11.29",
+    "@actsecurity/iam-policy": "^0.1.89",
+    "@actsecurity/iam-shrink": "^0.1.21",
+    "@actsecurity/iam-simulate": "^0.1.166",
+    "@actsecurity/iam-utils": "^0.1.78",
+    "@actsecurity/job": "^0.1.65",
+    "@actsecurity/log": "^0.1.60",
     "bitset": "^5.2.3"
   }
 }

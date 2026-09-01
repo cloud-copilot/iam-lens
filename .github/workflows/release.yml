@@ -23,9 +23,10 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22.14.0'
+          node-version: '26.8.1'
 
       - name: Run semantic-release
+        id: semantic_release      
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -34,3 +35,10 @@ jobs:
           npm run build
           npm run test
           npx semantic-release
+
+      - name: Publish Cloud Copilot package alias
+        if: steps.semantic_release.outputs.changed == 'true'
+        uses: act-security-labs/dual-npm-publish-action@0af853d1d5705e464a5806bc0c9f9641e3b2c292
+        with:
+          package-name: '@cloud-copilot/iam-lens'
+          version: ${{ steps.semantic_release.outputs.version }}

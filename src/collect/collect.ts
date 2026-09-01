@@ -1,8 +1,4 @@
-import {
-  type TopLevelConfig,
-  createStorageClient,
-  loadConfigFiles
-} from '@cloud-copilot/iam-collect'
+import { type TopLevelConfig, createStorageClient, loadConfigFiles } from '@actsecurity/iam-collect'
 import { createRequire } from 'module'
 import { IamCollectClient, type IamCollectClientOptions } from './client.js'
 import { dynamicImport } from '../utils/dynamicImport.js'

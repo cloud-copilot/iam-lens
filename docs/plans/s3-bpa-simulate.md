@@ -4,7 +4,7 @@
 
 - Problem statement: `iam-lens` currently passes S3 bucket ABAC settings into `iam-simulate`, but it does not pass effective S3 Block Public Access (BPA) settings. Newer `iam-collect` stores bucket-level and account-level S3 BPA metadata, and newer `iam-simulate` can use an effective BPA boolean for S3 authorization.
 - Goals:
-  - Upgrade `@cloud-copilot/iam-simulate` to `0.1.157` and `@cloud-copilot/iam-collect` to `0.1.205`.
+  - Upgrade `@actsecurity/iam-simulate` to `0.1.157` and `@actsecurity/iam-collect` to `0.1.205`.
   - Auto-detect S3 BPA metadata for bucket/object simulations.
   - Combine bucket-level and account-level `RestrictPublicBuckets` settings into the effective `additionalSettings.s3.blockPublicAccess` value passed to `iam-simulate`.
   - Cover behavior in both `simulate` and `whoCan` integration tests.
@@ -43,7 +43,7 @@
 ## Discovery Findings
 
 - Current branch: `main` tracking `origin/main`; no changes at intake.
-- `package.json` currently pins `@cloud-copilot/iam-collect` as `^0.1.181` and `@cloud-copilot/iam-simulate` as `^0.1.151`.
+- `package.json` currently pins `@actsecurity/iam-collect` as `^0.1.181` and `@actsecurity/iam-simulate` as `^0.1.151`.
 - `simulateRequest` already builds `Simulation.additionalSettings.s3.bucketAbacEnabled` when `isS3BucketOrObjectArn(resourceArn)` is true.
 - `whoCan` flows through `WhoCanWorker.executeWhoCan`, which calls `simulateRequest` for Discovery and Strict modes. Implementing BPA in `simulateRequest` automatically covers `whoCan` worker paths.
 - `iam-simulate@0.1.157` adds `additionalSettings.s3.blockPublicAccess?: boolean`, documented as caller-supplied effective S3 Block Public Access setting for `RestrictPublicBuckets`.
@@ -57,8 +57,8 @@
 ### Files/functions/types likely to change
 
 - `package.json` and `package-lock.json`
-  - Upgrade `@cloud-copilot/iam-collect` to `^0.1.205` or exact `0.1.205` consistent with current dependency style.
-  - Upgrade `@cloud-copilot/iam-simulate` to `^0.1.157` or exact `0.1.157` consistent with current dependency style.
+  - Upgrade `@actsecurity/iam-collect` to `^0.1.205` or exact `0.1.205` consistent with current dependency style.
+  - Upgrade `@actsecurity/iam-simulate` to `^0.1.157` or exact `0.1.157` consistent with current dependency style.
 - `src/collect/client.ts`
   - Add a small typed metadata shape for S3 BPA fields.
   - Add `getBlockPublicAccessEnabledForBucket(accountId, bucketOrObjectArn): Promise<boolean>` or similar.
@@ -156,7 +156,7 @@ For S3 bucket/object simulations only:
 ### Commands/checks to run
 
 ```bash
-npm install @cloud-copilot/iam-simulate@0.1.157 @cloud-copilot/iam-collect@0.1.205
+npm install @actsecurity/iam-simulate@0.1.157 @actsecurity/iam-collect@0.1.205
 npx vitest --run src/collect/client.test.ts src/simulate/simulateIntegration.test.ts src/whoCan/whoCanIntegration.test.ts
 npm run build
 npm test

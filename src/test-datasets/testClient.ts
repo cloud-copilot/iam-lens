@@ -1,4 +1,4 @@
-import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
+import { type TopLevelConfig } from '@actsecurity/iam-collect'
 import { existsSync } from 'fs'
 import { dirname, join, resolve } from 'path'
 import { fileURLToPath } from 'url'

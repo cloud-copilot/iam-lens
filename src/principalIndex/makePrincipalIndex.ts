@@ -1,4 +1,4 @@
-import { type Policy, type Action as PolicyAction } from '@cloud-copilot/iam-policy'
+import { type Policy, type Action as PolicyAction } from '@actsecurity/iam-policy'
 import BitSet from 'bitset'
 import { type IamActionCache, IamCollectClient } from '../collect/client.js'
 import { compressPrincipalString, encodeBitSet } from '../utils/bitset.js'

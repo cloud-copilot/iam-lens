@@ -7,7 +7,7 @@ import {
   parseCliArguments,
   stringArgument,
   stringArrayArgument
-} from '@cloud-copilot/cli'
+} from '@actsecurity/cli'
 import { NoCacheProvider } from './collect/client.js'
 import { getCollectClient, loadCollectConfigs } from './collect/collect.js'
 import { principalCan } from './principalCan/principalCan.js'
