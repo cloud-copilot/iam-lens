@@ -44,7 +44,7 @@
     "@actsecurity/prettier-config": "^0.1.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^13.0.1",
-    "@semantic-release/exec": "^7.1.0",    
+    "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^12.0.6",
     "@semantic-release/npm": "^13.1.4",
@@ -96,7 +96,7 @@
         {
           "successCmd": "echo published=true >> $GITHUB_OUTPUT && echo version=${nextRelease.version} >> $GITHUB_OUTPUT && echo package_name=$(node -p \"require('./package.json').name\") >> $GITHUB_OUTPUT"
         }
-      ],      
+      ],
       [
         "@semantic-release/git",
         {
