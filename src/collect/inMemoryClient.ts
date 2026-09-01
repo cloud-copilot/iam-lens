@@ -1,4 +1,4 @@
-import { createInMemoryStorageClient } from '@cloud-copilot/iam-collect'
+import { createInMemoryStorageClient } from '@actsecurity/iam-collect'
 import { IamCollectClient } from './client.js'
 
 export function testStore() {

@@ -1,4 +1,4 @@
-import type { RunSimulationResults, Simulation } from '@cloud-copilot/iam-simulate'
+import type { RunSimulationResults, Simulation } from '@actsecurity/iam-simulate'
 import { describe, expectTypeOf, it } from 'vitest'
 import type { SimulateRequestResult } from './simulate.js'
 

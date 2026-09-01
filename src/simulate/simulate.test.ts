@@ -1,4 +1,4 @@
-import { type EvaluationResult } from '@cloud-copilot/iam-simulate'
+import { type EvaluationResult } from '@actsecurity/iam-simulate'
 import { assert, describe, expect, it } from 'vitest'
 import { testStore } from '../collect/inMemoryClient.js'
 import { saveRole, saveUser } from '../utils/testUtils.js'

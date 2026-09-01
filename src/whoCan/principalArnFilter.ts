@@ -1,5 +1,5 @@
-import { loadPolicy } from '@cloud-copilot/iam-policy'
-import { actionMatchesPattern, splitArnParts } from '@cloud-copilot/iam-utils'
+import { loadPolicy } from '@actsecurity/iam-policy'
+import { actionMatchesPattern, splitArnParts } from '@actsecurity/iam-utils'
 
 /**
  * Set of condition operators that can be used with aws:PrincipalArn to

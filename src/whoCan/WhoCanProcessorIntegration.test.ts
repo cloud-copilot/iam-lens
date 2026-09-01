@@ -1,4 +1,4 @@
-import { log } from '@cloud-copilot/log'
+import { log } from '@actsecurity/log'
 import { randomBytes } from 'crypto'
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'

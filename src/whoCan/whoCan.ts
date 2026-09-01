@@ -1,4 +1,4 @@
-import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
+import { type TopLevelConfig } from '@actsecurity/iam-collect'
 import { IamCollectClient } from '../collect/client.js'
 import { type ClientFactoryPlugin } from '../collect/collect.js'
 import {
@@ -9,15 +9,15 @@ import {
   iamResourceTypesForService,
   iamServiceExists,
   type ResourceType
-} from '@cloud-copilot/iam-data'
-import { type Condition, type ConditionOperation, loadPolicy } from '@cloud-copilot/iam-policy'
+} from '@actsecurity/iam-data'
+import { type Condition, type ConditionOperation, loadPolicy } from '@actsecurity/iam-policy'
 import {
   type AllowedConditionExpression,
   type IgnoredConditions,
   type RequestDenial,
   type RequestGrant
-} from '@cloud-copilot/iam-simulate'
-import { mostSpecificMatchingResourceTypePatterns, splitArnParts } from '@cloud-copilot/iam-utils'
+} from '@actsecurity/iam-simulate'
+import { mostSpecificMatchingResourceTypePatterns, splitArnParts } from '@actsecurity/iam-utils'
 import { Arn } from '../utils/arn.js'
 import { type S3AbacOverride } from '../utils/s3Abac.js'
 import { AssumeRoleActions } from '../utils/sts.js'

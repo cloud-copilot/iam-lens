@@ -1,4 +1,4 @@
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import { splitArnParts } from '@actsecurity/iam-utils'
 import { describe, expect, it } from 'vitest'
 import { testStore } from '../../../collect/inMemoryClient.js'
 import { expectPermissionSetToMatch, TestPermission } from '../../permissionSetTestUtils.js'

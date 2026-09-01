@@ -1,4 +1,4 @@
-import { EvaluationResult, RunSimulationResults } from '@cloud-copilot/iam-simulate'
+import { EvaluationResult, RunSimulationResults } from '@actsecurity/iam-simulate'
 import { describe, expect, it } from 'vitest'
 import { getTestDatasetClient } from '../test-datasets/testClient.js'
 import { simulateRequest, SimulationRequest } from './simulate.js'

@@ -1,5 +1,5 @@
-import { loadPolicy } from '@cloud-copilot/iam-policy'
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import { loadPolicy } from '@actsecurity/iam-policy'
+import { splitArnParts } from '@actsecurity/iam-utils'
 import { IamCollectClient } from '../../../collect/client.js'
 import { Permission } from '../../permission.js'
 import { addStatementToPermissionSet, PermissionSet } from '../../permissionSet.js'

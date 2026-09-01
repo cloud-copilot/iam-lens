@@ -1,6 +1,6 @@
-import { type ValidatedPolicy } from '@cloud-copilot/iam-policy'
-import { type Simulation } from '@cloud-copilot/iam-simulate'
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import { type ValidatedPolicy } from '@actsecurity/iam-policy'
+import { type Simulation } from '@actsecurity/iam-simulate'
+import { splitArnParts } from '@actsecurity/iam-utils'
 import { IamCollectClient } from './collect/client.js'
 
 /**

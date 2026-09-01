@@ -1,4 +1,4 @@
-import { iamActionDetails, iamActionsForService } from '@cloud-copilot/iam-data'
+import { iamActionDetails, iamActionsForService } from '@actsecurity/iam-data'
 
 const kms = 'kms'
 const kmsKey = 'key'

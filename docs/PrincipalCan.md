@@ -44,7 +44,7 @@ The command returns a standard JSON policy document, such as:
 
 ### Actions List
 
-Only `Action` is included in the output. Any `NotAction` statements are converted to `Action` statements for clarity. The data for this comes from [`@cloud-copilot/iam-data`](https://github.com/cloud-copilot/iam-data) which is updated daily.
+Only `Action` is included in the output. Any `NotAction` statements are converted to `Action` statements for clarity. The data for this comes from [`@actsecurity/iam-data`](https://github.com/cloud-copilot/iam-data) which is updated daily.
 
 All `Action`s in the output are explicit lists without wildcards. This makes it easy for any searching or automation. If you prefer shorter policies, use the `--shrink-action-lists` flag to consolidate actions using wildcards.
 

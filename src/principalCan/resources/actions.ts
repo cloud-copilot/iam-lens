@@ -2,7 +2,7 @@ import {
   iamActionDetails,
   iamActionsForService,
   iamResourceTypeExists
-} from '@cloud-copilot/iam-data'
+} from '@actsecurity/iam-data'
 
 /**
  * Get the actions for a resource type in a service.

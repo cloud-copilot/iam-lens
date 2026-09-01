@@ -1,4 +1,4 @@
-import { loadPolicy } from '@cloud-copilot/iam-policy'
+import { loadPolicy } from '@actsecurity/iam-policy'
 import { describe, expect, it } from 'vitest'
 import { Permission } from './permission.js'
 import { addStatementToPermissionSet, PermissionSet, toPolicyStatements } from './permissionSet.js'

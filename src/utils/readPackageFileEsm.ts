@@ -1,4 +1,4 @@
-import { createPackageFileReader, type PackageFileReader } from '@cloud-copilot/cli'
+import { createPackageFileReader, type PackageFileReader } from '@actsecurity/cli'
 
 let levels = 3
 //@ts-ignore

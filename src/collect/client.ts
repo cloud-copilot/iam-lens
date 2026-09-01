@@ -1,6 +1,6 @@
-import { type AwsIamStore } from '@cloud-copilot/iam-collect'
-import { log } from '@cloud-copilot/log'
-import { actionMatchesPattern } from '@cloud-copilot/iam-expand'
+import { type AwsIamStore } from '@actsecurity/iam-collect'
+import { log } from '@actsecurity/log'
+import { actionMatchesPattern } from '@actsecurity/iam-expand'
 import {
   createValidatedPolicy,
   loadPolicy,
@@ -12,12 +12,12 @@ import {
   validateServiceControlPolicy,
   validateEndpointPolicy,
   validateTrustPolicy
-} from '@cloud-copilot/iam-policy'
+} from '@actsecurity/iam-policy'
 import {
   convertAssumedRoleArnToRoleArn,
   isAssumedRoleArn,
   splitArnParts
-} from '@cloud-copilot/iam-utils'
+} from '@actsecurity/iam-utils'
 import BitSet from 'bitset'
 import { gunzipSync, gzipSync } from 'zlib'
 import { decodeBitSet, decompressPrincipalString } from '../utils/bitset.js'

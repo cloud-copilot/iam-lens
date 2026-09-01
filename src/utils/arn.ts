@@ -1,4 +1,4 @@
-import { type ArnParts, splitArnParts } from '@cloud-copilot/iam-utils'
+import { type ArnParts, splitArnParts } from '@actsecurity/iam-utils'
 
 export class Arn {
   private readonly parts: ArnParts

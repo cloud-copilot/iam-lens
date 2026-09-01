@@ -18,7 +18,7 @@
 ## Repository Reconnaissance
 
 - Current branch/status: `main...origin/main`, working tree clean at intake.
-- Package: `@cloud-copilot/iam-lens`; `@cloud-copilot/iam-simulate` dependency is `^0.1.163` and its declarations include `RequestAnalysis.conditions?: AllowedConditionExpression` and `RequestAnalysis.ignoredConditions?: IgnoredConditions`.
+- Package: `@cloud-copilot/iam-lens`; `@actsecurity/iam-simulate` dependency is `^0.1.163` and its declarations include `RequestAnalysis.conditions?: AllowedConditionExpression` and `RequestAnalysis.ignoredConditions?: IgnoredConditions`.
 - Public API entry point: `src/index.ts` exports `whoCan`, `ResourceAccessRequest`, `WhoCanAllowed`, and `WhoCanResponse`. `WhoCanAllowedResourcePattern` is exported from `src/whoCan/whoCan.ts` but not re-exported from `src/index.ts`; this change should re-export it for typed access to `allowedPatterns` entries.
 - Current mapping: `src/whoCan/WhoCanWorker.ts` maps single allowed result `analysis.ignoredConditions` into `allowed.conditions`; wildcard allowed patterns map `r.analysis.ignoredConditions` into each pattern's `conditions`.
 - Current public types: `WhoCanAllowed.conditions?: any` and `WhoCanAllowedResourcePattern.conditions?: any` with comments describing conditions under which access is allowed. No `ignoredConditions` field exists.
@@ -27,7 +27,7 @@
 
 ## Implementation Plan
 
-1. Update imports in `src/whoCan/whoCan.ts` to import `AllowedConditionExpression` and `IgnoredConditions` types from `@cloud-copilot/iam-simulate` along with `RequestDenial`/`RequestGrant`.
+1. Update imports in `src/whoCan/whoCan.ts` to import `AllowedConditionExpression` and `IgnoredConditions` types from `@actsecurity/iam-simulate` along with `RequestDenial`/`RequestGrant`.
 2. Update `WhoCanAllowedResourcePattern`:
    - Change `conditions?: any` to `conditions?: AllowedConditionExpression` and JSDoc to describe the new allowed-condition expression.
    - Add `ignoredConditions?: IgnoredConditions` with JSDoc explaining this is the previous ignored discovery-condition diagnostic data.

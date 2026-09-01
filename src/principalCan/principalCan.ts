@@ -1,6 +1,6 @@
-import { loadPolicy } from '@cloud-copilot/iam-policy'
-import { shrinkJsonDocument } from '@cloud-copilot/iam-shrink'
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import { loadPolicy } from '@actsecurity/iam-policy'
+import { shrinkJsonDocument } from '@actsecurity/iam-shrink'
+import { splitArnParts } from '@actsecurity/iam-utils'
 import { IamCollectClient } from '../collect/client.js'
 import { getAllPoliciesForPrincipal } from '../principals.js'
 import {

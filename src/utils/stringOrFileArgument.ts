@@ -1,4 +1,4 @@
-import { singleValueArgument } from '@cloud-copilot/cli'
+import { singleValueArgument } from '@actsecurity/cli'
 import { existsSync, readFileSync } from 'fs'
 
 export const stringOrFileArgument = singleValueArgument<string>((rawValue) => {

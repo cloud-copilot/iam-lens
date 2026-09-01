@@ -1,7 +1,7 @@
 // Worker thread entry point for whoCan simulations.
 // Lifetime-scoped: a single PullBasedJobRunner is created at init and
 // processes work items until 'finishWork' is received from the main thread.
-import { type TopLevelConfig } from '@cloud-copilot/iam-collect'
+import { type TopLevelConfig } from '@actsecurity/iam-collect'
 import { parentPort, threadId, workerData } from 'worker_threads'
 import { type ClientFactoryPlugin, getCollectClient } from '../collect/collect.js'
 import { dynamicImport } from '../utils/dynamicImport.js'

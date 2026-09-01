@@ -1,4 +1,4 @@
-import { isServicePrincipal, splitArnParts } from '@cloud-copilot/iam-utils'
+import { isServicePrincipal, splitArnParts } from '@actsecurity/iam-utils'
 import { IamCollectClient } from '../collect/client.js'
 import { type WhoCanPrincipalScope } from './whoCan.js'
 

@@ -1,5 +1,5 @@
-import { iamActionDetails, iamActionExists, iamServiceExists } from '@cloud-copilot/iam-data'
-import { type ValidatedPolicy } from '@cloud-copilot/iam-policy'
+import { iamActionDetails, iamActionExists, iamServiceExists } from '@actsecurity/iam-data'
+import { type ValidatedPolicy } from '@actsecurity/iam-policy'
 import {
   type DiscoveryContextKeyConstraint,
   type EvaluationResult,
@@ -7,14 +7,14 @@ import {
   runSimulation,
   type Simulation,
   type SimulationMode
-} from '@cloud-copilot/iam-simulate'
+} from '@actsecurity/iam-simulate'
 import {
   convertAssumedRoleArnToRoleArn,
   isAssumedRoleArn,
   isIamRoleArn,
   isS3BucketOrObjectArn,
   splitArnParts
-} from '@cloud-copilot/iam-utils'
+} from '@actsecurity/iam-utils'
 import { IamCollectClient, type SimulationOrgPolicies } from '../collect/client.js'
 import {
   getAllPoliciesForPrincipal,

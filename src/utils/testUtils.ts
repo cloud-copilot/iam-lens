@@ -1,5 +1,5 @@
-import { type AwsIamStore } from '@cloud-copilot/iam-collect'
-import { splitArnParts } from '@cloud-copilot/iam-utils'
+import { type AwsIamStore } from '@actsecurity/iam-collect'
+import { splitArnParts } from '@actsecurity/iam-utils'
 
 /**
  * Useful functions for unit tests.
